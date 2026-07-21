@@ -1,0 +1,29 @@
+[project]
+name = "dipeat-api"
+version = "0.1.0"
+description = "찍먹(dipeat) 메뉴판 번역 API"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "fastapi[standard]>=0.119,<0.121",
+    "google-genai>=1.0",
+    "pillow>=11.0",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "tenacity>=9.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+    "asgi-lifespan>=2.1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"

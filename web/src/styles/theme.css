@@ -1,0 +1,45 @@
+@import 'tailwindcss';
+
+/* 목업(찍먹 목업.dc.html)의 CSS 변수를 그대로 디자인 토큰으로 승격.
+   색을 새로 정하지 않는다 — 목업이 정본이다. */
+@theme {
+  --color-brand: #ea5a34;
+  --color-brand-2: #f5892e;
+  --color-brand-700: #c0431f;
+  --color-brand-800: #9e3416;
+  --color-brand-100: #fde7dd;
+  --color-brand-200: #fbd1c1;
+
+  --color-sage: #7a8a5e;
+  --color-sage-100: #eef2e2;
+  --color-sage-700: #56633f;
+
+  --color-amber: #e8a23a;
+  --color-amber-100: #fbeccf;
+  --color-amber-700: #9a6b18;
+
+  --color-appbg: #fff9f2;
+  --color-ink: #241512;
+  --color-muted: #8a7266;
+  --color-line: #ebdfd0;
+  --color-card: #ffffff;
+
+  --font-sans: 'Pretendard', system-ui, -apple-system, sans-serif;
+  /* 현지어(일본어) 표기 전용. 한국어 본문에는 쓰지 않는다. */
+  --font-local: 'Noto Sans JP', 'Pretendard', sans-serif;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--color-appbg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
