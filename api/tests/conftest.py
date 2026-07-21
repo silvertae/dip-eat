@@ -8,6 +8,7 @@ from PIL import Image
 
 from app.main import create_app
 from app.schemas.menu import MenuExtraction, MenuItem, Restaurant
+from app.services.gemini import ScanOutcome
 
 
 def make_jpeg(width: int = 400, height: int = 300, *, noise: bool = False) -> bytes:
@@ -60,11 +61,14 @@ class FakeGemini:
         self.error = error
         self.calls: list[dict] = []
 
-    async def extract_menu(self, image, *, mode: str):
+    async def extract_menu(self, image, *, mode: str, models=None):
         self.calls.append({"mode": mode, "bytes": len(image.data), "px": image.px})
         if self.error:
             raise self.error
-        return self.result, "fake-model"
+        return ScanOutcome(
+            extraction=self.result, model="fake-model",
+            input_tokens=1120, output_tokens=4200, thought_tokens=100,
+        )
 
 
 @pytest.fixture

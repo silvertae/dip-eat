@@ -38,7 +38,13 @@ def build_service(responses: list) -> tuple[GeminiService, list[str]]:
 
 
 def ok_response(extraction: MenuExtraction | None) -> SimpleNamespace:
-    return SimpleNamespace(parsed=extraction, text="{}" if extraction is None else "")
+    return SimpleNamespace(
+        parsed=extraction,
+        text="{}" if extraction is None else "",
+        usage_metadata=SimpleNamespace(
+            prompt_token_count=1120, candidates_token_count=4200, thoughts_token_count=100
+        ),
+    )
 
 
 def api_error(code: int) -> genai_errors.APIError:
@@ -47,7 +53,8 @@ def api_error(code: int) -> genai_errors.APIError:
 
 async def test_returns_extraction_and_model():
     service, used = build_service([ok_response(sample_extraction())])
-    extraction, model = await service.extract_menu(IMAGE, mode="poster")
+    outcome = await service.extract_menu(IMAGE, mode="poster")
+    extraction, model = outcome.extraction, outcome.model
     assert extraction.items[0].name_local == "ラフテー"
     assert model == used[0]
 
@@ -58,7 +65,8 @@ async def test_parsed_none_is_retried_then_falls_back_to_second_model():
     service, used = build_service(
         [ok_response(None), ok_response(None), ok_response(sample_extraction())]
     )
-    extraction, model = await service.extract_menu(IMAGE, mode="poster")
+    outcome = await service.extract_menu(IMAGE, mode="poster")
+    extraction, model = outcome.extraction, outcome.model
     assert extraction.items
     assert used[:2] == [used[0], used[0]]  # 1차 모델로 2번
     assert model == used[2] != used[0]  # 그 다음 폴백 모델
@@ -95,6 +103,6 @@ async def test_rate_limit_is_not_retried():
 
 async def test_server_error_is_retried():
     service, used = build_service([api_error(503), ok_response(sample_extraction())])
-    extraction, _ = await service.extract_menu(IMAGE, mode="poster")
+    extraction = (await service.extract_menu(IMAGE, mode="poster")).extraction
     assert extraction.items
     assert len(used) == 2

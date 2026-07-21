@@ -17,7 +17,7 @@ from app.services.gemini import GeminiService
 def test_defaults_are_flash_lite_first_then_stronger_fallback():
     settings = Settings(gemini_api_key="k")
     assert settings.gemini_model == "gemini-3.1-flash-lite"
-    assert settings.gemini_model_fallback == "gemini-3.5-flash"
+    assert settings.gemini_model_fallback == "gemini-3.6-flash"
     assert settings.gemini_model != settings.gemini_model_fallback
 
 
@@ -49,6 +49,28 @@ def test_media_resolution_is_sent_when_set():
         Settings(gemini_api_key="k", gemini_media_resolution="MEDIA_RESOLUTION_HIGH")
     )
     assert service._config("poster").media_resolution.value == "MEDIA_RESOLUTION_HIGH"
+
+
+def test_api_key_is_read_from_bare_gemini_api_key_in_dotenv(tmp_path, monkeypatch):
+    """`.env.example` 이 안내하는 접두사 없는 이름이 실제로 먹혀야 한다.
+
+    env_prefix='DIPEAT_' 만 있으면 `GEMINI_API_KEY=...` 가 조용히 무시되어
+    "키를 넣었는데 키가 없다"는 상태가 된다. 실제로 한 번 겪은 버그다.
+    """
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("DIPEAT_GEMINI_API_KEY", raising=False)
+    env_file = tmp_path / ".env"
+    env_file.write_text("GEMINI_API_KEY=from-dotenv\n", encoding="utf-8")
+
+    assert Settings(_env_file=env_file).resolved_api_key == "from-dotenv"
+
+
+def test_prefixed_name_also_works(tmp_path, monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    env_file = tmp_path / ".env"
+    env_file.write_text("DIPEAT_GEMINI_API_KEY=prefixed\n", encoding="utf-8")
+
+    assert Settings(_env_file=env_file).resolved_api_key == "prefixed"
 
 
 def test_capture_mode_hint_reaches_the_system_instruction():

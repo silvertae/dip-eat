@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 from google import genai
@@ -29,6 +30,21 @@ log = logging.getLogger(__name__)
 
 # 재시도·폴백이 무의미한 상태 코드(키/권한/요청 자체가 잘못된 경우).
 _NON_RETRYABLE = {400, 401, 403, 404}
+
+
+@dataclass(slots=True)
+class ScanOutcome:
+    """추출 결과 + 비용/지연을 판단할 수 있는 계측값.
+
+    토큰 수를 같이 들고 다니는 이유: 이 엔드포인트의 지연은 거의 전부 '출력 토큰'에서
+    나온다. 로그에 남겨두면 메뉴가 큰 사진에서 왜 느린지 추측하지 않아도 된다.
+    """
+
+    extraction: MenuExtraction
+    model: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+    thought_tokens: int = 0
 
 _PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 _MENU_SCAN_PROMPT = (_PROMPT_DIR / "menu_scan.md").read_text(encoding="utf-8")
@@ -73,18 +89,15 @@ class GeminiService:
 
     async def extract_menu(
         self, image: PreparedImage, *, mode: str, models: list[str] | None = None
-    ) -> tuple[MenuExtraction, str]:
-        """(추출 결과, 실제로 사용한 모델 ID) 를 반환한다.
-
-        `models` 는 벤치마크 스크립트가 특정 모델만 강제할 때 쓴다.
-        """
+    ) -> ScanOutcome:
+        """`models` 는 벤치마크 스크립트가 특정 모델만 강제할 때 쓴다."""
         models = models or [self._settings.gemini_model, self._settings.gemini_model_fallback]
         last_error: Exception | None = None
 
         for model in models:
             for attempt in range(1, self._settings.gemini_max_attempts + 1):
                 try:
-                    return await self._call(model, image, mode), model
+                    return await self._call(model, image, mode)
                 except (UpstreamTimeout, UpstreamRateLimited, UpstreamConfigError):
                     raise  # 재시도해도 나아지지 않는다. 즉시 사용자에게.
                 except (UnreadableMenu, UpstreamError) as exc:
@@ -98,7 +111,7 @@ class GeminiService:
 
         raise last_error or UpstreamError()
 
-    async def _call(self, model: str, image: PreparedImage, mode: str) -> MenuExtraction:
+    async def _call(self, model: str, image: PreparedImage, mode: str) -> ScanOutcome:
         contents = [
             types.Part.from_bytes(data=image.data, mime_type=image.mime_type),
             types.Part.from_text(text="이 메뉴판을 읽고 스키마대로 정리해 주세요."),
@@ -131,4 +144,13 @@ class GeminiService:
             )
         if not parsed.items:
             raise UnreadableMenu(detail=f"empty items model={model}")
-        return parsed
+
+        # 계측값은 있으면 좋은 것이지 없다고 요청을 실패시킬 이유는 아니다.
+        usage = getattr(resp, "usage_metadata", None)
+        return ScanOutcome(
+            extraction=parsed,
+            model=model,
+            input_tokens=getattr(usage, "prompt_token_count", 0) or 0,
+            output_tokens=getattr(usage, "candidates_token_count", 0) or 0,
+            thought_tokens=getattr(usage, "thoughts_token_count", 0) or 0,
+        )

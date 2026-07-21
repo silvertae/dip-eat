@@ -41,16 +41,19 @@ async def scan_menu(
     )
 
     gemini: GeminiService = request.app.state.gemini
-    extraction, model_used = await gemini.extract_menu(prepared, mode=mode)
+    outcome = await gemini.extract_menu(prepared, mode=mode)
 
     latency_ms = int((time.perf_counter() - started) * 1000)
+    # 출력 토큰이 이 엔드포인트 지연의 지배적 요인이라 반드시 같이 남긴다.
     log.info(
-        "menu.scan ok items=%d model=%s px=%s bytes_in=%d bytes_sent=%d latency_ms=%d",
-        len(extraction.items), model_used, prepared.px, len(raw), len(prepared.data), latency_ms,
+        "menu.scan ok items=%d model=%s px=%s bytes_in=%d bytes_sent=%d "
+        "tok_in=%d tok_out=%d tok_think=%d latency_ms=%d",
+        len(outcome.extraction.items), outcome.model, prepared.px, len(raw), len(prepared.data),
+        outcome.input_tokens, outcome.output_tokens, outcome.thought_tokens, latency_ms,
     )
 
     return MenuScanResponse(
-        **extraction.model_dump(),
+        **outcome.extraction.model_dump(),
         scan_id=uuid.uuid4().hex,
-        meta=ScanMeta(model=model_used, latency_ms=latency_ms, image_px=prepared.px),
+        meta=ScanMeta(model=outcome.model, latency_ms=latency_ms, image_px=prepared.px),
     )

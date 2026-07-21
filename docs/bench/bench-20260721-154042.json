@@ -1,0 +1,899 @@
+{
+  "generated_at": "20260721-154042",
+  "mode": "poster",
+  "thinking_level": "low",
+  "media_resolution": "MEDIA_RESOLUTION_HIGH",
+  "results": {
+    "gemini-3.1-flash-lite": [
+      {
+        "ok": true,
+        "latency_ms": 24628,
+        "items": 40,
+        "price_parse_rate": 1.0,
+        "low_confidence": 0,
+        "with_allergens": 26,
+        "sent_kb": 256,
+        "restaurant": "ゆうなんぎい",
+        "warnings": [],
+        "read": [
+          {
+            "local": "もずくの天ぷら",
+            "ko": "모즈쿠(큰실말) 튀김",
+            "price": "760円",
+            "conf": "high"
+          },
+          {
+            "local": "島らっきょうの天ぷら",
+            "ko": "섬 락교 튀김",
+            "price": "760円",
+            "conf": "high"
+          },
+          {
+            "local": "アサの天ぷら",
+            "ko": "아사(파래) 튀김",
+            "price": "760円",
+            "conf": "high"
+          },
+          {
+            "local": "フーチバージューシー",
+            "ko": "쑥 쥬시(오키나와식 솥밥)",
+            "price": "800円",
+            "conf": "high"
+          },
+          {
+            "local": "イカスミジューシー",
+            "ko": "오징어 먹물 쥬시",
+            "price": "1420円",
+            "conf": "high"
+          },
+          {
+            "local": "ラフテー",
+            "ko": "라후테(오키나와식 돼지고기 조림)",
+            "price": "970円",
+            "conf": "high"
+          },
+          {
+            "local": "本ソーキ骨の煮付け",
+            "ko": "본 소키(돼지 갈비) 조림",
+            "price": "970円",
+            "conf": "high"
+          },
+          {
+            "local": "てびちの煮付け",
+            "ko": "테비치(족발) 조림",
+            "price": "840円",
+            "conf": "high"
+          },
+          {
+            "local": "グルクン唐揚",
+            "ko": "구루쿤(자리돔) 튀김",
+            "price": "890円",
+            "conf": "high"
+          },
+          {
+            "local": "ゴーヤチャンプル",
+            "ko": "고야 찬푸르(여주 볶음)",
+            "price": "850円",
+            "conf": "high"
+          },
+          {
+            "local": "ナーベーラみそ煮",
+            "ko": "나베라(수세미오이) 된장 조림",
+            "price": "850円",
+            "conf": "high"
+          },
+          {
+            "local": "フーチャンプル",
+            "ko": "후 찬푸르(밀기울 볶음)",
+            "price": "850円",
+            "conf": "high"
+          },
+          {
+            "local": "トーフチャンプル",
+            "ko": "두부 찬푸르",
+            "price": "890円",
+            "conf": "high"
+          },
+          {
+            "local": "中味イリチー",
+            "ko": "나카미 이리치(내장 볶음)",
+            "price": "890円",
+            "conf": "high"
+          },
+          {
+            "local": "マミナーチャンプル",
+            "ko": "마미나 찬푸르(숙주 볶음)",
+            "price": "850円",
+            "conf": "high"
+          },
+          {
+            "local": "ナービーみそ煮",
+            "ko": "나비 된장 조림",
+            "price": "890円",
+            "conf": "high"
+          },
+          {
+            "local": "野菜炒め",
+            "ko": "야채 볶음",
+            "price": "890円",
+            "conf": "high"
+          },
+          {
+            "local": "ソーメンチャンプル",
+            "ko": "소면 찬푸르",
+            "price": "770円",
+            "conf": "high"
+          },
+          {
+            "local": "沖縄ソバ焼きそば",
+            "ko": "오키나와 소바 야키소바",
+            "price": "820円",
+            "conf": "high"
+          },
+          {
+            "local": "イカスミめんの焼きそば",
+            "ko": "오징어 먹물 면 야키소바",
+            "price": "820円",
+            "conf": "high"
+          },
+          {
+            "local": "いなむるち",
+            "ko": "이나무루치(오키나와식 된장국)",
+            "price": "790円",
+            "conf": "high"
+          },
+          {
+            "local": "中味のお吸い物",
+            "ko": "나카미 오스이모노(내장 맑은국)",
+            "price": "820円",
+            "conf": "high"
+          },
+          {
+            "local": "アサ汁",
+            "ko": "아사지루(파래국)",
+            "price": "740円",
+            "conf": "high"
+          },
+          {
+            "local": "イカスミ汁",
+            "ko": "오징어 먹물 국",
+            "price": "1250円",
+            "conf": "high"
+          },
+          {
+            "local": "山羊汁",
+            "ko": "염소국",
+            "price": "1600円",
+            "conf": "high"
+          },
+          {
+            "local": "イラブ汁",
+            "ko": "이라부지루(바다뱀 국)",
+            "price": "2700円",
+            "conf": "high"
+          },
+          {
+            "local": "海ぶどう",
+            "ko": "바다포도",
+            "price": "580円",
+            "conf": "high"
+          },
+          {
+            "local": "スルルの唐揚",
+            "ko": "스루루(멸치류) 튀김",
+            "price": "720円",
+            "conf": "high"
+          },
+          {
+            "local": "トーフヨー",
+            "ko": "두부요(두부 발효식품)",
+            "price": "680円",
+            "conf": "high"
+          },
+          {
+            "local": "クビイリチー",
+            "ko": "쿠비 이리치(다시마 볶음)",
+            "price": "580円",
+            "conf": "high"
+          },
+          {
+            "local": "カラスドーフ",
+            "ko": "카라스 두부(소금에 절인 두부)",
+            "price": "590円",
+            "conf": "high"
+          },
+          {
+            "local": "島らっきょう",
+            "ko": "섬 락교",
+            "price": "620円",
+            "conf": "high"
+          },
+          {
+            "local": "ジーマミドーフ",
+            "ko": "지마미 두부(땅콩 두부)",
+            "price": "620円",
+            "conf": "high"
+          },
+          {
+            "local": "ミミガー",
+            "ko": "미미가(돼지 귀 무침)",
+            "price": "620円",
+            "conf": "high"
+          },
+          {
+            "local": "スヌイ",
+            "ko": "스누이(모즈쿠 초무침)",
+            "price": "590円",
+            "conf": "high"
+          },
+          {
+            "local": "ゴーヤの酢の物",
+            "ko": "여주 초무침",
+            "price": "690円",
+            "conf": "high"
+          },
+          {
+            "local": "じゅーしぃセット",
+            "ko": "쥬시 세트",
+            "price": "1800円",
+            "conf": "high"
+          },
+          {
+            "local": "いなむるちセット",
+            "ko": "이나무루치 세트",
+            "price": "1800円",
+            "conf": "high"
+          },
+          {
+            "local": "ゆうなんぎいB定食",
+            "ko": "유난기 B정식",
+            "price": "2550円",
+            "conf": "high"
+          },
+          {
+            "local": "ゆうなんぎいA定食",
+            "ko": "유난기 A정식",
+            "price": "3600円",
+            "conf": "high"
+          }
+        ],
+        "file": "japanese_menu1.png"
+      },
+      {
+        "ok": true,
+        "latency_ms": 15257,
+        "items": 8,
+        "price_parse_rate": 1.0,
+        "low_confidence": 0,
+        "with_allergens": 8,
+        "sent_kb": 43,
+        "restaurant": "",
+        "warnings": [],
+        "read": [
+          {
+            "local": "まぐろ赤身",
+            "ko": "참치 붉은 살",
+            "price": "130円+税",
+            "conf": "high"
+          },
+          {
+            "local": "ハンバーグ軍艦",
+            "ko": "햄버그 군함말이",
+            "price": "130円+税",
+            "conf": "high"
+          },
+          {
+            "local": "鉄火巻",
+            "ko": "철화말이 (참치 김밥)",
+            "price": "180円+税",
+            "conf": "high"
+          },
+          {
+            "local": "煮穴子",
+            "ko": "붕장어 조림",
+            "price": "220円+税",
+            "conf": "high"
+          },
+          {
+            "local": "プルコギ",
+            "ko": "불고기",
+            "price": "220円+税",
+            "conf": "high"
+          },
+          {
+            "local": "いくら軍艦",
+            "ko": "연어알 군함말이",
+            "price": "350円+税",
+            "conf": "high"
+          },
+          {
+            "local": "炙り大とろ",
+            "ko": "참치 대뱃살 구이",
+            "price": "520円+税",
+            "conf": "high"
+          },
+          {
+            "local": "大名穴子一貫",
+            "ko": "대명 붕장어 한 점",
+            "price": "800円+税",
+            "conf": "high"
+          }
+        ],
+        "file": "japanese_menu2.jpg"
+      },
+      {
+        "ok": true,
+        "latency_ms": 15778,
+        "items": 8,
+        "price_parse_rate": 1.0,
+        "low_confidence": 0,
+        "with_allergens": 8,
+        "sent_kb": 104,
+        "restaurant": "",
+        "warnings": [
+          "메뉴판의 모든 가격은 2피스 기준이며 세금이 포함된 가격입니다.",
+          "일부 메뉴는 사진상 흐릿하여 정확한 판독이 어려울 수 있습니다."
+        ],
+        "read": [
+          {
+            "local": "かんぱち",
+            "ko": "잿방어",
+            "price": "490円",
+            "conf": "high"
+          },
+          {
+            "local": "サーモン",
+            "ko": "연어",
+            "price": "490円",
+            "conf": "high"
+          },
+          {
+            "local": "うに",
+            "ko": "성게알",
+            "price": "750円",
+            "conf": "high"
+          },
+          {
+            "local": "鉄火巻",
+            "ko": "참치 김말이",
+            "price": "490円",
+            "conf": "high"
+          },
+          {
+            "local": "納豆巻",
+            "ko": "낫토 김말이",
+            "price": "430円",
+            "conf": "high"
+          },
+          {
+            "local": "赤だし",
+            "ko": "붉은 된장국",
+            "price": "490円",
+            "conf": "high"
+          },
+          {
+            "local": "生ビール",
+            "ko": "생맥주",
+            "price": "630円",
+            "conf": "high"
+          },
+          {
+            "local": "ハイボール",
+            "ko": "하이볼",
+            "price": "530円",
+            "conf": "high"
+          }
+        ],
+        "file": "japanese_menu3.png"
+      },
+      {
+        "ok": true,
+        "latency_ms": 21654,
+        "items": 21,
+        "price_parse_rate": 1.0,
+        "low_confidence": 0,
+        "with_allergens": 20,
+        "sent_kb": 91,
+        "restaurant": "",
+        "warnings": [
+          "일부 메뉴의 가격이나 이름이 사진에서 잘려 완벽하게 읽지 못했을 수 있습니다.",
+          "알레르기 정보는 메뉴명과 일반적인 요리 지식을 바탕으로 추론한 것이므로, 실제 식당에 확인하시기 바랍니다."
+        ],
+        "read": [
+          {
+            "local": "ビーフカレー (並)",
+            "ko": "비프 카레 (보통)",
+            "price": "¥390",
+            "conf": "high"
+          },
+          {
+            "local": "ビーフカレー (大盛)",
+            "ko": "비프 카레 (곱빼기)",
+            "price": "¥490",
+            "conf": "high"
+          },
+          {
+            "local": "カツカレー (並)",
+            "ko": "카츠 카레 (보통)",
+            "price": "¥590",
+            "conf": "high"
+          },
+          {
+            "local": "温たまカレー (並)",
+            "ko": "온타마 카레 (보통)",
+            "price": "¥470",
+            "conf": "high"
+          },
+          {
+            "local": "牛丼 (ミニ)",
+            "ko": "규동 (미니)",
+            "price": "¥290",
+            "conf": "high"
+          },
+          {
+            "local": "牛丼 (並)",
+            "ko": "규동 (보통)",
+            "price": "¥390",
+            "conf": "high"
+          },
+          {
+            "local": "牛丼 (大盛)",
+            "ko": "규동 (곱빼기)",
+            "price": "¥490",
+            "conf": "high"
+          },
+          {
+            "local": "親子丼",
+            "ko": "오야코동",
+            "price": "¥490",
+            "conf": "high"
+          },
+          {
+            "local": "はいからうどん",
+            "ko": "하이카라 우동",
+            "price": "¥280",
+            "conf": "high"
+          },
+          {
+            "local": "きつねうどん",
+            "ko": "키츠네 우동",
+            "price": "¥380",
+            "conf": "high"
+          },
+          {
+            "local": "天ぷらうどん",
+            "ko": "텐푸라 우동",
+            "price": "¥380",
+            "conf": "high"
+          },
+          {
+            "local": "肉うどん",
+            "ko": "니쿠 우동",
+            "price": "¥380",
+            "conf": "high"
+          },
+          {
+            "local": "カレーうどん",
+            "ko": "카레 우동",
+            "price": "¥500",
+            "conf": "high"
+          },
+          {
+            "local": "小うどん はいから",
+            "ko": "소우동 하이카라",
+            "price": "¥200",
+            "conf": "high"
+          },
+          {
+            "local": "小うどん きつね",
+            "ko": "소우동 키츠네",
+            "price": "¥250",
+            "conf": "high"
+          },
+          {
+            "local": "小うどん にく",
+            "ko": "소우동 니쿠",
+            "price": "¥250",
+            "conf": "high"
+          },
+          {
+            "local": "冷やし小そば",
+            "ko": "냉소바 (소)",
+            "price": "¥200",
+            "conf": "high"
+          },
+          {
+            "local": "冷やし小はいから",
+            "ko": "냉 하이카라 우동 (소)",
+            "price": "¥200",
+            "conf": "high"
+          },
+          {
+            "local": "こだわり卵",
+            "ko": "계란",
+            "price": "¥60",
+            "conf": "high"
+          },
+          {
+            "local": "こだわり温玉",
+            "ko": "온천달걀",
+            "price": "¥80",
+            "conf": "high"
+          },
+          {
+            "local": "つけもの",
+            "ko": "절임 반찬",
+            "price": "¥50",
+            "conf": "high"
+          }
+        ],
+        "file": "japanese_menu4.jpg"
+      },
+      {
+        "ok": true,
+        "latency_ms": 25640,
+        "items": 54,
+        "price_parse_rate": 1.0,
+        "low_confidence": 1,
+        "with_allergens": 39,
+        "sent_kb": 166,
+        "restaurant": "",
+        "warnings": [],
+        "read": [
+          {
+            "local": "冷奴",
+            "ko": "히야얏코 (연두부)",
+            "price": "300",
+            "conf": "high"
+          },
+          {
+            "local": "枝豆",
+            "ko": "에다마메 (풋콩)",
+            "price": "300",
+            "conf": "high"
+          },
+          {
+            "local": "塩辛",
+            "ko": "시오카라 (오징어 젓갈)",
+            "price": "350",
+            "conf": "high"
+          },
+          {
+            "local": "たこわさ",
+            "ko": "타코와사 (문어 와사비)",
+            "price": "350",
+            "conf": "high"
+          },
+          {
+            "local": "もろQ",
+            "ko": "모로큐 (오이와 보리된장)",
+            "price": "300",
+            "conf": "high"
+          },
+          {
+            "local": "うめQ",
+            "ko": "우메큐 (오이와 매실)",
+            "price": "300",
+            "conf": "high"
+          },
+          {
+            "local": "冷やしトマト",
+            "ko": "히야시 토마토 (토마토 슬라이스)",
+            "price": "380",
+            "conf": "high"
+          },
+          {
+            "local": "オニオンスライス",
+            "ko": "양파 슬라이스",
+            "price": "300",
+            "conf": "high"
+          },
+          {
+            "local": "しらすおろし",
+            "ko": "시라스 오로시 (잔멸치 무즙)",
+            "price": "330",
+            "conf": "high"
+          },
+          {
+            "local": "キムチ",
+            "ko": "김치",
+            "price": "350",
+            "conf": "high"
+          },
+          {
+            "local": "梅水晶",
+            "ko": "우메스이쇼 (상어 연골 매실 무침)",
+            "price": "480",
+            "conf": "high"
+          },
+          {
+            "local": "チャンジャ",
+            "ko": "창난젓",
+            "price": "480",
+            "conf": "high"
+          },
+          {
+            "local": "きゅうりの浅漬",
+            "ko": "오이 절임",
+            "price": "380",
+            "conf": "high"
+          },
+          {
+            "local": "あつやき玉子",
+            "ko": "아츠야키 타마고 (두툼한 계란말이)",
+            "price": "380",
+            "conf": "high"
+          },
+          {
+            "local": "ネバネバ3種",
+            "ko": "끈적끈적 3종 세트",
+            "price": "380",
+            "conf": "high"
+          },
+          {
+            "local": "野菜サラダ",
+            "ko": "야채 샐러드",
+            "price": "420",
+            "conf": "high"
+          },
+          {
+            "local": "シーザーサラダ",
+            "ko": "시저 샐러드",
+            "price": "530",
+            "conf": "high"
+          },
+          {
+            "local": "塩ごまキャベツ",
+            "ko": "소금 참기름 양배추",
+            "price": "380",
+            "conf": "high"
+          },
+          {
+            "local": "チーズ揚",
+            "ko": "치즈 튀김",
+            "price": "350",
+            "conf": "high"
+          },
+          {
+            "local": "コロッケ",
+            "ko": "고로케",
+            "price": "280",
+            "conf": "high"
+          },
+          {
+            "local": "カングラタンコロッケ",
+            "ko": "게살 그라탕 고로케",
+            "price": "280",
+            "conf": "medium"
+          },
+          {
+            "local": "フライドポテト",
+            "ko": "감자튀김",
+            "price": "380",
+            "conf": "high"
+          },
+          {
+            "local": "ハムカツ",
+            "ko": "햄카츠",
+            "price": "280",
+            "conf": "high"
+          },
+          {
+            "local": "にんにく揚",
+            "ko": "마늘 튀김",
+            "price": "350",
+            "conf": "high"
+          },
+          {
+            "local": "ごぼう唐揚",
+            "ko": "우엉 튀김",
+            "price": "350",
+            "conf": "high"
+          },
+          {
+            "local": "イカ下足揚",
+            "ko": "오징어 다리 튀김",
+            "price": "420",
+            "conf": "high"
+          },
+          {
+            "local": "たこの唐揚",
+            "ko": "문어 튀김",
+            "price": "480",
+            "conf": "high"
+          },
+          {
+            "local": "なんこつ唐揚",
+            "ko": "닭 연골 튀김",
+            "price": "380",
+            "conf": "high"
+          },
+          {
+            "local": "あつあげ",
+            "ko": "아츠아게 (두부 튀김)",
+            "price": "380",
+            "conf": "high"
+          },
+          {
+            "local": "さつま揚",
+            "ko": "사츠마아게 (어묵 튀김)",
+            "price": "380",
+            "conf": "high"
+          },
+          {
+            "local": "小えび揚",
+            "ko": "작은 새우 튀김",
+            "price": "380",
+            "conf": "high"
+          },
+          {
+            "local": "チョリソー",
+            "ko": "초리조 (소시지)",
+            "price": "450",
+            "conf": "high"
+          },
+          {
+            "local": "揚げだし豆腐",
+            "ko": "아게다시 도후 (두부 튀김 조림)",
+            "price": "450",
+            "conf": "high"
+          },
+          {
+            "local": "鶏の唐揚",
+            "ko": "닭튀김 (가라아게)",
+            "price": "480",
+            "conf": "high"
+          },
+          {
+            "local": "もも",
+            "ko": "닭다리살 꼬치",
+            "price": "320",
+            "conf": "high"
+          },
+          {
+            "local": "皮",
+            "ko": "닭껍질 꼬치",
+            "price": "300",
+            "conf": "high"
+          },
+          {
+            "local": "つくね",
+            "ko": "츠쿠네 (닭고기 완자 꼬치)",
+            "price": "300",
+            "conf": "high"
+          },
+          {
+            "local": "ぼんじり",
+            "ko": "본지리 (닭 엉덩이살 꼬치)",
+            "price": "300",
+            "conf": "high"
+          },
+          {
+            "local": "せせり",
+            "ko": "세세리 (닭 목살 꼬치)",
+            "price": "300",
+            "conf": "high"
+          },
+          {
+            "local": "串盛",
+            "ko": "꼬치 모둠",
+            "price": "680",
+            "conf": "high"
+          },
+          {
+            "local": "ししゃも",
+            "ko": "시샤모 (열빙어 구이)",
+            "price": "380",
+            "conf": "high"
+          },
+          {
+            "local": "エイヒレ",
+            "ko": "에이히레 (가오리 지느러미 구이)",
+            "price": "480",
+            "conf": "high"
+          },
+          {
+            "local": "サバ文化干し",
+            "ko": "고등어 문화건조 구이",
+            "price": "480",
+            "conf": "high"
+          },
+          {
+            "local": "ホッケ半身焼",
+            "ko": "임연수 반마리 구이",
+            "price": "480",
+            "conf": "high"
+          },
+          {
+            "local": "焼きそば",
+            "ko": "야키소바",
+            "price": "580",
+            "conf": "high"
+          },
+          {
+            "local": "豚キムチ炒め",
+            "ko": "돼지고기 김치볶음",
+            "price": "580",
+            "conf": "high"
+          },
+          {
+            "local": "焼きおにぎり",
+            "ko": "구운 주먹밥",
+            "price": "250",
+            "conf": "high"
+          },
+          {
+            "local": "ごはんSET",
+            "ko": "밥 세트",
+            "price": "300",
+            "conf": "high"
+          },
+          {
+            "local": "ごはん",
+            "ko": "밥",
+            "price": "180",
+            "conf": "high"
+          },
+          {
+            "local": "納豆",
+            "ko": "낫토",
+            "price": "100",
+            "conf": "high"
+          },
+          {
+            "local": "みそ汁",
+            "ko": "미소된장국",
+            "price": "150",
+            "conf": "high"
+          },
+          {
+            "local": "生玉子",
+            "ko": "날계란",
+            "price": "80",
+            "conf": "high"
+          },
+          {
+            "local": "おにぎり",
+            "ko": "주먹밥",
+            "price": "250",
+            "conf": "high"
+          },
+          {
+            "local": "お茶漬",
+            "ko": "오차즈케 (차에 밥을 말아 먹는 요리)",
+            "price": "480",
+            "conf": "high"
+          }
+        ],
+        "file": "japanese_menu5.jpg"
+      }
+    ],
+    "gemini-3.5-flash": [
+      {
+        "ok": false,
+        "error": "upstream_error: 503: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+        "file": "japanese_menu1.png"
+      },
+      {
+        "ok": false,
+        "error": "upstream_timeout: model=gemini-3.5-flash",
+        "file": "japanese_menu2.jpg"
+      },
+      {
+        "ok": false,
+        "error": "upstream_error: 503: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+        "file": "japanese_menu3.png"
+      },
+      {
+        "ok": false,
+        "error": "upstream_error: 503: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+        "file": "japanese_menu4.jpg"
+      },
+      {
+        "ok": false,
+        "error": "upstream_error: 503: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+        "file": "japanese_menu5.jpg"
+      }
+    ]
+  }
+}

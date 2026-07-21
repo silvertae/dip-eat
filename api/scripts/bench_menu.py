@@ -35,11 +35,12 @@ async def run_one(service: GeminiService, image_bytes: bytes, model: str, mode: 
     prepared = prepare_image(image_bytes, target_long_edge=2048, jpeg_quality=85)
     started = time.perf_counter()
     try:
-        extraction, _ = await service.extract_menu(prepared, mode=mode, models=[model])
+        outcome = await service.extract_menu(prepared, mode=mode, models=[model])
     except DipeatError as exc:
         return {"ok": False, "error": f"{exc.code}: {exc.detail or exc.message}"}
 
     latency_ms = int((time.perf_counter() - started) * 1000)
+    extraction = outcome.extraction
     items = extraction.items
     priced = [i for i in items if i.price_amount is not None]
     low_conf = [i for i in items if i.ocr_confidence != "high"]
@@ -52,6 +53,10 @@ async def run_one(service: GeminiService, image_bytes: bytes, model: str, mode: 
         "low_confidence": len(low_conf),
         "with_allergens": sum(1 for i in items if i.likely_allergens),
         "sent_kb": round(len(prepared.data) / 1024),
+        "tok_in": outcome.input_tokens,
+        "tok_out": outcome.output_tokens,
+        "tok_think": outcome.thought_tokens,
+        "ms_per_item": round(latency_ms / len(items)) if items else 0,
         "restaurant": extraction.restaurant.name_local,
         "warnings": extraction.warnings,
         # 정확도는 결국 사람이 본다. 읽어낸 원문/번역/가격을 그대로 남긴다.
@@ -117,6 +122,7 @@ async def main() -> int:
                 print(f"   {path.name:28} {row['items']:3}개  "
                       f"가격 {row['price_parse_rate']:.0%}  "
                       f"저확신 {row['low_confidence']}  "
+                      f"in {row['tok_in']:>5} out {row['tok_out']:>6} think {row['tok_think']:>5}  "
                       f"{row['latency_ms']:>6}ms")
             else:
                 print(f"   {path.name:28} ❌ {row['error'][:70]}")

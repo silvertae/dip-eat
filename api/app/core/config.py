@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ThinkingLevel = Literal["minimal", "low", "medium", "high"]
@@ -14,14 +15,21 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="DIPEAT_", extra="ignore")
 
     # --- Gemini -------------------------------------------------------------
-    # 키는 GEMINI_API_KEY 로도 받는다(google-genai SDK 관례). alias 로 둘 다 허용.
-    gemini_api_key: str = ""
+    # 접두사 없는 GEMINI_API_KEY 로도 받는다 — google-genai SDK 와 AI Studio 안내가
+    # 그 이름을 쓰기 때문이다. validation_alias 를 주면 env_prefix 가 자동으로 붙지
+    # 않으므로 접두사 붙은 이름도 명시해야 한다.
+    gemini_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("DIPEAT_GEMINI_API_KEY", "GEMINI_API_KEY"),
+    )
 
     # 1차: 싸고 빠른 효율 티어. 2차: 1차가 못 읽었을 때 올라가는 상위 모델.
     # extract_menu 는 1차로 max_attempts 만큼 시도한 뒤 폴백으로 넘어가므로,
     # 이 조합이 곧 "싸게 먼저, 안 되면 좋은 걸로" 에스컬레이션이 된다.
     gemini_model: str = "gemini-3.1-flash-lite"
-    gemini_model_fallback: str = "gemini-3.5-flash"
+    # gemini-3.5-flash 였으나 2026-07 기준 지속적으로 503(model overloaded)을 반환해
+    # 폴백 역할을 못 했다. 3.6-flash 는 같은 키에서 정상 응답. scripts/probe_models.py 참고.
+    gemini_model_fallback: str = "gemini-3.6-flash"
 
     # 손글씨 벽보는 'medium' 에서 포화되지 않는다. 다만 media_resolution 은 Gemini 3 계열
     # 전체에서 지원되는지 문서로 확정되지 않아, 빈 문자열이면 아예 보내지 않는다.
@@ -53,9 +61,7 @@ class Settings(BaseSettings):
 
     @property
     def resolved_api_key(self) -> str:
-        import os
-
-        return self.gemini_api_key or os.getenv("GEMINI_API_KEY", "")
+        return self.gemini_api_key
 
 
 @lru_cache
