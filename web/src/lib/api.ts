@@ -1,4 +1,10 @@
-import type { ApiErrorBody, CaptureMode, MenuScanResponse } from '../types/api'
+import type {
+  ApiErrorBody,
+  CaptureMode,
+  ExplainRequest,
+  ExplainResponse,
+  MenuScanResponse,
+} from '../types/api'
 
 /** 서버가 내려준 한국어 메시지를 그대로 사용자에게 보여주기 위한 에러. */
 export class ApiError extends Error {
@@ -48,6 +54,31 @@ export async function scanMenu(
 
   if (!resp.ok) throw await toApiError(resp)
   return (await resp.json()) as MenuScanResponse
+}
+
+/** 2단계: 카드를 탭했을 때만 부른다.
+ *
+ *  사진을 다시 보내지 않는 텍스트 전용 호출이라 목록 스캔보다 훨씬 싸고 빠르다.
+ *  같은 메뉴를 두 번 묻지 않도록 호출부에서 name_local 로 캐시할 것. */
+export async function explainItem(
+  body: ExplainRequest,
+  { signal }: { signal?: AbortSignal } = {},
+): Promise<ExplainResponse> {
+  let resp: Response
+  try {
+    resp = await fetch('/api/v1/menu/item/explain', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal,
+    })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err
+    throw new ApiError(0, GENERIC)
+  }
+
+  if (!resp.ok) throw await toApiError(resp)
+  return (await resp.json()) as ExplainResponse
 }
 
 /** 발표 직전 Cloud Run 인스턴스를 깨워두기 위한 호출. 실패해도 무시한다. */

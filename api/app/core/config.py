@@ -37,9 +37,11 @@ class Settings(BaseSettings):
     # (Literal 로 묶는 이유: SDK 는 잘못된 값을 UserWarning 만 내고 그대로 통과시킨다.
     #  오타 난 환경변수가 런타임에 400 으로 터지느니 부팅 때 죽는 게 낫다.)
     gemini_media_resolution: MediaResolution = "MEDIA_RESOLUTION_HIGH"
-    # 기본값(HIGH)을 그대로 두면 지연이 2~4배가 되고 thinking 토큰이 '출력' 단가로
-    # 과금된다. Flash-Lite 는 minimal 도 지원한다.
-    gemini_thinking_level: ThinkingLevel = "low"
+    # 기본값(HIGH)을 그대로 두면 지연이 2~4배가 되고 thinking 토큰이 '출력' 단가로 과금된다.
+    # 실측(사진 10장): low 는 thinking 토큰이 0~3,541 로 널뛰며 p50 19.6s,
+    # minimal 은 thinking 0 에 p50 15.6s 이고 추출량·가격 파싱률은 오히려 소폭 나았다.
+    # OCR+구조화는 추론보다 '읽기' 과제라 사고 예산이 도움이 안 되는 것으로 보인다.
+    gemini_thinking_level: ThinkingLevel = "minimal"
     gemini_timeout_s: float = 45.0
     gemini_max_attempts: int = 2
 

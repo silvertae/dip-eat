@@ -33,8 +33,33 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 메뉴판 사진 1장 → 구조화된 메뉴 */
+        /**
+         * 메뉴판 사진 1장 → 메뉴 목록
+         * @description 목록에 필요한 것만 반환한다. 긴 설명·알레르기 근거는 `/menu/item/explain` 으로.
+         */
         post: operations["scan_menu_api_v1_menu_scan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/menu/item/explain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 메뉴 1개의 상세 설명 (카드를 탭했을 때)
+         * @description 사진을 다시 보내지 않는다 — 텍스트 전용이라 목록 호출보다 훨씬 싸고 빠르다.
+         *
+         *     클라이언트는 결과를 scan_id 와 함께 캐시해서 같은 메뉴를 두 번 묻지 않는다.
+         */
+        post: operations["explain_item_api_v1_menu_item_explain_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -66,6 +91,65 @@ export interface components {
              * @default ko
              */
             target_lang: string;
+        };
+        /** ExplainRequest */
+        ExplainRequest: {
+            /**
+             * Name Local
+             * @description 1단계 응답의 name_local 을 그대로
+             */
+            name_local: string;
+            /**
+             * Name Translated
+             * @default
+             */
+            name_translated: string;
+            /**
+             * Source Lang
+             * @description 1단계 응답의 source_lang
+             * @default ja
+             */
+            source_lang: string;
+            /**
+             * Cuisine Hint
+             * @description 가게 성격. 있으면 설명이 정확해진다
+             * @default
+             */
+            cuisine_hint: string;
+        };
+        /** ExplainResponse */
+        ExplainResponse: {
+            /**
+             * Romanization
+             * @description 현지어 발음의 로마자 표기. 모르면 빈 문자열.
+             */
+            romanization: string;
+            /**
+             * Pronunciation Ko
+             * @description 한국어 독음. 점원에게 소리내어 말할 때 쓴다. 예: '라후테-'
+             */
+            pronunciation_ko: string;
+            /**
+             * Description
+             * @description 어떤 음식인지 2~3문장. 맛·식감·조리법·먹는 방법 중심. 호불호가 갈릴 요소(쓴맛, 강한 향신료, 높은 도수, 생식)는 반드시 언급.
+             */
+            description: string;
+            /**
+             * Tip
+             * @description 한국인 여행자에게 도움이 될 조언 한두 문장. 주문 요령, 양, 곁들임 등. 해당 사항이 없으면 빈 문자열.
+             */
+            tip: string;
+            /**
+             * Allergens
+             * @description 메뉴명·재료로 정당화할 수 있는 것만. 근거를 댈 수 없으면 넣지 말 것.
+             */
+            allergens: components["schemas"]["LikelyAllergen"][];
+            /** Name Local */
+            name_local: string;
+            /** Model */
+            model: string;
+            /** Latency Ms */
+            latency_ms: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -116,11 +200,14 @@ export interface components {
              */
             confidence: "high" | "medium" | "low";
         };
-        /** MenuItem */
-        MenuItem: {
+        /**
+         * MenuItemSummary
+         * @description 결과 목록 카드에 바로 필요한 것만. 여기에 필드를 늘리면 항목 수만큼 곱해진다.
+         */
+        MenuItemSummary: {
             /**
              * Name Local
-             * @description 메뉴판에 적힌 원문 그대로. 절대 번역·정규화하지 말 것. 읽은 글자만.
+             * @description 메뉴판에 적힌 원문 그대로. 절대 번역·정규화하지 말 것. 장음부호(ー)나 가나 표기도 보이는 대로. 사용자가 이 글자를 점원에게 그대로 보여준다.
              */
             name_local: string;
             /**
@@ -128,11 +215,6 @@ export interface components {
              * @description 한국어 번역명. 음차가 자연스러우면 음차.
              */
             name_translated: string;
-            /**
-             * Romanization
-             * @description 로마자 표기. 없으면 빈 문자열.
-             */
-            romanization: string;
             /**
              * Price Text
              * @description 가격을 적힌 그대로. 예: '970円', '¥970', '時価'. 못 읽었으면 빈 문자열.
@@ -155,20 +237,20 @@ export interface components {
              */
             category: "food" | "drink" | "dessert" | "set" | "unknown";
             /**
-             * Description
-             * @description 한국인 여행자가 처음 봐도 알 수 있게 2~3문장. 맛·식감·먹는 법 위주. 메뉴판에 설명이 없으면 요리 일반 지식으로 채우되 지어내지 말 것.
+             * Summary
+             * @description 이게 무슨 음식인지 한 줄로. **25자 이내.** 예: '흑설탕에 조린 삼겹살'. 긴 설명은 여기 쓰지 말 것 — 사용자가 카드를 탭하면 따로 받아온다.
              */
-            description: string;
+            summary: string;
             /**
              * Tags
              * @description 해당하는 것만. 없으면 빈 배열.
              */
             tags: ("signature" | "local" | "caution" | "spicy" | "raw" | "vegetarian" | "vegan" | "pork" | "beef" | "chicken" | "seafood" | "alcohol" | "share" | "single_portion" | "noodle" | "rice" | "soup" | "fried" | "dessert")[];
             /**
-             * Likely Allergens
-             * @description 메뉴명·재료로 정당화할 수 있는 것만. 근거를 댈 수 없으면 넣지 말 것. 억지로 채우지 말고, 확실하지 않으면 confidence 를 낮출 것.
+             * Allergens
+             * @description 메뉴명·재료로 정당화할 수 있는 알레르기 코드만. 근거를 댈 수 없으면 넣지 말 것. 억지로 채우지 말 것. (근거 문장은 상세 조회에서 따로 받는다)
              */
-            likely_allergens: components["schemas"]["LikelyAllergen"][];
+            allergens: ("egg" | "milk" | "buckwheat" | "peanut" | "soy" | "wheat" | "gluten" | "mackerel" | "fish" | "crab" | "shrimp" | "crustacean" | "squid" | "shellfish" | "mollusk" | "pork" | "beef" | "chicken" | "peach" | "tomato" | "sulfite" | "walnut" | "pine_nut" | "tree_nut" | "sesame" | "celery" | "mustard" | "alcohol" | "other")[];
             /**
              * Ocr Confidence
              * @description 이 항목의 글자를 얼마나 확실히 읽었는지
@@ -191,9 +273,9 @@ export interface components {
             restaurant: components["schemas"]["Restaurant"];
             /**
              * Items
-             * @description 메뉴판에서 읽은 항목 전부. 사진에 없는 메뉴를 지어내지 말 것. 카테고리 제목(예: '一品料理')은 항목이 아니므로 제외.
+             * @description 메뉴판에서 읽은 항목 전부. 사진에 없는 메뉴를 지어내지 말 것. 카테고리 제목(예: '一品料理')이나 가격대 제목(예: '皿 一三〇円')은 항목이 아니므로 제외. 단, 가격대 제목 아래 나열된 항목들에는 그 가격을 각각 채워 넣을 것.
              */
-            items: components["schemas"]["MenuItem"][];
+            items: components["schemas"]["MenuItemSummary"][];
             /**
              * Warnings
              * @description 사용자에게 알려야 할 문제를 한국어로. 예: '메뉴판 오른쪽이 잘려 일부를 읽지 못했어요'. 문제가 없으면 빈 배열.
@@ -288,6 +370,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MenuScanResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    explain_item_api_v1_menu_item_explain_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExplainResponse"];
                 };
             };
             /** @description Validation Error */

@@ -11,7 +11,14 @@ import pytest
 from pydantic import ValidationError
 
 from app.core.config import Settings
+from app.schemas.menu import MenuExtraction
 from app.services.gemini import GeminiService
+
+
+def config_of(settings: Settings, *, with_media: bool = True):
+    return GeminiService(settings)._config(
+        system_instruction="sys", schema=MenuExtraction, with_media=with_media
+    )
 
 
 def test_defaults_are_flash_lite_first_then_stronger_fallback():
@@ -23,8 +30,7 @@ def test_defaults_are_flash_lite_first_then_stronger_fallback():
 
 @pytest.mark.parametrize("level", ["minimal", "low", "medium", "high"])
 def test_valid_thinking_levels_reach_the_sdk_config(level):
-    service = GeminiService(Settings(gemini_api_key="k", gemini_thinking_level=level))
-    config = service._config("poster")
+    config = config_of(Settings(gemini_api_key="k", gemini_thinking_level=level))
     assert config.thinking_config.thinking_level.value == level.upper()
 
 
@@ -40,15 +46,13 @@ def test_typo_in_media_resolution_fails_at_startup():
 
 def test_empty_media_resolution_is_omitted_from_the_request():
     """지원하지 않는 모델에 보내면 400 이므로, 빈 값이면 파라미터 자체를 빼야 한다."""
-    service = GeminiService(Settings(gemini_api_key="k", gemini_media_resolution=""))
-    assert service._config("poster").media_resolution is None
+    config = config_of(Settings(gemini_api_key="k", gemini_media_resolution=""))
+    assert config.media_resolution is None
 
 
 def test_media_resolution_is_sent_when_set():
-    service = GeminiService(
-        Settings(gemini_api_key="k", gemini_media_resolution="MEDIA_RESOLUTION_HIGH")
-    )
-    assert service._config("poster").media_resolution.value == "MEDIA_RESOLUTION_HIGH"
+    settings = Settings(gemini_api_key="k", gemini_media_resolution="MEDIA_RESOLUTION_HIGH")
+    assert config_of(settings).media_resolution.value == "MEDIA_RESOLUTION_HIGH"
 
 
 def test_api_key_is_read_from_bare_gemini_api_key_in_dotenv(tmp_path, monkeypatch):
@@ -73,7 +77,7 @@ def test_prefixed_name_also_works(tmp_path, monkeypatch):
     assert Settings(_env_file=env_file).resolved_api_key == "prefixed"
 
 
-def test_capture_mode_hint_reaches_the_system_instruction():
-    service = GeminiService(Settings(gemini_api_key="k"))
-    assert "벽보형" in service._config("poster").system_instruction
-    assert "키오스크" in service._config("kiosk").system_instruction
+def test_text_only_calls_never_send_media_resolution():
+    """상세 설명은 사진을 안 보낸다. 이미지 파라미터를 붙일 이유가 없다."""
+    settings = Settings(gemini_api_key="k", gemini_media_resolution="MEDIA_RESOLUTION_HIGH")
+    assert config_of(settings, with_media=False).media_resolution is None

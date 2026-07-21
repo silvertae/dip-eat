@@ -17,15 +17,20 @@ from tests.conftest import sample_extraction
 IMAGE = PreparedImage(b"jpeg-bytes", "image/jpeg", 2048, 1536)
 
 
+CONFIGS: list = []
+
+
 def build_service(responses: list) -> tuple[GeminiService, list[str]]:
     """`responses` 를 순서대로 돌려주는(또는 raise 하는) 가짜 SDK 를 물린 서비스."""
     settings = Settings(gemini_api_key="test-key", gemini_max_attempts=2)
     service = GeminiService(settings)
     used_models: list[str] = []
     queue = list(responses)
+    CONFIGS.clear()
 
-    async def fake_generate_content(*, model: str, contents, config):  # noqa: ARG001
+    async def fake_generate_content(*, model: str, contents, config):
         used_models.append(model)
+        CONFIGS.append(config)
         item = queue.pop(0)
         if isinstance(item, Exception):
             raise item
@@ -106,3 +111,26 @@ async def test_server_error_is_retried():
     extraction = (await service.extract_menu(IMAGE, mode="poster")).extraction
     assert extraction.items
     assert len(used) == 2
+
+
+async def test_capture_mode_hint_reaches_the_model():
+    service, _ = build_service([ok_response(sample_extraction())])
+    await service.extract_menu(IMAGE, mode="kiosk")
+    assert "키오스크" in CONFIGS[0].system_instruction
+
+    service, _ = build_service([ok_response(sample_extraction())])
+    await service.extract_menu(IMAGE, mode="poster")
+    assert "벽보형" in CONFIGS[0].system_instruction
+
+
+async def test_explain_sends_no_image_and_no_media_resolution():
+    """상세 조회가 사진을 다시 보내면 2단계로 나눈 의미가 없다."""
+    from app.schemas.menu import ExplainRequest
+    from tests.conftest import sample_explanation
+
+    service, _ = build_service([ok_response(sample_explanation())])
+    outcome = await service.explain_item(
+        ExplainRequest(name_local="ラフテー", source_lang="ja", cuisine_hint="오키나와 가정식")
+    )
+    assert outcome.explanation.romanization == "Rafutē"
+    assert CONFIGS[0].media_resolution is None

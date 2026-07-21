@@ -51,11 +51,11 @@ async def run_one(service: GeminiService, image_bytes: bytes, model: str, mode: 
         "items": len(items),
         "price_parse_rate": round(len(priced) / len(items), 3) if items else 0.0,
         "low_confidence": len(low_conf),
-        "with_allergens": sum(1 for i in items if i.likely_allergens),
+        "with_allergens": sum(1 for i in items if i.allergens),
         "sent_kb": round(len(prepared.data) / 1024),
-        "tok_in": outcome.input_tokens,
-        "tok_out": outcome.output_tokens,
-        "tok_think": outcome.thought_tokens,
+        "tok_in": outcome.usage.input_tokens,
+        "tok_out": outcome.usage.output_tokens,
+        "tok_think": outcome.usage.thought_tokens,
         "ms_per_item": round(latency_ms / len(items)) if items else 0,
         "restaurant": extraction.restaurant.name_local,
         "warnings": extraction.warnings,
@@ -66,6 +66,7 @@ async def run_one(service: GeminiService, image_bytes: bytes, model: str, mode: 
                 "ko": i.name_translated,
                 "price": i.price_text,
                 "conf": i.ocr_confidence,
+                "summary": i.summary,
             }
             for i in items
         ],

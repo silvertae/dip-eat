@@ -7,8 +7,14 @@ from httpx import ASGITransport, AsyncClient
 from PIL import Image
 
 from app.main import create_app
-from app.schemas.menu import MenuExtraction, MenuItem, Restaurant
-from app.services.gemini import ScanOutcome
+from app.schemas.menu import (
+    ItemExplanation,
+    LikelyAllergen,
+    MenuExtraction,
+    MenuItemSummary,
+    Restaurant,
+)
+from app.services.gemini import ExplainOutcome, ScanOutcome, Usage
 
 
 def make_jpeg(width: int = 400, height: int = 300, *, noise: bool = False) -> bytes:
@@ -35,21 +41,38 @@ def sample_extraction() -> MenuExtraction:
             name_local="ゆうなんぎい", name_translated="유난기", cuisine_hint="오키나와 가정식"
         ),
         items=[
-            MenuItem(
+            MenuItemSummary(
                 name_local="ラフテー",
                 name_translated="라후테",
-                romanization="Rafutē",
                 price_text="970円",
                 price_amount=970,
                 tax_included=True,
                 category="food",
-                description="아와모리·간장·흑설탕에 뭉근히 조린 오키나와식 삼겹살이에요.",
+                summary="흑설탕에 조린 삼겹살",
                 tags=["signature", "local", "pork"],
-                likely_allergens=[],
+                allergens=["pork", "soy"],
                 ocr_confidence="high",
             )
         ],
         warnings=[],
+    )
+
+
+def sample_explanation() -> ItemExplanation:
+    return ItemExplanation(
+        romanization="Rafutē",
+        pronunciation_ko="라후테-",
+        description="아와모리·간장·흑설탕에 뭉근히 조린 오키나와식 삼겹살이에요. 달큰하고 부드러워요.",
+        tip="밥과 함께 나눠 드시길 추천해요.",
+        allergens=[
+            LikelyAllergen(
+                code="pork",
+                label="돼지고기",
+                inferred=True,
+                basis="라후테는 돼지 삼겹살로 만드는 요리예요.",
+                confidence="high",
+            )
+        ],
     )
 
 
@@ -66,8 +89,19 @@ class FakeGemini:
         if self.error:
             raise self.error
         return ScanOutcome(
-            extraction=self.result, model="fake-model",
-            input_tokens=1120, output_tokens=4200, thought_tokens=100,
+            extraction=self.result,
+            model="fake-model",
+            usage=Usage(input_tokens=1120, output_tokens=4200, thought_tokens=100),
+        )
+
+    async def explain_item(self, req, *, models=None):
+        self.calls.append({"explain": req.name_local})
+        if self.error:
+            raise self.error
+        return ExplainOutcome(
+            explanation=sample_explanation(),
+            model="fake-model",
+            usage=Usage(input_tokens=200, output_tokens=380),
         )
 
 
