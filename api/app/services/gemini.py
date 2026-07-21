@@ -52,22 +52,33 @@ class GeminiService:
 
     def _config(self, mode: str) -> types.GenerateContentConfig:
         hint = _MODE_HINT.get(mode, "")
-        return types.GenerateContentConfig(
-            system_instruction=f"{_MENU_SCAN_PROMPT}\n\n## 이번 사진에 대한 힌트\n\n{hint}".strip(),
+        kwargs: dict = {
+            "system_instruction": (
+                f"{_MENU_SCAN_PROMPT}\n\n## 이번 사진에 대한 힌트\n\n{hint}".strip()
+            ),
             # 구조화 출력: Pydantic 클래스를 그대로 넘길 수 있다.
-            response_mime_type="application/json",
-            response_schema=MenuExtraction,
+            "response_mime_type": "application/json",
+            "response_schema": MenuExtraction,
             # Gemini 3 의 thinking_level 기본값은 HIGH 다. 명시하지 않으면 지연이 2~4배가 되고
             # thinking 토큰이 '출력' 단가로 과금된다. (thinking_budget 과 동시 지정하면 400)
-            thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
-            # 문서는 "일반 문서는 medium 에서 포화"라고 하지만 손글씨 벽보는 예외다.
-            media_resolution=self._settings.gemini_media_resolution,
-            temperature=0.2,
-        )
+            "thinking_config": types.ThinkingConfig(
+                thinking_level=self._settings.gemini_thinking_level.upper()
+            ),
+            "temperature": 0.2,
+        }
+        # 지원하지 않는 모델에 보내면 400 이므로, 빈 값이면 아예 넣지 않는다.
+        if self._settings.gemini_media_resolution:
+            kwargs["media_resolution"] = self._settings.gemini_media_resolution
+        return types.GenerateContentConfig(**kwargs)
 
-    async def extract_menu(self, image: PreparedImage, *, mode: str) -> tuple[MenuExtraction, str]:
-        """(추출 결과, 실제로 사용한 모델 ID) 를 반환한다."""
-        models = [self._settings.gemini_model, self._settings.gemini_model_fallback]
+    async def extract_menu(
+        self, image: PreparedImage, *, mode: str, models: list[str] | None = None
+    ) -> tuple[MenuExtraction, str]:
+        """(추출 결과, 실제로 사용한 모델 ID) 를 반환한다.
+
+        `models` 는 벤치마크 스크립트가 특정 모델만 강제할 때 쓴다.
+        """
+        models = models or [self._settings.gemini_model, self._settings.gemini_model_fallback]
         last_error: Exception | None = None
 
         for model in models:

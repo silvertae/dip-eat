@@ -1,6 +1,13 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ThinkingLevel = Literal["minimal", "low", "medium", "high"]
+# 빈 문자열이면 파라미터를 아예 보내지 않는다(미지원 모델 대응).
+MediaResolution = Literal[
+    "", "MEDIA_RESOLUTION_LOW", "MEDIA_RESOLUTION_MEDIUM", "MEDIA_RESOLUTION_HIGH"
+]
 
 
 class Settings(BaseSettings):
@@ -9,11 +16,22 @@ class Settings(BaseSettings):
     # --- Gemini -------------------------------------------------------------
     # 키는 GEMINI_API_KEY 로도 받는다(google-genai SDK 관례). alias 로 둘 다 허용.
     gemini_api_key: str = ""
-    # preview 모델은 예고 없이 내려갈 수 있어 폴백을 반드시 둔다.
-    gemini_model: str = "gemini-3-flash-preview"
+
+    # 1차: 싸고 빠른 효율 티어. 2차: 1차가 못 읽었을 때 올라가는 상위 모델.
+    # extract_menu 는 1차로 max_attempts 만큼 시도한 뒤 폴백으로 넘어가므로,
+    # 이 조합이 곧 "싸게 먼저, 안 되면 좋은 걸로" 에스컬레이션이 된다.
+    gemini_model: str = "gemini-3.1-flash-lite"
     gemini_model_fallback: str = "gemini-3.5-flash"
-    # 손글씨 벽보 메뉴판은 'medium' 에서 포화되지 않는다. 실사진으로 A/B 할 것.
-    gemini_media_resolution: str = "MEDIA_RESOLUTION_HIGH"
+
+    # 손글씨 벽보는 'medium' 에서 포화되지 않는다. 다만 media_resolution 은 Gemini 3 계열
+    # 전체에서 지원되는지 문서로 확정되지 않아, 빈 문자열이면 아예 보내지 않는다.
+    # (지원하지 않는 모델에 보내면 400 이 난다 → 실사진 게이트에서 켜고/끄고 비교할 것)
+    # (Literal 로 묶는 이유: SDK 는 잘못된 값을 UserWarning 만 내고 그대로 통과시킨다.
+    #  오타 난 환경변수가 런타임에 400 으로 터지느니 부팅 때 죽는 게 낫다.)
+    gemini_media_resolution: MediaResolution = "MEDIA_RESOLUTION_HIGH"
+    # 기본값(HIGH)을 그대로 두면 지연이 2~4배가 되고 thinking 토큰이 '출력' 단가로
+    # 과금된다. Flash-Lite 는 minimal 도 지원한다.
+    gemini_thinking_level: ThinkingLevel = "low"
     gemini_timeout_s: float = 45.0
     gemini_max_attempts: int = 2
 
