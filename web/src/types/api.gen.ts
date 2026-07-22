@@ -237,6 +237,11 @@ export interface components {
              */
             category: "food" | "drink" | "dessert" | "set" | "unknown";
             /**
+             * Section
+             * @description 이 항목이 메뉴판에서 어느 분류 아래 적혀 있는지, 그 분류 제목을 한국어로. 예: '튀김', '찬푸르', '국물', '130엔 접시'. **메뉴판에 실제로 적힌 분류만 쓸 것** — 분류 제목이 없는 메뉴판이면 빈 문자열. 직접 분류를 만들어내지 말 것.
+             */
+            section: string;
+            /**
              * Summary
              * @description 이게 무슨 음식인지 한 줄로. **25자 이내.** 예: '흑설탕에 조린 삼겹살'. 긴 설명은 여기 쓰지 말 것 — 사용자가 카드를 탭하면 따로 받아온다.
              */

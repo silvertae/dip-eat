@@ -398,6 +398,11 @@
             "title": "Category",
             "description": "분류"
           },
+          "section": {
+            "type": "string",
+            "title": "Section",
+            "description": "이 항목이 메뉴판에서 어느 분류 아래 적혀 있는지, 그 분류 제목을 한국어로. 예: '튀김', '찬푸르', '국물', '130엔 접시'. **메뉴판에 실제로 적힌 분류만 쓸 것** — 분류 제목이 없는 메뉴판이면 빈 문자열. 직접 분류를 만들어내지 말 것."
+          },
           "summary": {
             "type": "string",
             "title": "Summary",
@@ -490,6 +495,7 @@
           "price_amount",
           "tax_included",
           "category",
+          "section",
           "summary",
           "tags",
           "allergens",

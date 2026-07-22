@@ -37,7 +37,12 @@ body,
 }
 
 body {
-  background: var(--color-appbg);
+  /* 목업 body 의 배경 그라데이션 그대로 */
+  background:
+    radial-gradient(1100px 640px at 12% -8%, #fbe7d3 0%, rgba(251, 231, 211, 0) 55%),
+    radial-gradient(900px 620px at 100% 0%, #f6dccb 0%, rgba(246, 220, 203, 0) 52%),
+    var(--color-appbg);
+  background-attachment: fixed;
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;

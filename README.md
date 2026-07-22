@@ -74,7 +74,7 @@
 cd api
 cp .env.example .env          # GEMINI_API_KEY 를 채운다 (https://aistudio.google.com/apikey)
 uv sync
-uv run uvicorn app.main:app --reload --port 8000
+uv run uvicorn app.main:app --reload --reload-include '*.md' --port 8000
 # 문서: http://127.0.0.1:8000/docs
 
 # 2) 프론트 (다른 터미널)

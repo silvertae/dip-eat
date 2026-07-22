@@ -8,7 +8,7 @@
 
 ```bash
 cd api && uv run pytest                      # 45개
-cd api && uv run uvicorn app.main:app --reload --port 8000
+cd api && uv run uvicorn app.main:app --reload --reload-include '*.md' --port 8000
 cd web && npm run dev                        # /api 는 127.0.0.1:8000 으로 프록시
 cd web && npm run build                      # tsc -b + vite build
 
@@ -31,6 +31,10 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 **목록 스키마(`MenuItemSummary`)에 필드를 추가하면 응답시간이 항목 수(최대 90개)만큼 곱해진다.**
 `tests/test_explain_route.py::test_scan_list_stays_lean` 이 이걸 막는다.
 
+필드를 꼭 추가해야 하면 **추측하지 말고 `scripts/bench_menu.py` 로 전후를 재라.**
+기준선: 짧은 문자열 1개(`section`) 추가 = 출력 토큰 +6~12%, p50 +3%(15.6s→16.0s).
+긴 문자열이나 객체 배열은 이보다 훨씬 비싸다 — `likely_allergens` 하나가 43% 였다.
+
 ## 절대 어기면 안 되는 것
 
 **Gemini (`app/services/gemini.py`)**
@@ -45,6 +49,7 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 
 **프롬프트 (`app/prompts/*.md`)**
 - 정확도의 핵심 레버다. 계층형(가격대별) 메뉴판 누락 같은 버그는 코드가 아니라 여기서 고쳤다. 모델 거동을 바꾸려면 여기부터.
+- ⚠️ **`uvicorn --reload` 는 `.py` 만 감시한다**(`default_includes = ["*.py"]`). 프롬프트는 모듈 import 시점에 한 번 읽히므로, `--reload-include '*.md'` 없이 실행하면 **프롬프트를 고쳐도 조용히 반영되지 않는다.** 실제로 한 번 당했다 — "고쳤는데 그대로네?" 싶으면 이걸 먼저 의심할 것.
 
 **업로드 크기 (`app/core/limits.py`)**
 - 상한은 **두 곳**을 같이 올려야 한다: `BodySizeLimitMiddleware`(총량) + `patch_multipart_part_limit`(Starlette 파트 상한, 기본 1MB). 후자는 클래스 속성이 아니라 `Request.form` 기본 인자라 몽키패치다. Starlette 업그레이드 시 `tests/test_upload_limits.py` 를 볼 것.
@@ -60,7 +65,7 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 
 ## 제품 불변식 (기능 아님)
 
-- **서버는 원화를 모른다.** 현지 통화만 반환, ₩ 환산은 클라이언트(캐시된 결과가 과거 환율에 박제되는 것 방지).
+- **서버는 원화를 모른다.** 현지 통화만 반환, ₩ 환산은 클라이언트(`web/src/lib/fx.ts`)가 볼 때마다 한다 — 캐시된 결과가 과거 환율에 박제되는 걸 막는다. 외부 API(open.er-api.com) + 하드코딩 폴백이라 발표 중 API 가 죽어도 ₩ 는 계속 나온다.
 - **알레르기는 AI 추정이지 메뉴판에서 읽은 사실이 아니다.** `likely_allergens`/`inferred`/`basis`/`confidence`. UI 는 "AI 추정, 점원에게 확인" 상시 고지. 식품 안전 문제.
 - **`name_local`(원문)은 절대 응답에서 빼지 않는다.** 사용자가 점원에게 그 글자를 보여준다.
 - **알레르기 차단은 클라이언트가** 코드 대조로 한다(프로필이 서버로 안 나감).
