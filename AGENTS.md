@@ -8,7 +8,7 @@
 
 ```bash
 cd api && uv run pytest                      # 45개
-cd api && uv run uvicorn app.main:app --reload --port 8000
+cd api && uv run uvicorn app.main:app --reload --reload-include '*.md' --port 8000
 cd web && npm run dev                        # /api 는 127.0.0.1:8000 으로 프록시
 cd web && npm run build                      # tsc -b + vite build
 
@@ -49,6 +49,7 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 
 **프롬프트 (`app/prompts/*.md`)**
 - 정확도의 핵심 레버다. 계층형(가격대별) 메뉴판 누락 같은 버그는 코드가 아니라 여기서 고쳤다. 모델 거동을 바꾸려면 여기부터.
+- ⚠️ **`uvicorn --reload` 는 `.py` 만 감시한다**(`default_includes = ["*.py"]`). 프롬프트는 모듈 import 시점에 한 번 읽히므로, `--reload-include '*.md'` 없이 실행하면 **프롬프트를 고쳐도 조용히 반영되지 않는다.** 실제로 한 번 당했다 — "고쳤는데 그대로네?" 싶으면 이걸 먼저 의심할 것.
 
 **업로드 크기 (`app/core/limits.py`)**
 - 상한은 **두 곳**을 같이 올려야 한다: `BodySizeLimitMiddleware`(총량) + `patch_multipart_part_limit`(Starlette 파트 상한, 기본 1MB). 후자는 클래스 속성이 아니라 `Request.form` 기본 인자라 몽키패치다. Starlette 업그레이드 시 `tests/test_upload_limits.py` 를 볼 것.
