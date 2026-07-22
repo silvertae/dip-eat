@@ -7,7 +7,7 @@ const TABS = [
   { label: '사진인식', to: '/', Icon: CameraIcon },
   { label: '주문서', to: null, Icon: OrderIcon },
   { label: '대화', to: null, Icon: ChatIcon },
-  { label: '설정', to: null, Icon: SettingsIcon },
+  { label: '설정', to: '/settings', Icon: SettingsIcon },
 ] as const
 
 export function TabBar() {

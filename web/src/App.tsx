@@ -5,6 +5,7 @@ import { HomeScreen } from './screens/HomeScreen'
 import { LoadingScreen } from './screens/LoadingScreen'
 import { OnboardingScreen } from './screens/OnboardingScreen'
 import { ResultScreen } from './screens/ResultScreen'
+import { SettingsScreen } from './screens/SettingsScreen'
 import { useProfile } from './store/profile'
 
 /** 탭바가 있는 화면들. 카메라·로딩은 몰입 모드라 탭바 없이 전체를 쓴다(목업과 동일). */
@@ -35,6 +36,7 @@ export default function App() {
           <Route element={<TabLayout />}>
             <Route path="/" element={<RequireOnboarding><HomeScreen /></RequireOnboarding>} />
             <Route path="/result" element={<ResultScreen />} />
+            <Route path="/settings" element={<SettingsScreen />} />
           </Route>
           <Route path="/camera" element={<CameraScreen />} />
           <Route path="/loading" element={<LoadingScreen />} />

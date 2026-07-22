@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router'
 import { CartBar } from '../components/CartBar'
 import { MenuCard } from '../components/MenuCard'
+import { cartLines } from '../lib/cart'
 import { rateNow, refreshRate } from '../lib/fx'
-import { itemKey, useApp } from '../store/app'
+import { useApp } from '../store/app'
 import type { MenuItem, MenuScanResponse } from '../types/api'
 
 /** 분류가 이 개수를 넘으면 접힌 채로 시작한다. 90개짜리 회전초밥 메뉴판을 다 펼쳐두면
@@ -59,13 +60,7 @@ function Result({ scan }: { scan: MenuScanResponse }) {
       return next
     })
 
-  const cartLines = useMemo(
-    () =>
-      scan.items
-        .map((item) => ({ item, qty: cart[itemKey(item)] ?? 0 }))
-        .filter((line) => line.qty > 0),
-    [scan.items, cart],
-  )
+  const lines = useMemo(() => cartLines(scan.items, cart), [scan.items, cart])
 
   return (
     <div className="flex min-h-full flex-col">
@@ -155,7 +150,7 @@ function Result({ scan }: { scan: MenuScanResponse }) {
       </div>
 
       <div className="sticky bottom-0 mt-auto">
-        <CartBar lines={cartLines} currency={scan.currency} rate={rate} />
+        <CartBar lines={lines} currency={scan.currency} rate={rate} />
       </div>
     </div>
   )
