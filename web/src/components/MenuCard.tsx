@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react'
 import { ApiError, explainItem } from '../lib/api'
 import { allergenLabel, matchedAllergens, subjectParticle } from '../lib/allergy'
+import { useDishImage } from '../lib/dishImage'
 import { toKrw } from '../lib/fx'
-import { TAG_BADGE, dishEmoji, visibleTags } from '../lib/labels'
+import { TAG_BADGE, visibleTags } from '../lib/labels'
+import { DishThumb } from './DishThumb'
 import { itemKey, useApp } from '../store/app'
 import { useProfile } from '../store/profile'
 import { ALLERGEN_LABEL, type ExplainResponse, type MenuItem } from '../types/api'
@@ -52,6 +54,7 @@ export function MenuCard({
   }, [detail, item.name_local, item.name_translated, sourceLang, cuisineHint])
 
   const krw = toKrw(item.price_amount, rate)
+  const imageUrl = useDishImage(item.name_local, sourceLang)
   const warnedText = warned.map(allergenLabel).join(' · ')
 
   return (
@@ -61,15 +64,7 @@ export function MenuCard({
       }`}
     >
       <div className="flex items-start gap-[11px]">
-        {/* 음식 사진 자리 — 참고 이미지는 다음 단계에서 붙인다 */}
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label={`${item.name_translated} 설명 보기`}
-          className="grid size-14 shrink-0 place-items-center rounded-[14px] bg-brand-100 text-2xl"
-        >
-          {dishEmoji(item)}
-        </button>
+        <DishThumb item={item} url={imageUrl} onClick={toggle} />
 
         <div className="min-w-0 flex-1">
           <button type="button" onClick={toggle} className="w-full text-left">
@@ -174,6 +169,19 @@ export function MenuCard({
 
       {detail && (
         <div className="mt-3 border-t border-line pt-3">
+          {imageUrl && (
+            <figure className="mb-3">
+              <img
+                src={imageUrl}
+                alt={`${item.name_translated} 참고 이미지`}
+                className="h-[150px] w-full rounded-[18px] object-cover"
+              />
+              {/* 이 식당의 실제 음식이 아니라 같은 요리의 일반 사진이다. 출처도 밝힌다. */}
+              <figcaption className="mt-1.5 text-[10.5px] text-muted">
+                참고 이미지 · 위키백과 — 이 가게의 실제 음식 사진이 아니에요
+              </figcaption>
+            </figure>
+          )}
           <p className="text-xs text-muted">
             {[detail.romanization, detail.pronunciation_ko].filter(Boolean).join(' · ')}
           </p>
