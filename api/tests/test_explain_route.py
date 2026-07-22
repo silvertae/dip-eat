@@ -64,6 +64,8 @@ async def test_scan_list_stays_lean(client_factory):
     item = resp.json()["items"][0]
     assert item["summary"] == "흑설탕에 조린 삼겹살"
     assert len(item["summary"]) <= 25
+    # 분류는 짧은 문자열 하나. 목록에서 접기/펴기에 쓰인다.
+    assert item["section"] == "돼지고기 요리"
 
     # 알레르기는 '코드만'. 차단 판정에는 코드로 충분하고, 근거 문장은 상세에서 받는다.
     assert item["allergens"] == ["pork", "soy"]

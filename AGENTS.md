@@ -31,6 +31,10 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 **목록 스키마(`MenuItemSummary`)에 필드를 추가하면 응답시간이 항목 수(최대 90개)만큼 곱해진다.**
 `tests/test_explain_route.py::test_scan_list_stays_lean` 이 이걸 막는다.
 
+필드를 꼭 추가해야 하면 **추측하지 말고 `scripts/bench_menu.py` 로 전후를 재라.**
+기준선: 짧은 문자열 1개(`section`) 추가 = 출력 토큰 +6~12%, p50 +3%(15.6s→16.0s).
+긴 문자열이나 객체 배열은 이보다 훨씬 비싸다 — `likely_allergens` 하나가 43% 였다.
+
 ## 절대 어기면 안 되는 것
 
 **Gemini (`app/services/gemini.py`)**
