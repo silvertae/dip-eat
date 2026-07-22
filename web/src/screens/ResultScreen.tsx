@@ -3,8 +3,10 @@ import { Navigate } from 'react-router'
 import { CartBar } from '../components/CartBar'
 import { MenuCard } from '../components/MenuCard'
 import { cartLines } from '../lib/cart'
+import { NO_FILTERS, type Filters, applyFilters, sortForVegetarian } from '../lib/filters'
 import { rateNow, refreshRate } from '../lib/fx'
 import { useApp } from '../store/app'
+import { useProfile } from '../store/profile'
 import type { MenuItem, MenuScanResponse } from '../types/api'
 
 /** 분류가 이 개수를 넘으면 접힌 채로 시작한다. 90개짜리 회전초밥 메뉴판을 다 펼쳐두면
@@ -31,7 +33,25 @@ export function ResultScreen() {
 
 function Result({ scan }: { scan: MenuScanResponse }) {
   const cart = useApp((s) => s.cart)
-  const groups = useMemo(() => groupBySection(scan.items), [scan.items])
+  const { allergies, vegetarian } = useProfile()
+  const [filters, setFilters] = useState<Filters>(NO_FILTERS)
+
+  const visible = useMemo(
+    () => applyFilters(scan.items, filters, allergies),
+    [scan.items, filters, allergies],
+  )
+  const hidden = scan.items.length - visible.length
+
+  // 채식 정렬은 분류를 만든 '뒤에' 분류 안에서만 한다. 먼저 정렬하면 그룹 순서까지
+  // 뒤집혀 술 분류가 맨 위로 올라온다(실제로 그랬다).
+  const groups = useMemo(
+    () =>
+      groupBySection(visible).map((g) => ({
+        ...g,
+        items: sortForVegetarian(g.items, vegetarian),
+      })),
+    [visible, vegetarian],
+  )
   // 분류가 하나뿐이거나 아예 없는 메뉴판이면 헤더를 만들지 않는다(불필요한 장식).
   const hasSections = groups.length > 1
 
@@ -48,7 +68,7 @@ function Result({ scan }: { scan: MenuScanResponse }) {
   }, [scan.currency])
 
   const [collapsed, setCollapsed] = useState<Set<string>>(() =>
-    hasSections && scan.items.length > AUTO_COLLAPSE_OVER
+    groups.length > 1 && scan.items.length > AUTO_COLLAPSE_OVER
       ? new Set(groups.slice(1).map((g) => g.section))
       : new Set(),
   )
@@ -81,6 +101,39 @@ function Result({ scan }: { scan: MenuScanResponse }) {
             {warning}
           </p>
         ))}
+
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
+          <FilterChip
+            label="알레르기 숨기기"
+            on={filters.hideAllergens}
+            disabled={allergies.length === 0}
+            onClick={() => setFilters((f) => ({ ...f, hideAllergens: !f.hideAllergens }))}
+          />
+          <FilterChip
+            label="향토음식만"
+            on={filters.localOnly}
+            onClick={() => setFilters((f) => ({ ...f, localOnly: !f.localOnly }))}
+          />
+          <FilterChip
+            label="주류 제외"
+            on={filters.noAlcohol}
+            onClick={() => setFilters((f) => ({ ...f, noAlcohol: !f.noAlcohol }))}
+          />
+        </div>
+
+        {/* 필터로 사라진 항목은 반드시 알린다 — 조용히 없어지면 메뉴가 누락된 것처럼 보인다. */}
+        {hidden > 0 && (
+          <p className="text-[11px] text-muted">
+            필터로 {hidden}개를 숨겼어요.{' '}
+            <button
+              type="button"
+              onClick={() => setFilters(NO_FILTERS)}
+              className="font-bold text-brand-700 underline"
+            >
+              전체 보기
+            </button>
+          </p>
+        )}
 
         {hasSections && (
           <div className="flex gap-2">
@@ -153,5 +206,31 @@ function Result({ scan }: { scan: MenuScanResponse }) {
         <CartBar lines={lines} currency={scan.currency} rate={rate} />
       </div>
     </div>
+  )
+}
+
+function FilterChip({
+  label,
+  on,
+  onClick,
+  disabled,
+}: {
+  label: string
+  on: boolean
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={on}
+      className={`shrink-0 whitespace-nowrap rounded-full border border-line px-[13px] py-2 text-xs font-bold disabled:opacity-40 ${
+        on ? 'bg-ink text-white' : 'bg-white text-[#6a564a]'
+      }`}
+    >
+      {label}
+    </button>
   )
 }

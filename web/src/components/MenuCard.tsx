@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react'
 import { ApiError, explainItem } from '../lib/api'
+import { allergenLabel, matchedAllergens, subjectParticle } from '../lib/allergy'
 import { toKrw } from '../lib/fx'
 import { TAG_BADGE, dishEmoji, visibleTags } from '../lib/labels'
 import { itemKey, useApp } from '../store/app'
+import { useProfile } from '../store/profile'
 import { ALLERGEN_LABEL, type ExplainResponse, type MenuItem } from '../types/api'
 
 /** 목업(찍먹 목업.dc.html)의 MenuCard 를 옮긴 것. */
@@ -19,6 +21,8 @@ export function MenuCard({
   rate: number | null
 }) {
   const key = itemKey(item)
+  const profileAllergies = useProfile((s) => s.allergies)
+  const warned = matchedAllergens(item, profileAllergies)
   const qty = useApp((s) => s.cart[key] ?? 0)
   const addToCart = useApp((s) => s.addToCart)
   const removeFromCart = useApp((s) => s.removeFromCart)
@@ -48,9 +52,14 @@ export function MenuCard({
   }, [detail, item.name_local, item.name_translated, sourceLang, cuisineHint])
 
   const krw = toKrw(item.price_amount, rate)
+  const warnedText = warned.map(allergenLabel).join(' · ')
 
   return (
-    <article className="rounded-[18px] border border-line bg-card p-[13px]">
+    <article
+      className={`rounded-[18px] border p-[13px] ${
+        warned.length > 0 ? 'border-[#F6C9BF] bg-[#FFF4F1]' : 'border-line bg-card'
+      }`}
+    >
       <div className="flex items-start gap-[11px]">
         {/* 음식 사진 자리 — 참고 이미지는 다음 단계에서 붙인다 */}
         <button
@@ -86,7 +95,11 @@ export function MenuCard({
             {item.allergens.map((code) => (
               <span
                 key={code}
-                className="rounded-lg bg-brand-100 px-2 py-[3px] text-[10px] font-bold text-brand-700"
+                className={`rounded-lg px-2 py-[3px] text-[10px] font-bold ${
+                  warned.includes(code)
+                    ? 'bg-brand text-white'
+                    : 'bg-brand-100 text-brand-700'
+                }`}
               >
                 {ALLERGEN_LABEL[code] ?? code}
               </span>
@@ -142,6 +155,19 @@ export function MenuCard({
           </div>
         </div>
       </div>
+
+      {warned.length > 0 && (
+        <p className="mt-2.5 flex items-start gap-1.5 text-[11.5px] font-semibold text-brand-700">
+          <span aria-hidden>⚠️</span>
+          <span>
+            {warnedText}
+            {subjectParticle(warnedText)} 들어 있을 수 있어요.{' '}
+            <span className="font-normal opacity-80">
+              AI 추정이라 확실하지 않아요 — 점원에게 확인하세요.
+            </span>
+          </span>
+        </p>
+      )}
 
       {loading && <p className="mt-2 text-xs text-muted">설명을 불러오는 중…</p>}
       {error && <p className="mt-2 text-xs text-brand-700">{error}</p>}
