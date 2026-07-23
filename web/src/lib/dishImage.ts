@@ -3,18 +3,23 @@
  *  ⚠️ 이건 **그 식당의 실제 음식 사진이 아니다.** 같은 요리의 일반적인 사진이므로
  *  UI 는 반드시 '참고'임을 표시해야 한다. (지어낸 후기를 안 만드는 것과 같은 이유)
  *
- *  ## 왜 '제목 완전일치'만 쓰는가
+ *  ## 어떤 검색 결과를 채택하는가 (titleMatches)
  *
- *  실제 메뉴명 34개로 재보니 검색 결과에 이미지가 있는 건 85% 였지만, 그중 상당수가
- *  엉뚱했다:
- *    グルクン唐揚(자리돔 튀김) → から揚げ(닭튀김)
- *    出汁巻き玉子(계란말이)   → 玉子焼(明石市) — 다른 요리
- *    てびちの煮付(족발조림)   → プレバト!!  — TV 예능
- *  부분일치도 대개 상위 개념 사진이라 다른 음식이 나온다:
- *    島らっきょうの天ぷら → 天ぷら,  納豆巻 → 納豆,  焼きおにぎり → おにぎり
+ *  메뉴명(name_local)으로 위키백과를 검색하고, 반환된 1위 문서를 '이 요리의 사진으로
+ *  써도 되는가'로 거른다. 실제 메뉴명 42개로 규칙별 적중률을 쟀다:
+ *    - 제목 완전일치만:  13/42 — 너무 빡빡해 대부분 아이콘으로 떨어졌다.
+ *    - 정규화 포함 규칙: 28/42 — 아래 규칙. 새로 잡는 것들은 전부 맞는 요리였다.
  *
- *  그래서 반환된 문서 제목이 메뉴명과 **정확히 같을 때만** 채택한다. 커버리지는 절반쯤으로
- *  떨어지지만, 나머지 절반에 남의 음식 사진을 붙이는 것보다 낫다.
+ *  규칙: 가타카나↔히라가나를 같게 보고 괄호 주석을 뗀 뒤, 제목과 메뉴명이 서로를
+ *  포함하면 같은 요리로 본다. 메뉴명은 '재료+요리종류' 합성어라 위키엔 상위 개념만
+ *  있는 경우가 많다:
+ *    島らっきょうの天ぷら ⊇ 天ぷら,  ゴーヤーチャンプルー ⊇ チャンプルー,
+ *    まぐろ赤身 ≈ マグロ,  きつねうどん ⊇ きつね(麺類)
+ *
+ *  ⚠️ 글자가 겹치지 않는 오답은 이 규칙으로도 계속 걸러진다(그래서 완전일치보다 안전):
+ *    グルクン唐揚(자리돔 튀김) vs から揚げ(닭튀김) — から는 가나, 唐은 한자라 안 겹침
+ *    フーチャンプルー vs 拳王(프로레슬러),  出汁巻き玉子 vs 玉子焼(明石市)
+ *  놓치는 것: 남의 음식이 붙는 것보다 아이콘이 낫다는 원칙은 그대로다.
  */
 
 import { useEffect, useState } from 'react'
@@ -75,6 +80,24 @@ function release() {
   else active -= 1
 }
 
+/** 가타카나 → 히라가나 + 괄호 주석 제거 + 공백/중점 제거.
+ *  'まぐろ' 와 'マグロ', 'きつね(麺類)' 와 'きつね' 를 같게 보기 위한 것. */
+function normalize(s: string): string {
+  return s
+    .replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60))
+    .replace(/[（(].*?[)）]/g, '')
+    .replace(/[\s・]/g, '')
+    .trim()
+}
+
+/** 이 위키 문서를 이 메뉴의 참고 사진으로 써도 되는가. 위 주석의 규칙. */
+export function titleMatches(title: string, name: string): boolean {
+  const a = normalize(name)
+  const b = normalize(title)
+  // 2글자 미만 겹침은 우연일 수 있어 배제한다.
+  return b.length >= 2 && (a.includes(b) || b.includes(a))
+}
+
 async function lookup(lang: string, name: string): Promise<string | null> {
   const params = new URLSearchParams({
     action: 'query',
@@ -94,10 +117,10 @@ async function lookup(lang: string, name: string): Promise<string | null> {
     query?: { pages?: Record<string, { title?: string; thumbnail?: { source?: string } }> }
   }
   const page = Object.values(body.query?.pages ?? {})[0]
-  if (!page?.thumbnail?.source) return null
+  if (!page?.thumbnail?.source || !page.title) return null
 
-  // 제목이 메뉴명과 정확히 같을 때만 채택한다(위 주석 참고).
-  return page.title === name ? page.thumbnail.source : null
+  // 제목과 메뉴명이 같은 요리를 가리킬 때만 채택한다(위 주석 참고).
+  return titleMatches(page.title, name) ? page.thumbnail.source : null
 }
 
 /** 카드가 썸네일과 상세 이미지에 같은 URL 을 쓰도록 한 곳에서 관리한다. */
