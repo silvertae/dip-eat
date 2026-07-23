@@ -31,6 +31,7 @@ from app.core.errors import (
     UpstreamRateLimited,
     UpstreamTimeout,
 )
+from app.schemas.chat import ChatRequest, Translation
 from app.schemas.menu import ExplainRequest, ItemExplanation, MenuExtraction
 from app.services.image import PreparedImage
 
@@ -42,6 +43,7 @@ _NON_RETRYABLE = {400, 401, 403, 404}
 _PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 _MENU_SCAN_PROMPT = (_PROMPT_DIR / "menu_scan.md").read_text(encoding="utf-8")
 _ITEM_EXPLAIN_PROMPT = (_PROMPT_DIR / "item_explain.md").read_text(encoding="utf-8")
+_CHAT_TRANSLATE_PROMPT = (_PROMPT_DIR / "chat_translate.md").read_text(encoding="utf-8")
 
 _MODE_HINT = {
     "poster": "벽에 붙은 벽보형 메뉴판입니다. 손글씨이거나 세로쓰기일 수 있습니다.",
@@ -75,6 +77,13 @@ class ScanOutcome:
 @dataclass(slots=True)
 class ExplainOutcome:
     explanation: ItemExplanation
+    model: str
+    usage: Usage
+
+
+@dataclass(slots=True)
+class TranslateOutcome:
+    translation: Translation
     model: str
     usage: Usage
 
@@ -138,6 +147,26 @@ class GeminiService:
             if not parsed.description.strip():
                 raise UnreadableMenu(detail=f"empty description model={model}")
             return ExplainOutcome(explanation=parsed, model=model, usage=usage)
+
+        return await self._with_fallback(call, models)
+
+    async def translate(
+        self, req: ChatRequest, *, models: list[str] | None = None
+    ) -> TranslateOutcome:
+        """점원 대화용 자유 발화 번역. 텍스트 전용."""
+
+        async def call(model: str) -> TranslateOutcome:
+            context = f"방향: {req.direction}\n현지어: {req.source_lang}\n문장: {req.text}"
+            parsed, usage = await self._generate(
+                model=model,
+                contents=[types.Part.from_text(text=context)],
+                system_instruction=_CHAT_TRANSLATE_PROMPT,
+                schema=Translation,
+                with_media=False,
+            )
+            if not parsed.translated.strip():
+                raise UnreadableMenu(detail=f"empty translation model={model}")
+            return TranslateOutcome(translation=parsed, model=model, usage=usage)
 
         return await self._with_fallback(call, models)
 

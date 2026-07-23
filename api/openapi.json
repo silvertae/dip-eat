@@ -111,6 +111,48 @@
           }
         }
       }
+    },
+    "/api/v1/chat": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "점원 대화 — 자유 발화 번역",
+        "description": "주문 '카드'는 서버를 부르지 않는다(오프라인 조립). 이건 자유 발화 번역 전용이다.",
+        "operationId": "chat_api_v1_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -146,6 +188,68 @@
           "image"
         ],
         "title": "Body_scan_menu_api_v1_menu_scan_post"
+      },
+      "ChatRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text",
+            "description": "번역할 한 문장"
+          },
+          "source_lang": {
+            "type": "string",
+            "title": "Source Lang",
+            "description": "현지어 BCP-47. 스캔 응답의 source_lang",
+            "default": "ja"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "ko2local",
+              "local2ko"
+            ],
+            "title": "Direction",
+            "description": "ko2local: 내 한국어→현지어 / local2ko: 점원 현지어→한국어"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "direction"
+        ],
+        "title": "ChatRequest"
+      },
+      "ChatResponse": {
+        "properties": {
+          "translated": {
+            "type": "string",
+            "title": "Translated",
+            "description": "번역문. 방향에 따라 현지어 또는 한국어."
+          },
+          "reading": {
+            "type": "string",
+            "title": "Reading",
+            "description": "ko2local 이면 번역한 현지어의 한국어 독음(소리내어 말할 때). 예: 'パクチー抜きで' → '파쿠치- 누키데'. local2ko 이면 빈 문자열."
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "translated",
+          "reading",
+          "model",
+          "latency_ms"
+        ],
+        "title": "ChatResponse"
       },
       "ExplainRequest": {
         "properties": {

@@ -14,7 +14,8 @@ from app.schemas.menu import (
     MenuItemSummary,
     Restaurant,
 )
-from app.services.gemini import ExplainOutcome, ScanOutcome, Usage
+from app.schemas.chat import Translation
+from app.services.gemini import ExplainOutcome, ScanOutcome, TranslateOutcome, Usage
 
 
 def make_jpeg(width: int = 400, height: int = 300, *, noise: bool = False) -> bytes:
@@ -104,6 +105,20 @@ class FakeGemini:
             explanation=sample_explanation(),
             model="fake-model",
             usage=Usage(input_tokens=200, output_tokens=380),
+        )
+
+    async def translate(self, req, *, models=None):
+        self.calls.append({"translate": req.text, "direction": req.direction})
+        if self.error:
+            raise self.error
+        localized = req.direction == "ko2local"
+        return TranslateOutcome(
+            translation=Translation(
+                translated="パクチー抜きでお願いします" if localized else "고수 빼주세요",
+                reading="파쿠치- 누키데 오네가이시마스" if localized else "",
+            ),
+            model="fake-model",
+            usage=Usage(input_tokens=60, output_tokens=40),
         )
 
 
