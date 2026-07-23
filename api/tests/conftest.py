@@ -49,6 +49,7 @@ def sample_extraction() -> MenuExtraction:
                 tax_included=True,
                 category="food",
                 section="돼지고기 요리",
+                image_query="rafute",
                 summary="흑설탕에 조린 삼겹살",
                 tags=["signature", "local", "pork"],
                 allergens=["pork", "soy"],

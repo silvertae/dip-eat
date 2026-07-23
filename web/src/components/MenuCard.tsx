@@ -54,7 +54,7 @@ export function MenuCard({
   }, [detail, item.name_local, item.name_translated, sourceLang, cuisineHint])
 
   const krw = toKrw(item.price_amount, rate)
-  const imageUrl = useDishImage(item.name_local, sourceLang)
+  const image = useDishImage(item)
   const warnedText = warned.map(allergenLabel).join(' · ')
 
   return (
@@ -64,7 +64,7 @@ export function MenuCard({
       }`}
     >
       <div className="flex items-start gap-[11px]">
-        <DishThumb item={item} url={imageUrl} onClick={toggle} />
+        <DishThumb item={item} image={image} onClick={toggle} />
 
         <div className="min-w-0 flex-1">
           <button type="button" onClick={toggle} className="w-full text-left">
@@ -169,16 +169,34 @@ export function MenuCard({
 
       {detail && (
         <div className="mt-3 border-t border-line pt-3">
-          {imageUrl && (
+          {image && (
             <figure className="mb-3">
               <img
-                src={imageUrl}
+                src={image.url}
                 alt={`${item.name_translated} 참고 이미지`}
                 className="h-[150px] w-full rounded-[18px] object-cover"
               />
-              {/* 이 식당의 실제 음식이 아니라 같은 요리의 일반 사진이다. 출처도 밝힌다. */}
-              <figcaption className="mt-1.5 text-[10.5px] text-muted">
-                참고 이미지 · 위키백과 — 이 가게의 실제 음식 사진이 아니에요
+              {/* 이 식당의 실제 음식이 아니라 같은 요리의 일반 사진이다.
+                  CC 라이선스라 저작자·라이선스 표기가 법적 의무다. */}
+              <figcaption className="mt-1.5 text-[10.5px] leading-[1.5] text-muted">
+                이 가게의 실제 음식 사진이 아니에요 · 참고 이미지
+                <br />ⓒ {image.author} ·{' '}
+                {image.licenseUrl ? (
+                  <a
+                    href={image.licenseUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    {image.license}
+                  </a>
+                ) : (
+                  image.license
+                )}{' '}
+                ·{' '}
+                <a href={image.sourceUrl} target="_blank" rel="noreferrer" className="underline">
+                  위키미디어 커먼즈
+                </a>
               </figcaption>
             </figure>
           )}
