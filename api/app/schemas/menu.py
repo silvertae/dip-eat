@@ -72,6 +72,12 @@ class MenuItemSummary(BaseModel):
         description="이게 무슨 음식인지 한 줄로. **25자 이내.** 예: '흑설탕에 조린 삼겹살'. "
         "긴 설명은 여기 쓰지 말 것 — 사용자가 카드를 탭하면 따로 받아온다."
     )
+    image_query: str = Field(
+        description="이 요리의 참고 사진을 위키미디어 커먼즈에서 찾기 위한 영문/로마자 검색어 한 개. "
+        "가장 널리 통용되는 요리명으로. 예: 'tamagoyaki', 'goya champuru', 'okinawa soba', "
+        "'gurukun fried fish'. 재료+조리법 조합이면 그렇게(예: 'fried island scallion'). "
+        "커먼즈 파일 제목이 대부분 영문이라 원문보다 영문이 잘 맞는다. 모르면 빈 문자열."
+    )
     tags: list[MenuTag] = Field(description="해당하는 것만. 없으면 빈 배열.")
     allergens: list[AllergenCode] = Field(
         description="메뉴명·재료로 정당화할 수 있는 알레르기 코드만. 근거를 댈 수 없으면 넣지 말 것. "
