@@ -28,6 +28,14 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 - `POST /api/v1/menu/scan` — 사진 → **목록**. 카드에 필요한 것만. 알레르기는 **코드만**, 설명은 **25자 한 줄**.
 - `POST /api/v1/menu/item/explain` — 카드를 탭했을 때. 긴 설명·알레르기 근거·로마자. 사진을 다시 안 보내는 텍스트 전용(~2.3초).
 
+## 점원 대화 (주문서/대화 화면)
+
+- **주문 '카드'는 서버를 부르지 않는다.** `web/src/lib/orderPhrases.ts` 의 정적 문구로 클라이언트가 조립한다 — 오프라인에서도 점원에게 보여줘야 하므로. 일본어 우선, 없는 언어는 폴백. 메뉴 항목은 `name_local`(이미 현지어)이라 번역 불필요.
+- `POST /api/v1/chat` — 자유 발화 텍스트 번역(ko2local/local2ko + 독음). 언어 무관.
+- `POST /api/v1/chat/voice` — 홀드-투-토크 오디오 → Gemini 오디오로 **전사+번역**. 짧거나 소음이면 422 `unclear_audio`.
+- **push-to-talk**(`components/PushToTalkToggle.tsx`): 탭=언어 포커스 전환(스프링 썸 슬라이드), 홀드>170ms=녹음(소나+이퀄라이저). getUserMedia+MediaRecorder 를 쓰므로 **iOS 설치형 PWA 에서 마이크 권한 이슈**가 카메라와 똑같이 있다 — 권한 거부를 조용히 삼키지 말 것. 실제 마이크 녹음은 헤드리스에서 검증 불가(실기기 필요).
+- 주문서(`/order`)와 대화(`/chat`)는 **독립 화면**, CTA 로 오간다(디자인 핸드오프 반영).
+
 **목록 스키마(`MenuItemSummary`)에 필드를 추가하면 응답시간이 항목 수(최대 90개)만큼 곱해진다.**
 `tests/test_explain_route.py::test_scan_list_stays_lean` 이 이걸 막는다.
 

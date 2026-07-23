@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Navigate, useNavigate } from 'react-router'
-import { ApiError } from '../lib/api'
+import { ChatIcon } from '../components/icons'
 import { cartLines } from '../lib/cart'
-import { QUICK_PHRASES, buildOrderCard } from '../lib/orderPhrases'
+import { formatKrw, formatLocal, rateNow } from '../lib/fx'
+import { buildOrderCard } from '../lib/orderPhrases'
 import { useApp } from '../store/app'
 import { useProfile } from '../store/profile'
 import type { MenuScanResponse } from '../types/api'
@@ -22,23 +23,37 @@ function Order({ scan }: { scan: MenuScanResponse }) {
     () => buildOrderCard(lines, scan.source_lang, dislikes),
     [lines, scan.source_lang, dislikes],
   )
+  const rate = rateNow(scan.currency)
+  const krwTotal = rate != null ? card.localTotal * rate : null
 
   return (
     <div className="flex min-h-full flex-col">
-      <div className="flex flex-col gap-3 p-4">
-        {/* ── 점원에게 보여줄 주문 카드 (오프라인, 서버 안 부름) ── */}
+      <div className="flex-1 p-4">
+        <header className="mb-3">
+          <h1 className="text-[20px] font-extrabold -tracking-[0.3px]">주문서</h1>
+          <p className="mt-[3px] text-xs text-muted">이 화면을 그대로 점원에게 보여주세요</p>
+        </header>
+
+        {/* 정적 전환 pill (지금은 표시만) */}
+        <div className="mb-3 flex gap-[7px]">
+          <span className="rounded-full bg-ink px-[13px] py-2 text-xs font-bold text-white">
+            주문 카드
+          </span>
+          <span className="rounded-full border border-line bg-white px-[13px] py-2 text-xs font-bold text-[#6a564a]">
+            사진에서 확인
+          </span>
+        </div>
+
+        {/* 점원에게 보여줄 주문 카드 (오프라인, 서버 안 부름) */}
         <div className="rounded-[20px] border border-line bg-gradient-to-b from-white to-[#FFF3EC] p-[18px] shadow-[0_10px_24px_-12px_rgba(234,90,52,.28)]">
           {card.intro ? (
             <>
               <p className="text-center font-local text-[21px] font-extrabold tracking-wide">
                 {card.intro.local}
               </p>
-              <p className="mt-1 text-center text-[12.5px] text-muted">
-                저기요, 주문할게요 · {card.intro.reading}
-              </p>
+              <p className="mt-1 text-center text-[12.5px] text-muted">저기요, 주문할게요</p>
             </>
           ) : (
-            // 정적 문구가 없는 언어. 아래 대화로 전하도록 안내한다.
             <p className="text-center text-[13px] text-muted">
               이 언어의 주문 문구는 아직 준비 중이에요.
               <br />
@@ -75,116 +90,35 @@ function Order({ scan }: { scan: MenuScanResponse }) {
           ))}
         </div>
 
-        {/* ── 점원과 대화 ── */}
-        <div className="flex items-center gap-2 pt-1">
-          <b className="text-[13.5px]">점원과 대화</b>
-          <span className="text-[11.5px] text-muted">· 자유롭게 입력하면 번역해드려요</span>
+        {/* 합계 */}
+        <div className="mt-3.5 flex items-center justify-between rounded-[15px] border border-line bg-white px-[15px] py-[13px]">
+          <span className="text-[12.5px] text-muted">합계 {card.count}개</span>
+          <b className="text-[15px]">
+            {formatLocal(card.localTotal, scan.currency)}
+            {krwTotal != null && (
+              <span className="ml-1 text-[11px] font-semibold text-muted">
+                {formatKrw(krwTotal)}
+              </span>
+            )}
+          </b>
         </div>
 
-        <ChatThread sourceLang={scan.source_lang} />
+        {card.missingPrice > 0 && (
+          <p className="mt-2 text-[11px] text-amber-700">
+            가격을 읽지 못한 {card.missingPrice}개는 합계에서 빠졌어요
+          </p>
+        )}
       </div>
 
-      {/* 주문 확정 → 완료 화면(Phase 4d). 결제는 범위 제외. */}
-      <div className="sticky bottom-0 mt-auto border-t border-line bg-white px-4 pb-[13px] pt-[11px]">
+      {/* 대화 화면으로 */}
+      <div className="sticky bottom-0 border-t border-line bg-white px-4 pb-[13px] pt-[11px]">
         <button
           type="button"
-          disabled={lines.length === 0}
-          onClick={() => navigate('/done')}
-          className="w-full rounded-[15px] bg-brand px-4 py-3.5 text-[15px] font-extrabold text-white disabled:opacity-40"
+          onClick={() => navigate('/chat')}
+          className="flex w-full items-center justify-center gap-[9px] rounded-[15px] bg-brand px-4 py-3.5 text-[15px] font-extrabold text-white shadow-[0_12px_22px_-8px_rgba(234,90,52,.55)]"
         >
-          주문 확정
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function ChatThread({ sourceLang }: { sourceLang: string }) {
-  const convo = useApp((s) => s.convo)
-  const pushBubble = useApp((s) => s.pushBubble)
-  const sendChat = useApp((s) => s.sendChat)
-  const [text, setText] = useState('')
-  const [sending, setSending] = useState(false)
-  const [error, setError] = useState('')
-
-  const quick = QUICK_PHRASES.filter((q) => q.byLang[sourceLang])
-
-  async function send() {
-    const trimmed = text.trim()
-    if (!trimmed || sending) return
-    setText('')
-    setError('')
-    setSending(true)
-    try {
-      await sendChat(trimmed, 'ko2local', sourceLang)
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : '번역하지 못했어요.')
-      setText(trimmed) // 실패하면 입력을 되돌려준다
-    } finally {
-      setSending(false)
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      {convo.map((b, i) =>
-        b.from === 'them' ? (
-          <div
-            key={i}
-            className="max-w-[82%] self-start rounded-2xl rounded-bl-[5px] border border-line bg-white px-[13px] py-[11px]"
-          >
-            <p className="font-local text-[11px] text-muted">{b.local}</p>
-            <p className="text-[16px] font-extrabold leading-[1.35]">{b.ko}</p>
-          </div>
-        ) : (
-          <div
-            key={i}
-            className="max-w-[82%] self-end rounded-2xl rounded-br-[5px] bg-ink px-[13px] py-[11px] text-white"
-          >
-            <p className="font-local text-[16px] font-extrabold leading-[1.35]">{b.local}</p>
-            <p className="mt-1 text-[11px] opacity-70">
-              {b.ko}
-              {b.reading ? ` · ${b.reading}` : ''}
-            </p>
-          </div>
-        ),
-      )}
-
-      {/* 빠른 응답 — 미리 번역돼 있어 바로 점원에게 보여줄 수 있다 */}
-      {quick.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {quick.map((q) => (
-            <button
-              key={q.ko}
-              type="button"
-              onClick={() =>
-                pushBubble({ from: 'me', ko: q.ko, ...q.byLang[sourceLang] })
-              }
-              className="rounded-full border border-line bg-white px-[13px] py-2 text-[12.5px] font-bold text-[#6a564a]"
-            >
-              {q.ko}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {error && <p className="text-xs text-brand-700">{error}</p>}
-
-      <div className="flex gap-2 pt-1">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && send()}
-          placeholder="한국어로 입력…"
-          className="min-w-0 flex-1 rounded-full border border-line bg-white px-4 py-2.5 text-sm"
-        />
-        <button
-          type="button"
-          onClick={send}
-          disabled={sending || !text.trim()}
-          className="shrink-0 rounded-full bg-brand px-4 text-sm font-bold text-white disabled:opacity-40"
-        >
-          {sending ? '…' : '전달'}
+          <ChatIcon size={19} />
+          점원과 대화하기
         </button>
       </div>
     </div>

@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router'
 import { CameraIcon, ChatIcon, OrderIcon, SettingsIcon } from './icons'
 
-/** 목업의 4탭. 주문서·대화는 같은 주문 화면으로 간다(위=주문 카드, 아래=대화). */
+/** 목업의 4탭. 주문서·대화는 독립 화면(서로 CTA 로 오간다). */
 const TABS: { label: string; to: string; Icon: typeof CameraIcon }[] = [
   { label: '사진인식', to: '/', Icon: CameraIcon },
   { label: '주문서', to: '/order', Icon: OrderIcon },
-  { label: '대화', to: '/order', Icon: ChatIcon },
+  { label: '대화', to: '/chat', Icon: ChatIcon },
   { label: '설정', to: '/settings', Icon: SettingsIcon },
 ]
 

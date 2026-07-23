@@ -61,3 +61,53 @@ async def test_upstream_failure_is_mapped(client_factory, error, status, code):
         )
     assert resp.status_code == status
     assert resp.json()["code"] == code
+
+
+# --- 음성 (chat/voice) -------------------------------------------------------
+
+
+async def test_voice_local_to_ko_transcribes_and_translates(client_factory):
+    fake = FakeGemini()
+    async with client_factory(fake) as client:
+        resp = await client.post(
+            "/api/v1/chat/voice",
+            files={"audio": ("clip.webm", b"fake-audio-bytes", "audio/webm")},
+            data={"direction": "local2ko", "source_lang": "ja"},
+        )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["source_text"] == "ご注文は以上でしょうか？"  # 원어 그대로 받아쓰기
+    assert body["translated"] == "주문은 이게 전부인가요?"
+    assert fake.calls[0]["mime"] == "audio/webm"
+
+
+async def test_voice_ko_to_local_has_reading(client_factory):
+    async with client_factory() as client:
+        resp = await client.post(
+            "/api/v1/chat/voice",
+            files={"audio": ("clip.mp4", b"abc", "audio/mp4")},
+            data={"direction": "ko2local"},
+        )
+    body = resp.json()
+    assert body["translated"] == "お水を一杯ください"
+    assert body["reading"] == "오미즈오 잇빠이 쿠다사이"
+
+
+async def test_voice_rejects_non_audio(client_factory):
+    async with client_factory() as client:
+        resp = await client.post(
+            "/api/v1/chat/voice",
+            files={"audio": ("x.txt", b"hello", "text/plain")},
+            data={"direction": "local2ko"},
+        )
+    assert resp.status_code == 415
+
+
+async def test_voice_rejects_empty(client_factory):
+    async with client_factory() as client:
+        resp = await client.post(
+            "/api/v1/chat/voice",
+            files={"audio": ("x.webm", b"", "audio/webm")},
+            data={"direction": "local2ko"},
+        )
+    assert resp.status_code == 415

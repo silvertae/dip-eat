@@ -30,3 +30,18 @@ class ChatRequest(BaseModel):
 class ChatResponse(Translation):
     model: str
     latency_ms: int
+
+
+class VoiceResult(BaseModel):
+    """Gemini 가 오디오에서 채우는 부분."""
+
+    source_text: str = Field(description="말한 내용을 원래 언어 그대로 받아쓴 것")
+    translated: str = Field(description="번역문. 방향에 따라 현지어 또는 한국어.")
+    reading: str = Field(
+        description="ko2local 이면 번역한 현지어의 한국어 독음. local2ko 이면 빈 문자열."
+    )
+
+
+class VoiceResponse(VoiceResult):
+    model: str
+    latency_ms: int

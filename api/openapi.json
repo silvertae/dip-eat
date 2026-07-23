@@ -153,10 +153,81 @@
           }
         }
       }
+    },
+    "/api/v1/chat/voice": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "점원 대화 — 음성 받아쓰기 + 번역",
+        "description": "홀드-투-토크 녹음을 받아 Gemini 오디오로 전사+번역한다.",
+        "operationId": "chat_voice_api_v1_chat_voice_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_chat_voice_api_v1_chat_voice_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "Body_chat_voice_api_v1_chat_voice_post": {
+        "properties": {
+          "audio": {
+            "type": "string",
+            "format": "binary",
+            "title": "Audio",
+            "description": "짧은 발화 오디오 (webm/mp4/m4a 등)"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "ko2local",
+              "local2ko"
+            ],
+            "title": "Direction"
+          },
+          "source_lang": {
+            "type": "string",
+            "title": "Source Lang",
+            "default": "ja"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audio",
+          "direction"
+        ],
+        "title": "Body_chat_voice_api_v1_chat_voice_post"
+      },
       "Body_scan_menu_api_v1_menu_scan_post": {
         "properties": {
           "image": {
@@ -746,6 +817,42 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VoiceResponse": {
+        "properties": {
+          "source_text": {
+            "type": "string",
+            "title": "Source Text",
+            "description": "말한 내용을 원래 언어 그대로 받아쓴 것"
+          },
+          "translated": {
+            "type": "string",
+            "title": "Translated",
+            "description": "번역문. 방향에 따라 현지어 또는 한국어."
+          },
+          "reading": {
+            "type": "string",
+            "title": "Reading",
+            "description": "ko2local 이면 번역한 현지어의 한국어 독음. local2ko 이면 빈 문자열."
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_text",
+          "translated",
+          "reading",
+          "model",
+          "latency_ms"
+        ],
+        "title": "VoiceResponse"
       }
     }
   }

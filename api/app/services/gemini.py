@@ -25,13 +25,14 @@ from pydantic import BaseModel
 
 from app.core.config import Settings
 from app.core.errors import (
+    UnclearAudio,
     UnreadableMenu,
     UpstreamConfigError,
     UpstreamError,
     UpstreamRateLimited,
     UpstreamTimeout,
 )
-from app.schemas.chat import ChatRequest, Translation
+from app.schemas.chat import ChatRequest, Translation, VoiceResult
 from app.schemas.menu import ExplainRequest, ItemExplanation, MenuExtraction
 from app.services.image import PreparedImage
 
@@ -44,6 +45,7 @@ _PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 _MENU_SCAN_PROMPT = (_PROMPT_DIR / "menu_scan.md").read_text(encoding="utf-8")
 _ITEM_EXPLAIN_PROMPT = (_PROMPT_DIR / "item_explain.md").read_text(encoding="utf-8")
 _CHAT_TRANSLATE_PROMPT = (_PROMPT_DIR / "chat_translate.md").read_text(encoding="utf-8")
+_CHAT_VOICE_PROMPT = (_PROMPT_DIR / "chat_voice.md").read_text(encoding="utf-8")
 
 _MODE_HINT = {
     "poster": "벽에 붙은 벽보형 메뉴판입니다. 손글씨이거나 세로쓰기일 수 있습니다.",
@@ -84,6 +86,13 @@ class ExplainOutcome:
 @dataclass(slots=True)
 class TranslateOutcome:
     translation: Translation
+    model: str
+    usage: Usage
+
+
+@dataclass(slots=True)
+class VoiceOutcome:
+    result: VoiceResult
     model: str
     usage: Usage
 
@@ -170,6 +179,30 @@ class GeminiService:
 
         return await self._with_fallback(call, models)
 
+    async def transcribe_and_translate(
+        self, audio: bytes, mime_type: str, *, direction: str, source_lang: str,
+        models: list[str] | None = None,
+    ) -> VoiceOutcome:
+        """점원/여행자의 짧은 음성 → 받아쓰기 + 번역. Gemini 오디오 이해로 한 번에."""
+
+        async def call(model: str) -> VoiceOutcome:
+            context = f"방향: {direction}\n현지어: {source_lang}"
+            parsed, usage = await self._generate(
+                model=model,
+                contents=[
+                    types.Part.from_bytes(data=audio, mime_type=mime_type),
+                    types.Part.from_text(text=context),
+                ],
+                system_instruction=_CHAT_VOICE_PROMPT,
+                schema=VoiceResult,
+                with_media=False,  # 오디오엔 media_resolution 을 붙이지 않는다(이미지 전용)
+            )
+            if not parsed.source_text.strip():
+                raise UnclearAudio(detail=f"empty transcript model={model}")
+            return VoiceOutcome(result=parsed, model=model, usage=usage)
+
+        return await self._with_fallback(call, models)
+
     # --- 내부 ---------------------------------------------------------------
 
     async def _with_fallback(
@@ -186,7 +219,7 @@ class GeminiService:
             for attempt in range(1, self._settings.gemini_max_attempts + 1):
                 try:
                     return await call(model)
-                except (UpstreamTimeout, UpstreamRateLimited, UpstreamConfigError):
+                except (UpstreamTimeout, UpstreamRateLimited, UpstreamConfigError, UnclearAudio):
                     raise  # 재시도해도 나아지지 않는다. 즉시 사용자에게.
                 except (UnreadableMenu, UpstreamError) as exc:
                     last_error = exc
