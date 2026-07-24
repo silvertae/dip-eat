@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.errors import UpstreamRateLimited, UpstreamTimeout
+from app.core.errors import UnclearAudio, UpstreamRateLimited, UpstreamTimeout
 from tests.conftest import FakeGemini
 
 
@@ -101,6 +101,10 @@ async def test_voice_rejects_non_audio(client_factory):
             data={"direction": "local2ko"},
         )
     assert resp.status_code == 415
+    body = resp.json()
+    # 오디오 실패가 이미지 오류(415 unsupported_image, JPEG/PNG 안내)처럼 보이면 안 된다.
+    assert body["code"] == "unsupported_audio"
+    assert "이미지" not in body["message"] and "JPEG" not in body["message"]
 
 
 async def test_voice_rejects_empty(client_factory):
@@ -111,3 +115,29 @@ async def test_voice_rejects_empty(client_factory):
             data={"direction": "local2ko"},
         )
     assert resp.status_code == 415
+    assert resp.json()["code"] == "unsupported_audio"
+
+
+async def test_voice_rejects_oversized(client_factory):
+    # 4MB 초과(과대)는 413. 미들웨어 총량 상한(8MB)보다 작아 라우터 검증까지 도달한다.
+    big = b"\x00" * (5 * 1024 * 1024)
+    async with client_factory() as client:
+        resp = await client.post(
+            "/api/v1/chat/voice",
+            files={"audio": ("clip.webm", big, "audio/webm")},
+            data={"direction": "local2ko"},
+        )
+    assert resp.status_code == 413
+    assert resp.json()["code"] == "audio_too_large"
+
+
+async def test_voice_unclear_audio_maps_422(client_factory):
+    # 형식·용량은 통과했지만 모델이 못 알아들은 경우 — 입력 거절과 구분되는 422.
+    async with client_factory(FakeGemini(error=UnclearAudio())) as client:
+        resp = await client.post(
+            "/api/v1/chat/voice",
+            files={"audio": ("clip.webm", b"fake-audio-bytes", "audio/webm")},
+            data={"direction": "local2ko", "source_lang": "ja"},
+        )
+    assert resp.status_code == 422
+    assert resp.json()["code"] == "unclear_audio"
