@@ -1,10 +1,11 @@
 # 찍먹 (dipeat)
 
-해외 식당에서 **메뉴판을 사진 한 장 찍으면** 해석·설명·주문까지 이어주는 PWA.
+해외 식당에서 **메뉴판을 사진 한 장 찍으면** 해석·설명·주문·점원 대화까지 이어주는 모바일 웹 MVP.
+PWA 설치와 오프라인 복원은 다음 Phase 5 범위다.
 
 - 프론트: React + TypeScript + Vite + Tailwind v4 → **Vercel**
 - 백엔드: Python 3.13 + FastAPI → **Google Cloud Run (서울 asia-northeast3)**
-- AI: **Gemini 원샷** — 사진 1장에서 OCR·번역·구조화를 한 번에 (Vision API 별도 호출 없음)
+- AI: **Gemini** — 사진 스캔은 1회 멀티모달 호출로 OCR·번역·구조화한다(Vision API 별도 호출 없음). 카드 상세와 점원 대화는 별도 호출이다.
 
 ## 모델 구성
 
@@ -50,20 +51,29 @@
 
 ---
 
-## 현재 상태 — Phase 1 (수직 슬라이스)
+## 현재 상태 — Phase 4 (주문서·점원 대화)
 
-사진 → 축소 → `POST /api/v1/menu/scan` → Gemini → 구조화 JSON → 결과 목록까지 관통.
-목업의 화면·디자인은 Phase 2 이후에 입힌다.
+사진 → 축소 → `POST /api/v1/menu/scan` → Gemini → 구조화 JSON → 결과·주문서·대화까지 관통한다.
+목업 디자인 시스템은 결과·주문서·대화 화면에 이식돼 있다.
 
 | | 상태 |
 |---|---|
 | `POST /api/v1/menu/scan` | ✅ 실사진 10장 검증 (10/10 성공, 가격 파싱 99%) |
 | `POST /api/v1/menu/item/explain` | ✅ 상세 조회, 실측 2.3초 |
 | `GET /api/v1/health` | ✅ |
-| 프론트 촬영→업로드→결과 | ✅ 최소 렌더 |
-| 온보딩·홈·주문서·설정 화면 | ⬜ Phase 2~4 |
-| PWA / 오프라인 캐시 | ⬜ Phase 5 |
-| 결제 화면 | ❌ 범위 제외 |
+| `POST /api/v1/chat` | ✅ 자유 텍스트 번역 API. **현재 프론트는 이 경로를 쓰지 않는다**(대화 UI는 음성+빠른응답만) |
+| `POST /api/v1/chat/voice` | ✅ 홀드-투-토크 오디오 → Gemini 오디오로 전사·번역 |
+| 프론트 촬영→업로드→결과 | ✅ 분류 접기·필터·알레르기 경고·원화 환산·장바구니 |
+| 온보딩·홈·주문서·설정 화면 | ✅ 프로필(알레르기·비선호·예산) 로컬 저장 |
+| 주문서·대화 (독립 화면) | ✅ 오프라인 주문 카드(일본어) + push-to-talk 음성 통역 + 빠른 응답 |
+| Wikimedia Commons 참고 이미지·저작권 표기 | ✅ |
+| PWA / 오프라인 캐시·복원 | ⬜ Phase 5 |
+| 결제·주문 완료 화면 | 결제 ❌ 범위 제외 / 완료 화면(`/done`)은 코드만 있고 현재 흐름에서 빠짐 |
+
+> **대화 화면**은 목업 핸드오프대로 push-to-talk 세그먼트 토글이다 — 탭=언어 전환(스프링
+> 썸 슬라이드), 홀드>170ms=녹음(소나+이퀄라이저), 떼면 전송. `나` 홀드→내 한국어를 일본어로,
+> `점원` 홀드→점원 일본어를 한국어로. `<input capture>`로는 홀드 제스처가 안 돼 getUserMedia를
+> 쓰므로 iOS PWA 마이크 권한 이슈가 카메라와 동일하게 있다.
 
 ---
 
@@ -89,13 +99,14 @@ Vite 개발 서버가 `/api` 를 `127.0.0.1:8000` 으로 프록시한다. 프로
 ### 실기기(휴대폰) 테스트
 
 `npm run dev -- --host` 만으로는 LAN 주소가 평문 http 라 **secure context 가 아니다.**
-service worker 등록과 카메라 API 가 조용히 실패한다.
+현재 사진 촬영은 `<input capture>`라 LAN에서도 열리지만, 음성 대화의 `getUserMedia`와
+향후 service worker/PWA는 HTTPS가 필요하다.
 
-- Android: Chrome DevTools → Port forwarding (localhost 는 secure 로 취급됨). 인증서 작업 불필요.
+- Android: Chrome DevTools → Port forwarding (localhost 는 secure 로 취급됨). 음성 대화 테스트에 인증서 작업 불필요.
 - iOS: `mkcert` 인증서를 만들어 Vite `server.https` 에 물리고, 아이폰에 **구성 프로파일로 설치한 뒤
   설정 › 일반 › 정보 › 인증서 신뢰 설정**에서 신뢰까지 켜야 한다. 경고를 탭해 넘기는 것만으로는 부족하다.
 
-### Phase 1 게이트 — 실사진 벤치
+### 메뉴 스캔 품질 게이트 — 실사진 벤치
 
 키를 넣은 뒤 **실제 메뉴판 사진 10장**(인쇄 / 손글씨 / 벽보 / 책자 / 저조도)을
 `samples/` 에 넣고 돌린다. `samples/` 는 gitignore 되어 있다.
@@ -131,8 +142,9 @@ uv run python scripts/bench_menu.py ../samples --no-media-resolution # 400 이 �
 ### 테스트 / 타입 생성
 
 ```bash
-cd api && uv run pytest              # 45개
+cd api && uv run pytest              # 55개
 cd web && npm run build              # tsc -b + vite build
+cd web && npm run lint
 
 # 백엔드 스키마를 바꾼 뒤 프론트 타입 재생성
 cd api && uv run python -c "import json; from app.main import create_app; open('openapi.json','w').write(json.dumps(create_app().openapi(), ensure_ascii=False, indent=2))"
@@ -164,6 +176,8 @@ gcloud run services describe dipeat-api --region asia-northeast3 --format='value
 - 첫 배포는 20~30분 예상 — gcloud 설치, 프로젝트 생성, 결제 계정 연결(무료 티어도 카드 필요),
   Cloud Run + Cloud Build API 활성화.
 - `DIPEAT_DEBUG_ERRORS` 는 **설정하지 말 것.** 업스트림 원문 에러는 Cloud Run 로그에만 남긴다.
+- 현재 공개 경로에는 요청자별 인증·rate limit 이 없다. 발표용 공개 URL을 넘어 운영하려면
+  Vercel/Cloud Armor 등의 호출 제한과 Gemini 예산 알림을 먼저 둔다.
 
 ### 프론트 — Vercel
 
@@ -195,5 +209,9 @@ gcloud run services update dipeat-api --region asia-northeast3 --min-instances=0
 - **`name_local`(원문)은 절대 응답에서 빠지지 않는다.** 사용자가 점원에게 그 글자를 그대로 보여준다.
 - **알레르기 차단은 클라이언트가 한다.** 서버는 후보만 주고 프로필 대조는 로컬에서 —
   프로필이 서버로 나가지 않고, 프로필을 바꿔도 재스캔이 필요 없다.
+- **주문 카드는 서버를 부르지 않는다.** `name_local`(이미 현지어) + 정적 문구 테이블로
+  클라이언트가 조립한다 — 오프라인에서도 점원에게 보여줄 수 있어야 하므로. 자유 발화만 `/chat`.
+- **음식 사진은 위키미디어 커먼즈 '참고 이미지'지 그 가게의 음식이 아니다.** 파일 제목이
+  검색어와 정확히 맞을 때만 채택하고(오답 방지), CC-BY 저작자·라이선스를 상세에 표기한다.
 - **목업의 "현지 리뷰"를 LLM 으로 생성하지 않는다.** 지어낸 문장을 실제 후기처럼 보여주는 것이라
   "AI 한 줄 설명"으로 재라벨링하거나 섹션을 뺀다.

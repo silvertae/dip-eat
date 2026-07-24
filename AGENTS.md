@@ -1,16 +1,18 @@
 # AGENTS.md
 
-찍먹(dipeat) — 메뉴판 사진 1장을 구조화된 메뉴로 바꾸는 발표용 MVP.
-모노레포: `web/`(React+TS+Vite PWA → Vercel), `api/`(FastAPI → Cloud Run 서울).
+찍먹(dipeat) — 메뉴판 사진 1장을 구조화해 해석·주문·점원 대화까지 잇는 발표용 MVP.
+모노레포: `web/`(React+TS+Vite 모바일 웹 → Vercel), `api/`(FastAPI → Cloud Run 서울).
+PWA 설치와 오프라인 복원은 아직 Phase 5 범위다.
 배포·로컬 실행·실측 수치는 [README.md](README.md)에 있다. 이 파일은 **깨지기 쉬운 규칙**만 모은다.
 
 ## 명령어
 
 ```bash
-cd api && uv run pytest                      # 45개
+cd api && uv run pytest                      # 55개
 cd api && uv run uvicorn app.main:app --reload --reload-include '*.md' --port 8000
 cd web && npm run dev                        # /api 는 127.0.0.1:8000 으로 프록시
 cd web && npm run build                      # tsc -b + vite build
+cd web && npm run lint
 
 # 스키마를 바꿨으면 OpenAPI → TS 타입 재생성 (손으로 타입 쓰지 말 것)
 cd api && uv run python -c "import json;from app.main import create_app;open('openapi.json','w').write(json.dumps(create_app().openapi(),ensure_ascii=False,indent=2))"
@@ -30,10 +32,10 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 
 ## 점원 대화 (주문서/대화 화면)
 
-- **주문 '카드'는 서버를 부르지 않는다.** `web/src/lib/orderPhrases.ts` 의 정적 문구로 클라이언트가 조립한다 — 오프라인에서도 점원에게 보여줘야 하므로. 일본어 우선, 없는 언어는 폴백. 메뉴 항목은 `name_local`(이미 현지어)이라 번역 불필요.
-- `POST /api/v1/chat` — 자유 발화 텍스트 번역(ko2local/local2ko + 독음). 언어 무관.
-- `POST /api/v1/chat/voice` — 홀드-투-토크 오디오 → Gemini 오디오로 **전사+번역**. 짧거나 소음이면 422 `unclear_audio`.
-- **push-to-talk**(`components/PushToTalkToggle.tsx`): 탭=언어 포커스 전환(스프링 썸 슬라이드), 홀드>170ms=녹음(소나+이퀄라이저). getUserMedia+MediaRecorder 를 쓰므로 **iOS 설치형 PWA 에서 마이크 권한 이슈**가 카메라와 똑같이 있다 — 권한 거부를 조용히 삼키지 말 것. 실제 마이크 녹음은 헤드리스에서 검증 불가(실기기 필요).
+- **주문 '카드'는 서버를 부르지 않는다.** `web/src/lib/orderPhrases.ts` 의 정적 문구로 클라이언트가 조립한다. 일본어 우선, 없는 언어는 폴백. 메뉴 항목은 `name_local`(이미 현지어)이라 번역 불필요. 단, PWA/상태 복원 전에는 이미 연 스캔 결과가 탭 메모리에 남아 있을 때만 오프라인으로 보여줄 수 있다.
+- `POST /api/v1/chat` — 자유 발화 텍스트 번역(ko2local/local2ko + 독음). 언어 무관. 현재 프런트는 빠른 문구·음성 UI만 제공하고, 자유 텍스트 입력 UI는 아직 없다.
+- `POST /api/v1/chat/voice` — 홀드-투-토크 오디오 → Gemini 오디오로 **전사+번역**. 모델이 빈 받아쓰기를 반환하면 422 `unclear_audio`; 빈·과대·비오디오 업로드는 415로 거절된다.
+- **push-to-talk**(`components/PushToTalkToggle.tsx`): 탭=언어 포커스 전환(스프링 썸 슬라이드), 홀드>170ms=녹음(소나+이퀄라이저). getUserMedia+MediaRecorder 를 쓰므로 iOS Safari/향후 설치형 PWA 에서 마이크 권한 이슈가 있다 — 권한 거부를 조용히 삼키지 말 것. 실제 마이크 녹음은 헤드리스에서 검증 불가(실기기 필요).
 - 주문서(`/order`)와 대화(`/chat`)는 **독립 화면**, CTA 로 오간다(디자인 핸드오프 반영).
 
 **목록 스키마(`MenuItemSummary`)에 필드를 추가하면 응답시간이 항목 수(최대 90개)만큼 곱해진다.**
@@ -67,9 +69,10 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 - `content_type` 신뢰 금지 — 디코드된 `img.format` 으로 판단. `MAX_IMAGE_PIXELS = None` 금지.
 
 **프론트 (`web/`)**
-- 촬영은 `<input capture>` 하나. getUserMedia 아님(iOS PWA 권한 지속 문제). 축소는 워커에서.
+- 촬영은 `<input capture>` 하나. 사진 촬영에는 getUserMedia를 쓰지 않고 축소는 워커에서 한다. 음성 대화만 getUserMedia+MediaRecorder를 쓴다.
 - **EXIF 회전 보정 코드를 직접 넣지 말 것** — 현행 브라우저가 `drawImage`에서 이미 적용, 넣으면 두 번 돈다.
 - `.env` 는 `DIPEAT_` 접두사지만 `GEMINI_API_KEY` 도 alias 로 받는다(config.py). 로컬 디버깅은 `DIPEAT_DEBUG_ERRORS=true`(Cloud Run 금지).
+- `vite-plugin-pwa`는 아직 설정하지 않았다. service worker·오프라인 복원·스캔/장바구니 지속성을 구현하기 전에는 PWA나 새로고침 뒤 주문서 복원을 약속하지 말 것.
 
 ## 제품 불변식 (기능 아님)
 
@@ -87,5 +90,5 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 
 ## 범위·진행
 
-- **결제 화면은 범위 제외.** 나머지 화면은 실동작. 목업 정본: `찍먹 목업.dc.html`(Claude Design).
-- Phase 1(수직 슬라이스+API) 완료. **다음: Phase 2 — 목업 디자인 시스템 이식**. 디자인 토큰은 `web/src/styles/theme.css`(목업 CSS 변수 그대로).
+- **결제 화면은 범위 제외.** 현재 구현 화면은 온보딩·홈·촬영·결과·주문서·대화·설정·완료다. 목업 정본: `찍먹 목업.dc.html`(Claude Design).
+- Phase 4(주문서·점원 대화·push-to-talk)까지 구현됐다. **다음: Phase 5 — PWA/오프라인 캐시·주문서 복원**. 디자인 토큰은 `web/src/styles/theme.css`(목업 CSS 변수 그대로).
