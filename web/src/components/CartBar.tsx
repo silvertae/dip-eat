@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { BudgetGauge } from './BudgetGauge'
 import { type CartLine, cartTotals } from '../lib/cart'
 import { formatKrw, formatLocal } from '../lib/fx'
@@ -39,14 +40,12 @@ export function CartBar({
         </div>
       )}
 
-      {/* 주문서 화면은 Phase 4 에서 만든다. 죽은 링크 대신 비활성으로 둔다. */}
-      <button
-        type="button"
-        disabled
-        className="w-full rounded-[15px] bg-brand px-4 py-3.5 text-[15px] font-extrabold text-white opacity-40"
+      <Link
+        to="/order"
+        className="block w-full rounded-[15px] bg-brand px-4 py-3.5 text-center text-[15px] font-extrabold text-white"
       >
         주문서 만들기 →
-      </button>
+      </Link>
     </div>
   )
 }

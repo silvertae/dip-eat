@@ -66,10 +66,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 점원 대화 — 자유 발화 번역
+         * @description 주문 '카드'는 서버를 부르지 않는다(오프라인 조립). 이건 자유 발화 번역 전용이다.
+         */
+        post: operations["chat_api_v1_chat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/voice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 점원 대화 — 음성 받아쓰기 + 번역
+         * @description 홀드-투-토크 녹음을 받아 Gemini 오디오로 전사+번역한다.
+         */
+        post: operations["chat_voice_api_v1_chat_voice_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Body_chat_voice_api_v1_chat_voice_post */
+        Body_chat_voice_api_v1_chat_voice_post: {
+            /**
+             * Audio
+             * Format: binary
+             * @description 짧은 발화 오디오 (webm/mp4/m4a 등)
+             */
+            audio: string;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "ko2local" | "local2ko";
+            /**
+             * Source Lang
+             * @default ja
+             */
+            source_lang: string;
+        };
         /** Body_scan_menu_api_v1_menu_scan_post */
         Body_scan_menu_api_v1_menu_scan_post: {
             /**
@@ -91,6 +150,43 @@ export interface components {
              * @default ko
              */
             target_lang: string;
+        };
+        /** ChatRequest */
+        ChatRequest: {
+            /**
+             * Text
+             * @description 번역할 한 문장
+             */
+            text: string;
+            /**
+             * Source Lang
+             * @description 현지어 BCP-47. 스캔 응답의 source_lang
+             * @default ja
+             */
+            source_lang: string;
+            /**
+             * Direction
+             * @description ko2local: 내 한국어→현지어 / local2ko: 점원 현지어→한국어
+             * @enum {string}
+             */
+            direction: "ko2local" | "local2ko";
+        };
+        /** ChatResponse */
+        ChatResponse: {
+            /**
+             * Translated
+             * @description 번역문. 방향에 따라 현지어 또는 한국어.
+             */
+            translated: string;
+            /**
+             * Reading
+             * @description ko2local 이면 번역한 현지어의 한국어 독음(소리내어 말할 때). 예: 'パクチー抜きで' → '파쿠치- 누키데'. local2ko 이면 빈 문자열.
+             */
+            reading: string;
+            /** Model */
+            model: string;
+            /** Latency Ms */
+            latency_ms: number;
         };
         /** ExplainRequest */
         ExplainRequest: {
@@ -331,6 +427,28 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VoiceResponse */
+        VoiceResponse: {
+            /**
+             * Source Text
+             * @description 말한 내용을 원래 언어 그대로 받아쓴 것
+             */
+            source_text: string;
+            /**
+             * Translated
+             * @description 번역문. 방향에 따라 현지어 또는 한국어.
+             */
+            translated: string;
+            /**
+             * Reading
+             * @description ko2local 이면 번역한 현지어의 한국어 독음. local2ko 이면 빈 문자열.
+             */
+            reading: string;
+            /** Model */
+            model: string;
+            /** Latency Ms */
+            latency_ms: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -413,6 +531,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExplainResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    chat_api_v1_chat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    chat_voice_api_v1_chat_voice_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_chat_voice_api_v1_chat_voice_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceResponse"];
                 };
             };
             /** @description Validation Error */

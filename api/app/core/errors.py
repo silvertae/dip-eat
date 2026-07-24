@@ -58,3 +58,11 @@ class UnreadableMenu(DipeatError):
     status_code = 422
     code = "unreadable_menu"
     message = "메뉴판을 읽지 못했어요. 글자가 잘 보이게 다시 찍어주세요."
+
+
+class UnclearAudio(DipeatError):
+    """음성을 알아듣지 못한 경우(짧거나 소음)."""
+
+    status_code = 422
+    code = "unclear_audio"
+    message = "잘 안 들렸어요. 다시 말해주세요."

@@ -17,3 +17,7 @@ __pycache__/
 .DS_Store
 samples/*
 !samples/.gitkeep
+
+# 디자인 핸드오프 번들(외부 레퍼런스, 앱 코드 아님)
+design_handoff_order_chat/
+dipeat-design-handoff/

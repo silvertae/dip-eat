@@ -1,9 +1,12 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router'
 import { TabBar } from './components/TabBar'
 import { CameraScreen } from './screens/CameraScreen'
+import { ChatScreen } from './screens/ChatScreen'
+import { DoneScreen } from './screens/DoneScreen'
 import { HomeScreen } from './screens/HomeScreen'
 import { LoadingScreen } from './screens/LoadingScreen'
 import { OnboardingScreen } from './screens/OnboardingScreen'
+import { OrderScreen } from './screens/OrderScreen'
 import { ResultScreen } from './screens/ResultScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { useProfile } from './store/profile'
@@ -36,10 +39,13 @@ export default function App() {
           <Route element={<TabLayout />}>
             <Route path="/" element={<RequireOnboarding><HomeScreen /></RequireOnboarding>} />
             <Route path="/result" element={<ResultScreen />} />
+            <Route path="/order" element={<OrderScreen />} />
+            <Route path="/chat" element={<ChatScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
           </Route>
           <Route path="/camera" element={<CameraScreen />} />
           <Route path="/loading" element={<LoadingScreen />} />
+          <Route path="/done" element={<DoneScreen />} />
         </Routes>
       </div>
     </BrowserRouter>
