@@ -1,11 +1,83 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { VitePWA } from 'vite-plugin-pwa'
 
 // 개발 서버의 /api 프록시는 프로덕션의 Vercel rewrites 와 같은 모양이다.
 // 덕분에 개발·프로덕션 모두 동일 출처가 되어 CORS 를 아예 만나지 않는다.
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    VitePWA({
+      // 'prompt': 새 버전이 있어도 자동 리로드하지 않는다. 업로드/녹음 중 강제 리로드로
+      // 작업이 날아가는 걸 막으려면 사용자에게 물어봐야 한다(main.tsx 에서 처리).
+      registerType: 'prompt',
+      // 매니페스트에 안 들어가지만 프리캐시하고 싶은 정적 자산.
+      includeAssets: ['favicon.svg', 'apple-touch-icon-180x180.png'],
+      manifest: {
+        name: '찍먹 — 메뉴판 번역',
+        short_name: '찍먹',
+        description: '해외 식당 메뉴판을 사진 한 장으로 해석·주문·점원 대화까지.',
+        lang: 'ko',
+        theme_color: '#ea5a34',
+        background_color: '#fff9f2',
+        display: 'standalone',
+        orientation: 'portrait',
+        start_url: '/',
+        scope: '/',
+        icons: [
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+          // 안드로이드 적응형 아이콘용. 콘텐츠가 안전영역 안에 있어 'any' 로도 쓴다.
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // SPA: 오프라인에서 어떤 경로로 들어와도 앱 셸을 띄운다. 단 /api 는 폴백 금지(백엔드 호출).
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//],
+        runtimeCaching: [
+          {
+            // 참고 이미지 메타데이터 검색(커먼즈 API). origin=* CORS 라 status 200.
+            urlPattern: /^https:\/\/commons\.wikimedia\.org\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'wikimedia-commons-api',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // 실제 썸네일 이미지 바이트. <img> 로 불러 opaque(status 0)라 성공/실패를 구분 못 한다.
+            // 그래서 CacheFirst 로 두면 일시적 404/429/5xx 가 30일간 박제된다. StaleWhileRevalidate
+            // 는 캐시를 먼저 주되 매번 백그라운드 재검증해, 잘못 캐시된 오류가 다음 열람에 자가 치유된다.
+            // (그래도 못 뜨는 이미지는 <img onError> 가 카테고리 이모지로 떨어뜨린다.)
+            urlPattern: /^https:\/\/upload\.wikimedia\.org\/.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'wikimedia-thumbs',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // 환율. 최신 우선, 실패 시 캐시(₩ 는 하드코딩 폴백도 있어 절대 안 죽는다).
+            urlPattern: /^https:\/\/open\.er-api\.com\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'fx-rates',
+              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
+      // 개발 중엔 SW 를 끈다(HMR 과 충돌·캐시 혼선 방지). 검증은 build + preview 로.
+      devOptions: { enabled: false },
+    }),
+  ],
   server: {
     // 실기기 테스트: `npm run dev -- --host` + Android 는 Chrome DevTools 포트 포워딩,
     // iOS 는 mkcert 인증서를 프로파일로 설치할 것. 평문 http LAN 주소는 secure context 가
