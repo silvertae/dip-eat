@@ -60,8 +60,25 @@ class UnreadableMenu(DipeatError):
     message = "메뉴판을 읽지 못했어요. 글자가 잘 보이게 다시 찍어주세요."
 
 
+class UnsupportedAudio(DipeatError):
+    """오디오가 아니거나 비어 있는 업로드. 이미지 오류(UnsupportedImage)와 구분해,
+    음성 실패에 JPEG/PNG 안내가 뜨지 않게 한다."""
+
+    status_code = 415
+    code = "unsupported_audio"
+    message = "지원하지 않는 오디오 형식이에요."
+
+
+class AudioTooLarge(DipeatError):
+    """녹음이 너무 길다. 과대 이미지(PayloadTooLarge)와 같은 413 이지만 오디오 문구를 쓴다."""
+
+    status_code = 413
+    code = "audio_too_large"
+    message = "녹음이 너무 길어요. 짧게 말해주세요."
+
+
 class UnclearAudio(DipeatError):
-    """음성을 알아듣지 못한 경우(짧거나 소음)."""
+    """모델이 오디오는 받았으나 알아듣지 못한 경우(짧거나 소음). 입력 거절(415/413)과 구분된다."""
 
     status_code = 422
     code = "unclear_audio"

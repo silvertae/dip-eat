@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
 
-from app.core.errors import UnsupportedImage
+from app.core.errors import AudioTooLarge, UnsupportedAudio
 from app.schemas.chat import ChatRequest, ChatResponse, VoiceResponse
 from app.services.gemini import GeminiService
 
@@ -47,12 +47,12 @@ async def chat_voice(
     """홀드-투-토크 녹음을 받아 Gemini 오디오로 전사+번역한다."""
     raw = await audio.read()
     if not raw:
-        raise UnsupportedImage("오디오가 비어 있어요.")
+        raise UnsupportedAudio("오디오가 비어 있어요.", detail="empty upload")
     if len(raw) > _MAX_AUDIO_BYTES:
-        raise UnsupportedImage("녹음이 너무 길어요. 짧게 말해주세요.")
+        raise AudioTooLarge(detail=f"bytes={len(raw)}")
     mime = audio.content_type or "audio/webm"
     if not mime.startswith(_AUDIO_PREFIXES):
-        raise UnsupportedImage(detail=f"content_type={mime}")
+        raise UnsupportedAudio(detail=f"content_type={mime}")
 
     started = time.perf_counter()
     gemini: GeminiService = request.app.state.gemini
