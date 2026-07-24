@@ -10,6 +10,8 @@ from app.main import create_app
 from app.schemas.menu import (
     ItemExplanation,
     LikelyAllergen,
+    LocatedBox,
+    LocateResult,
     MenuExtraction,
     MenuItemSummary,
     Restaurant,
@@ -17,6 +19,7 @@ from app.schemas.menu import (
 from app.schemas.chat import Translation, VoiceResult
 from app.services.gemini import (
     ExplainOutcome,
+    LocateOutcome,
     ScanOutcome,
     TranslateOutcome,
     Usage,
@@ -85,11 +88,28 @@ def sample_explanation() -> ItemExplanation:
     )
 
 
+def sample_locate() -> LocateResult:
+    return LocateResult(
+        boxes=[
+            # 0~1000 → 라우트가 0~1 로 변환: x .08 y .13 w .68 h .05
+            LocatedBox(
+                index=1, name_local="ラフテー", found=True,
+                ymin=130, xmin=80, ymax=180, xmax=760,
+            ),
+            LocatedBox(
+                index=2, name_local="ゴーヤーチャンプルー", found=False,
+                ymin=0, xmin=0, ymax=0, xmax=0,
+            ),
+        ]
+    )
+
+
 class FakeGemini:
     """네트워크 없이 라우트/에러매핑을 검증하기 위한 대역."""
 
-    def __init__(self, result=None, error: Exception | None = None):
+    def __init__(self, result=None, error: Exception | None = None, locate_result=None):
         self.result = result if result is not None else sample_extraction()
+        self.locate_result = locate_result if locate_result is not None else sample_locate()
         self.error = error
         self.calls: list[dict] = []
 
@@ -111,6 +131,16 @@ class FakeGemini:
             explanation=sample_explanation(),
             model="fake-model",
             usage=Usage(input_tokens=200, output_tokens=380),
+        )
+
+    async def locate_items(self, image, targets, *, models=None):
+        self.calls.append({"locate": [t.name_local for t in targets], "px": image.px})
+        if self.error:
+            raise self.error
+        return LocateOutcome(
+            result=self.locate_result,
+            model="fake-model",
+            usage=Usage(input_tokens=1100, output_tokens=120),
         )
 
     async def translate(self, req, *, models=None):

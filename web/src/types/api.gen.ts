@@ -66,6 +66,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/menu/locate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 장바구니 항목을 메뉴판 사진 위에서 찾기 (사진에서 확인 탭)
+         * @description 사용자가 '사진에서 확인' 탭을 열 때만 호출한다. 대상은 장바구니의 몇 개뿐이라
+         *     목록 스캔처럼 항목 수로 곱해지지 않는다. 좌표는 Gemini 네이티브 0~1000 을 받아 0~1 로 변환해 내려준다.
+         */
+        post: operations["locate_items_api_v1_menu_locate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chat": {
         parameters: {
             query?: never;
@@ -128,6 +149,20 @@ export interface components {
              * @default ja
              */
             source_lang: string;
+        };
+        /** Body_locate_items_api_v1_menu_locate_post */
+        Body_locate_items_api_v1_menu_locate_post: {
+            /**
+             * Image
+             * Format: binary
+             * @description 메뉴판 사진 (스캔 때와 같은 축소본)
+             */
+            image: string;
+            /**
+             * Targets
+             * @description 찾을 항목 JSON. 예: [{"index":1,"name_local":"ラフテー","section":"돼지고기 요리"}]
+             */
+            targets: string;
         };
         /** Body_scan_menu_api_v1_menu_scan_post */
         Body_scan_menu_api_v1_menu_scan_post: {
@@ -262,6 +297,38 @@ export interface components {
             has_api_key: boolean;
         };
         /**
+         * ItemBox
+         * @description 한 항목의 정규화 위치(0~1). 서버가 Gemini 의 0~1000 을 변환해 내려준다.
+         */
+        ItemBox: {
+            /** Index */
+            index: number;
+            /** Name Local */
+            name_local: string;
+            /** Found */
+            found: boolean;
+            /**
+             * X
+             * @description 왼쪽. 이미지 너비 대비 0~1 (좌상단 원점, 세운 이미지 기준)
+             */
+            x: number;
+            /**
+             * Y
+             * @description 위쪽. 이미지 높이 대비 0~1
+             */
+            y: number;
+            /**
+             * W
+             * @description 너비 0~1
+             */
+            w: number;
+            /**
+             * H
+             * @description 높이 0~1
+             */
+            h: number;
+        };
+        /**
          * LikelyAllergen
          * @description ⚠️ 메뉴판에서 '읽은' 사실이 아니라 요리 지식에서 '추론한' 값이다.
          *
@@ -295,6 +362,15 @@ export interface components {
              * @enum {string}
              */
             confidence: "high" | "medium" | "low";
+        };
+        /** LocateResponse */
+        LocateResponse: {
+            /** Boxes */
+            boxes: components["schemas"]["ItemBox"][];
+            /** Model */
+            model: string;
+            /** Latency Ms */
+            latency_ms: number;
         };
         /**
          * MenuItemSummary
@@ -531,6 +607,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExplainResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    locate_items_api_v1_menu_locate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_locate_items_api_v1_menu_locate_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocateResponse"];
                 };
             };
             /** @description Validation Error */

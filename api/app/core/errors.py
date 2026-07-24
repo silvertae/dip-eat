@@ -26,6 +26,14 @@ class UnsupportedImage(DipeatError):
     message = "지원하지 않는 이미지 형식이에요. JPEG·PNG·WEBP 로 올려주세요."
 
 
+class InvalidRequest(DipeatError):
+    """요청 본문이 형식에 맞지 않는 경우(예: /menu/locate 의 targets JSON 파싱 실패·빈 목록)."""
+
+    status_code = 422
+    code = "invalid_request"
+    message = "요청 형식이 올바르지 않아요."
+
+
 class UpstreamTimeout(DipeatError):
     status_code = 504
     code = "upstream_timeout"

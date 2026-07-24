@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     gemini_timeout_s: float = 45.0
     gemini_max_attempts: int = 2
 
+    # --- 위치 찾기(/menu/locate) 전용 ---------------------------------------
+    # 바운딩 박스는 OCR 과 달리 '공간 그라운딩' 과제라 lite 모델이 약하다(상단 항목의 상자가
+    # 텍스트 위 여백에 얹히는 실기기 사례). locate 는 on-demand·소수 항목이라 스캔 지연에
+    # 영향을 안 주므로, 여기서는 정확도를 위해 상위 모델과 약간의 사고 예산을 쓴다.
+    gemini_locate_model: str = "gemini-3.6-flash"
+    gemini_locate_thinking_level: ThinkingLevel = "low"
+
     # --- 업로드 -------------------------------------------------------------
     # 클라이언트가 2048px/q0.78 로 줄여 보내면 보통 350~700KB. 여유를 둬서 8MB.
     max_upload_bytes: int = 8 * 1024 * 1024

@@ -12,6 +12,10 @@ export type ExplainRequest = components['schemas']['ExplainRequest']
 export type ExplainResponse = components['schemas']['ExplainResponse']
 export type LikelyAllergen = components['schemas']['LikelyAllergen']
 
+/** 3단계: '사진에서 확인' 탭. 장바구니 항목의 사진 속 위치(0~1 정규화). */
+export type LocateResponse = components['schemas']['LocateResponse']
+export type ItemBox = components['schemas']['ItemBox']
+
 export type MenuTag = MenuItem['tags'][number]
 export type AllergenCode = MenuItem['allergens'][number]
 export type CaptureMode = 'poster' | 'booklet' | 'kiosk'

@@ -112,6 +112,48 @@
         }
       }
     },
+    "/api/v1/menu/locate": {
+      "post": {
+        "tags": [
+          "menu"
+        ],
+        "summary": "장바구니 항목을 메뉴판 사진 위에서 찾기 (사진에서 확인 탭)",
+        "description": "사용자가 '사진에서 확인' 탭을 열 때만 호출한다. 대상은 장바구니의 몇 개뿐이라\n목록 스캔처럼 항목 수로 곱해지지 않는다. 좌표는 Gemini 네이티브 0~1000 을 받아 0~1 로 변환해 내려준다.",
+        "operationId": "locate_items_api_v1_menu_locate_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_locate_items_api_v1_menu_locate_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/chat": {
       "post": {
         "tags": [
@@ -227,6 +269,27 @@
           "direction"
         ],
         "title": "Body_chat_voice_api_v1_chat_voice_post"
+      },
+      "Body_locate_items_api_v1_menu_locate_post": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "format": "binary",
+            "title": "Image",
+            "description": "메뉴판 사진 (스캔 때와 같은 축소본)"
+          },
+          "targets": {
+            "type": "string",
+            "title": "Targets",
+            "description": "찾을 항목 JSON. 예: [{\"index\":1,\"name_local\":\"ラフテー\",\"section\":\"돼지고기 요리\"}]"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image",
+          "targets"
+        ],
+        "title": "Body_locate_items_api_v1_menu_locate_post"
       },
       "Body_scan_menu_api_v1_menu_scan_post": {
         "properties": {
@@ -445,6 +508,54 @@
         ],
         "title": "Health"
       },
+      "ItemBox": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "name_local": {
+            "type": "string",
+            "title": "Name Local"
+          },
+          "found": {
+            "type": "boolean",
+            "title": "Found"
+          },
+          "x": {
+            "type": "number",
+            "title": "X",
+            "description": "왼쪽. 이미지 너비 대비 0~1 (좌상단 원점, 세운 이미지 기준)"
+          },
+          "y": {
+            "type": "number",
+            "title": "Y",
+            "description": "위쪽. 이미지 높이 대비 0~1"
+          },
+          "w": {
+            "type": "number",
+            "title": "W",
+            "description": "너비 0~1"
+          },
+          "h": {
+            "type": "number",
+            "title": "H",
+            "description": "높이 0~1"
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "name_local",
+          "found",
+          "x",
+          "y",
+          "w",
+          "h"
+        ],
+        "title": "ItemBox",
+        "description": "한 항목의 정규화 위치(0~1). 서버가 Gemini 의 0~1000 을 변환해 내려준다."
+      },
       "LikelyAllergen": {
         "properties": {
           "code": {
@@ -519,6 +630,32 @@
         ],
         "title": "LikelyAllergen",
         "description": "⚠️ 메뉴판에서 '읽은' 사실이 아니라 요리 지식에서 '추론한' 값이다.\n\nUI 는 반드시 추정임을 고지해야 한다. 식품 안전 문제라 이 구분이 중요하다."
+      },
+      "LocateResponse": {
+        "properties": {
+          "boxes": {
+            "items": {
+              "$ref": "#/components/schemas/ItemBox"
+            },
+            "type": "array",
+            "title": "Boxes"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "boxes",
+          "model",
+          "latency_ms"
+        ],
+        "title": "LocateResponse"
       },
       "MenuItemSummary": {
         "properties": {

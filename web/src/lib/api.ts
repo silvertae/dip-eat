@@ -3,8 +3,16 @@ import type {
   CaptureMode,
   ExplainRequest,
   ExplainResponse,
+  LocateResponse,
   MenuScanResponse,
 } from '../types/api'
+
+/** '사진에서 확인' 이 보내는 대상 항목. index 는 1부터, 응답 박스와 1:1 로 맞춘다. */
+export interface LocateTarget {
+  index: number
+  name_local: string
+  section: string
+}
 
 /** 서버가 내려준 한국어 메시지를 그대로 사용자에게 보여주기 위한 에러. */
 export class ApiError extends Error {
@@ -79,6 +87,31 @@ export async function explainItem(
 
   if (!resp.ok) throw await toApiError(resp)
   return (await resp.json()) as ExplainResponse
+}
+
+/** 3단계: '사진에서 확인' 탭을 열 때만. 축소본 사진 + 장바구니 대상 → 각 항목의 사진 속 위치.
+ *
+ *  사진(Gemini 가 스캔 때 본 것과 같은 축소 Blob)을 다시 보내는 비전 호출이라, 목록 스캔처럼
+ *  항목 수로 곱해지진 않아도 텍스트 전용 explain 보다는 무겁다. 좌표는 scan_id 별로 캐시할 것. */
+export async function locateItems(
+  image: Blob,
+  targets: LocateTarget[],
+  { signal }: { signal?: AbortSignal } = {},
+): Promise<LocateResponse> {
+  const form = new FormData()
+  form.append('image', image, 'menu.jpg')
+  form.append('targets', JSON.stringify(targets))
+
+  let resp: Response
+  try {
+    resp = await fetch('/api/v1/menu/locate', { method: 'POST', body: form, signal })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err
+    throw new ApiError(0, GENERIC)
+  }
+
+  if (!resp.ok) throw await toApiError(resp)
+  return (await resp.json()) as LocateResponse
 }
 
 /** 점원 대화 — 자유 발화 번역. 주문 카드는 이걸 부르지 않는다(오프라인 조립). */

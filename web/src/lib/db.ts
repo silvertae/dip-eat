@@ -10,10 +10,14 @@
  */
 
 import { createStore, del, get, set, values } from 'idb-keyval'
-import type { MenuScanResponse } from '../types/api'
+import type { ItemBox, MenuScanResponse } from '../types/api'
 
 /** 프로필(localStorage 'dipeat:profile')·세션(localStorage 'dipeat:session')과 별개의 DB. */
 const recentsStore = createStore('dipeat', 'recents')
+/** '사진에서 확인' 좌표 캐시. 항목 좌표는 수량과 무관하므로 scan_id 별로 itemKey→박스 로 쌓는다.
+ *  ⚠️ idb-keyval 은 한 DB 에 스토어를 하나만 만든다(버전 업그레이드를 안 하므로 두 번째 스토어는
+ *  생성되지 않는다). 그래서 recents 와 같은 DB('dipeat')가 아니라 **별도 DB** 를 쓴다. */
+const locatesStore = createStore('dipeat-locates', 'locates')
 
 export interface RecentScan {
   scanId: string
@@ -45,6 +49,18 @@ export async function getRecent(scanId: string): Promise<RecentScan | undefined>
 
 export async function removeRecent(scanId: string): Promise<void> {
   await del(scanId, recentsStore)
+  await del(scanId, locatesStore) // 형제 좌표 캐시도 함께 정리
+}
+
+/** '사진에서 확인' 좌표 캐시 읽기(itemKey → 박스). 없으면 빈 객체. */
+export async function getLocates(scanId: string): Promise<Record<string, ItemBox>> {
+  return ((await get(scanId, locatesStore)) as Record<string, ItemBox> | undefined) ?? {}
+}
+
+/** 새로 찾은 좌표를 기존 캐시에 병합해 저장. 이미 찾은 항목은 재호출하지 않으려는 것. */
+export async function mergeLocates(scanId: string, add: Record<string, ItemBox>): Promise<void> {
+  const prev = await getLocates(scanId)
+  await set(scanId, { ...prev, ...add }, locatesStore)
 }
 
 /** N개를 넘으면 오래된 것부터 지운다. */

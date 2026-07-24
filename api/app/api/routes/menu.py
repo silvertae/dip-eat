@@ -6,17 +6,24 @@ import uuid
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
+from pydantic import TypeAdapter, ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import Settings, get_settings
+from app.core.errors import InvalidRequest
 from app.schemas.menu import (
     ExplainRequest,
     ExplainResponse,
+    ItemBox,
+    LocateResponse,
+    LocateTarget,
     MenuScanResponse,
     ScanMeta,
 )
 from app.services.gemini import GeminiService
 from app.services.image import prepare_image
+
+_TARGETS_ADAPTER = TypeAdapter(list[LocateTarget])
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["menu"])
@@ -92,3 +99,68 @@ async def explain_item(request: Request, body: ExplainRequest) -> ExplainRespons
         model=outcome.model,
         latency_ms=latency_ms,
     )
+
+
+@router.post(
+    "/menu/locate",
+    response_model=LocateResponse,
+    summary="장바구니 항목을 메뉴판 사진 위에서 찾기 (사진에서 확인 탭)",
+)
+async def locate_items(
+    request: Request,
+    image: Annotated[UploadFile, File(description="메뉴판 사진 (스캔 때와 같은 축소본)")],
+    targets: Annotated[
+        str,
+        Form(description='찾을 항목 JSON. 예: [{"index":1,"name_local":"ラフテー","section":"돼지고기 요리"}]'),
+    ],
+) -> LocateResponse:
+    """사용자가 '사진에서 확인' 탭을 열 때만 호출한다. 대상은 장바구니의 몇 개뿐이라
+    목록 스캔처럼 항목 수로 곱해지지 않는다. 좌표는 Gemini 네이티브 0~1000 을 받아 0~1 로 변환해 내려준다.
+    """
+    settings: Settings = get_settings()
+    started = time.perf_counter()
+
+    # targets 는 멀티파트 폼 필드라 Pydantic 리스트로 자동 바인딩되지 않는다 — JSON 문자열을 직접 검증한다.
+    try:
+        parsed_targets = _TARGETS_ADAPTER.validate_json(targets)
+    except ValidationError as exc:
+        raise InvalidRequest(detail=f"bad targets: {exc}") from exc
+    if not parsed_targets:
+        raise InvalidRequest(detail="empty targets")
+
+    raw = await image.read()
+    prepared = await run_in_threadpool(
+        prepare_image,
+        raw,
+        target_long_edge=settings.target_long_edge,
+        jpeg_quality=settings.jpeg_quality,
+    )
+
+    gemini: GeminiService = request.app.state.gemini
+    outcome = await gemini.locate_items(prepared, parsed_targets)
+
+    def norm(v: int) -> float:
+        # 0~1000 → 0~1. 모델이 범위를 벗어난 값을 줄 수 있어 방어적으로 clamp.
+        return min(1.0, max(0.0, v / 1000.0))
+
+    boxes = [
+        ItemBox(
+            index=b.index,
+            name_local=b.name_local,
+            found=b.found,
+            x=norm(b.xmin),
+            y=norm(b.ymin),
+            w=max(0.0, norm(b.xmax) - norm(b.xmin)),
+            h=max(0.0, norm(b.ymax) - norm(b.ymin)),
+        )
+        for b in outcome.result.boxes
+    ]
+
+    latency_ms = int((time.perf_counter() - started) * 1000)
+    log.info(
+        "menu.locate ok targets=%d found=%d model=%s px=%s tok_in=%d tok_out=%d latency_ms=%d",
+        len(parsed_targets), sum(1 for b in boxes if b.found), outcome.model, prepared.px,
+        outcome.usage.input_tokens, outcome.usage.output_tokens, latency_ms,
+    )
+
+    return LocateResponse(boxes=boxes, model=outcome.model, latency_ms=latency_ms)

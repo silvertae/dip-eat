@@ -149,7 +149,70 @@ class ItemExplanation(BaseModel):
     )
 
 
+# --- 3단계: 위치 찾기 (장바구니 항목 몇 개 → 사진 속 좌표) ----------------------
+# 사진을 다시 보내지만 대상이 '장바구니의 몇 개'뿐이라 목록 스캔처럼 항목 수로 곱해지지 않는다.
+# 사용자가 '사진에서 확인' 탭을 열 때만 호출한다. 좌표를 목록(MenuItemSummary)에 넣지 않는 이유가 이것.
+
+
+class LocateTarget(BaseModel):
+    """사진에서 위치를 찾을 항목 하나. 클라이언트가 장바구니에서 만들어 보낸다."""
+
+    index: int = Field(description="이 항목의 번호(1부터). 응답 박스의 index 와 1:1 로 맞춘다.")
+    name_local: str = Field(
+        description="메뉴판에 적힌 원문 그대로(1단계 name_local). 이 글자를 사진에서 찾는다."
+    )
+    section: str = Field(
+        default="",
+        description="이 항목이 속한 분류(있으면). 같은 이름이 여러 번 나올 때 어느 것인지 고르는 힌트.",
+    )
+
+
+class LocatedBox(BaseModel):
+    """Gemini 가 채우는 한 항목의 위치. 좌표는 Gemini 네이티브 규약(0~1000 정수, 좌상단 원점)."""
+
+    index: int = Field(
+        description="요청 targets 의 index 를 그대로 되돌려준다. 순서가 섞여도 이 값으로 맞춘다."
+    )
+    name_local: str = Field(description="요청받은 name_local 을 그대로 되돌려준다(대조 확인용).")
+    found: bool = Field(
+        description="이 항목의 글자를 사진에서 실제로 찾았으면 true. 못 찾았으면 false 로 두고 좌표는 전부 0. "
+        "안 보이는 항목을 지어내서 아무 데나 상자를 치지 말 것 — 틀린 위치는 없느니만 못하다."
+    )
+    ymin: int = Field(
+        description="항목 텍스트를 감싸는 사각형의 위쪽 경계. 이미지 높이를 0~1000 으로 본 값(맨 위=0, 맨 아래=1000)."
+    )
+    xmin: int = Field(description="왼쪽 경계. 이미지 너비 0~1000(맨 왼쪽=0, 맨 오른쪽=1000).")
+    ymax: int = Field(description="아래쪽 경계(0~1000). 반드시 ymax > ymin.")
+    xmax: int = Field(description="오른쪽 경계(0~1000). 반드시 xmax > xmin.")
+
+
+class LocateResult(BaseModel):
+    """Gemini 의 response_schema. 서버가 만드는 값(model, latency)은 여기 없다."""
+
+    boxes: list[LocatedBox] = Field(
+        description="요청한 모든 항목마다 정확히 한 개씩. 못 찾은 항목도 found=false 로 반드시 포함할 것."
+    )
+
+
 # --- API 응답 (Gemini 스키마 아님) -------------------------------------------
+
+
+class ItemBox(BaseModel):
+    """한 항목의 정규화 위치(0~1). 서버가 Gemini 의 0~1000 을 변환해 내려준다."""
+
+    index: int
+    name_local: str
+    found: bool
+    x: float = Field(description="왼쪽. 이미지 너비 대비 0~1 (좌상단 원점, 세운 이미지 기준)")
+    y: float = Field(description="위쪽. 이미지 높이 대비 0~1")
+    w: float = Field(description="너비 0~1")
+    h: float = Field(description="높이 0~1")
+
+
+class LocateResponse(BaseModel):
+    boxes: list[ItemBox]
+    model: str
+    latency_ms: int
 
 
 class ScanMeta(BaseModel):
