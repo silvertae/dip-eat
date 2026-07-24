@@ -32,6 +32,8 @@ export function MenuCard({
   const [detail, setDetail] = useState<ExplainResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // 상세 참고 이미지가 못 뜨면(썸네일과 같은 이유) 이미지 블록 자체를 숨긴다.
+  const [detailImgBroken, setDetailImgBroken] = useState(false)
 
   const toggle = useCallback(async () => {
     if (detail) return setDetail(null)
@@ -169,11 +171,12 @@ export function MenuCard({
 
       {detail && (
         <div className="mt-3 border-t border-line pt-3">
-          {image && (
+          {image && !detailImgBroken && (
             <figure className="mb-3">
               <img
                 src={image.url}
                 alt={`${item.name_translated} 참고 이미지`}
+                onError={() => setDetailImgBroken(true)}
                 className="h-[150px] w-full rounded-[18px] object-cover"
               />
               {/* 이 식당의 실제 음식이 아니라 같은 요리의 일반 사진이다.

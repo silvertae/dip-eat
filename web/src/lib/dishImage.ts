@@ -134,7 +134,8 @@ async function searchCommons(query: string): Promise<DishImage | null> {
     iiextmetadatafilter: 'LicenseShortName|LicenseUrl|Artist|AttributionRequired',
   })
   const resp = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`)
-  if (!resp.ok) return null
+  // 일시적 오류(429·5xx)는 '못 찾음'이 아니다 — 던져서 miss 로 캐시되지 않게 한다.
+  if (!resp.ok) throw new Error(`commons ${resp.status}`)
 
   const body = (await resp.json()) as { query?: { pages?: Record<string, CommonsFile> } }
   const files = Object.values(body.query?.pages ?? {})
@@ -158,7 +159,11 @@ async function searchCommons(query: string): Promise<DishImage | null> {
   return null
 }
 
-const inflight = new Map<string, Promise<DishImage | null>>()
+/** failed=true 는 네트워크/서버 오류(오프라인 포함) — 캐시하지 않고 다음에 다시 시도한다.
+ *  failed=false + image=null 은 '진짜 못 찾음' — miss 로 캐시해 반복 조회를 막는다. */
+type Lookup = { image: DishImage | null; failed: boolean }
+
+const inflight = new Map<string, Promise<Lookup>>()
 const MAX_CONCURRENT = 4
 let active = 0
 const queue: (() => void)[] = []
@@ -188,14 +193,21 @@ export async function fetchDishImage(item: MenuItem): Promise<DishImage | null> 
   let pending = inflight.get(key)
   if (!pending) {
     pending = acquire()
-      .then(async () => {
+      .then<Lookup>(async () => {
+        // query 마다 오류를 격리한다 — image_query 가 일시 오류여도 원문명(name_local)으로 넘어가 본다.
+        let sawError = false
         for (const q of queries) {
-          const hit = await searchCommons(q).catch(() => null)
-          if (hit) return hit
+          try {
+            const hit = await searchCommons(q)
+            if (hit) return { image: hit, failed: false }
+          } catch {
+            sawError = true // 네트워크·429·5xx — 다음 query 시도
+          }
         }
-        return null
+        // 하나라도 오류가 있었으면 '진짜 못 찾음'이 아니다 → miss 로 캐시하지 않고 다음에 재시도.
+        return { image: null, failed: sawError }
       })
-      .catch(() => null)
+      .catch<Lookup>(() => ({ image: null, failed: true })) // 예기치 못한 오류도 캐시하지 않는다
       .finally(() => {
         release()
         inflight.delete(key)
@@ -203,8 +215,8 @@ export async function fetchDishImage(item: MenuItem): Promise<DishImage | null> 
     inflight.set(key, pending)
   }
 
-  const image = await pending
-  writeCache(key, image)
+  const { image, failed } = await pending
+  if (!failed) writeCache(key, image)
   return image
 }
 

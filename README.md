@@ -1,7 +1,7 @@
 # 찍먹 (dipeat)
 
 해외 식당에서 **메뉴판을 사진 한 장 찍으면** 해석·설명·주문·점원 대화까지 이어주는 모바일 웹 MVP.
-PWA 설치와 오프라인 복원은 다음 Phase 5 범위다.
+설치형 PWA(오프라인 앱 셸·세션 복원·최근 식당 재열람)까지 구현했다(Phase 5).
 
 - 프론트: React + TypeScript + Vite + Tailwind v4 → **Vercel**
 - 백엔드: Python 3.13 + FastAPI → **Google Cloud Run (서울 asia-northeast3)**
@@ -66,9 +66,16 @@ PWA 설치와 오프라인 복원은 다음 Phase 5 범위다.
 | 프론트 촬영→업로드→결과 | ✅ 분류 접기·필터·알레르기 경고·원화 환산·장바구니 |
 | 온보딩·홈·주문서·설정 화면 | ✅ 프로필(알레르기·비선호·예산) 로컬 저장 |
 | 주문서·대화 (독립 화면) | ✅ 오프라인 주문 카드(일본어) + push-to-talk 음성 통역 + 빠른 응답 |
-| Wikimedia Commons 참고 이미지·저작권 표기 | ✅ |
-| PWA / 오프라인 캐시·복원 | ⬜ Phase 5 |
+| Wikimedia Commons 참고 이미지·저작권 표기 | ✅ (썸네일 오프라인 캐시 + 실패 시 이모지 폴백) |
+| PWA(설치·오프라인 앱 셸·세션 복원·최근 식당) | ✅ Phase 5 — 아래 참조 |
 | 결제·주문 완료 화면 | 결제 ❌ 범위 제외 / 완료 화면(`/done`)은 코드만 있고 현재 흐름에서 빠짐 |
+
+> **Phase 5 (PWA·오프라인).** `vite-plugin-pwa`(`registerType: 'prompt'` — 업로드·녹음 중
+> 강제 리로드 금지). 스캔 세션(결과·장바구니·대화)은 zustand persist(localStorage
+> `dipeat:session`)로 **동기 복원**돼 새로고침·재실행에도 화면이 살아남는다. 촬영 축소본과
+> 최근 식당 목록은 IndexedDB(`idb-keyval`, 최근 12개)에 저장한다 — 사진은 iOS 5MB 상한 때문에
+> localStorage 에 넣지 않는다. 새 스캔은 네트워크가 필요하지만, **이미 스캔한 식당은 오프라인에서
+> 다시 열 수 있다.**
 
 > **대화 화면**은 목업 핸드오프대로 push-to-talk 세그먼트 토글이다 — 탭=언어 전환(스프링
 > 썸 슬라이드), 홀드>170ms=녹음(소나+이퀄라이저), 떼면 전송. `나` 홀드→내 한국어를 일본어로,
@@ -100,7 +107,8 @@ Vite 개발 서버가 `/api` 를 `127.0.0.1:8000` 으로 프록시한다. 프로
 
 `npm run dev -- --host` 만으로는 LAN 주소가 평문 http 라 **secure context 가 아니다.**
 현재 사진 촬영은 `<input capture>`라 LAN에서도 열리지만, 음성 대화의 `getUserMedia`와
-향후 service worker/PWA는 HTTPS가 필요하다.
+service worker/PWA(설치·오프라인)는 HTTPS가 필요하다 — 실기기 PWA 검증은 mkcert 인증서 또는
+Vercel 프리뷰 URL로. (개발 모드는 SW 를 끈다 — `npm run build && npm run preview` 로 검증.)
 
 - Android: Chrome DevTools → Port forwarding (localhost 는 secure 로 취급됨). 음성 대화 테스트에 인증서 작업 불필요.
 - iOS: `mkcert` 인증서를 만들어 Vite `server.https` 에 물리고, 아이폰에 **구성 프로파일로 설치한 뒤

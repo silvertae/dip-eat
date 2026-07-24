@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router'
 import { BudgetGauge } from '../components/BudgetGauge'
+import { RecentScans } from '../components/RecentScans'
 import { CameraIcon, GearIcon } from '../components/icons'
 import { cartLines, cartTotals } from '../lib/cart'
 import { ALLERGY_CHOICES, dislikeLabel } from '../lib/profileOptions'
@@ -74,15 +75,7 @@ export function HomeScreen() {
         ))}
       </div>
 
-      {scan && (
-        <Link to="/result" className="rounded-2xl border border-line bg-white p-4">
-          <p className="text-[13px] text-muted">최근 스캔</p>
-          <p className="mt-1 font-local text-base font-extrabold">
-            {scan.restaurant.name_local || '이름 미인식'}
-          </p>
-          <p className="mt-1 text-xs text-muted">{scan.items.length}개 · 다시 보기 →</p>
-        </Link>
-      )}
+      <RecentScans />
 
       <hr className="border-line" />
 
