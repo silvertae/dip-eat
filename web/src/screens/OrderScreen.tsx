@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { ChatIcon } from '../components/icons'
+import { MenuPhotoHighlight } from '../components/MenuPhotoHighlight'
 import { cartLines } from '../lib/cart'
 import { formatKrw, formatLocal, rateNow } from '../lib/fx'
 import { buildOrderCard } from '../lib/orderPhrases'
@@ -17,6 +18,7 @@ function Order({ scan }: { scan: MenuScanResponse }) {
   const navigate = useNavigate()
   const cart = useApp((s) => s.cart)
   const dislikes = useProfile((s) => s.dislikes)
+  const [orderTab, setOrderTab] = useState<'card' | 'photo'>('card')
 
   const lines = useMemo(() => cartLines(scan.items, cart), [scan.items, cart])
   const card = useMemo(
@@ -34,16 +36,36 @@ function Order({ scan }: { scan: MenuScanResponse }) {
           <p className="mt-[3px] text-xs text-muted">이 화면을 그대로 점원에게 보여주세요</p>
         </header>
 
-        {/* 정적 전환 pill (지금은 표시만) */}
+        {/* 주문 카드 ↔ 사진에서 확인 전환 */}
         <div className="mb-3 flex gap-[7px]">
-          <span className="rounded-full bg-ink px-[13px] py-2 text-xs font-bold text-white">
+          <button
+            type="button"
+            onClick={() => setOrderTab('card')}
+            className={`rounded-full px-[13px] py-2 text-xs font-bold ${
+              orderTab === 'card'
+                ? 'bg-ink text-white'
+                : 'border border-line bg-white text-[#6a564a]'
+            }`}
+          >
             주문 카드
-          </span>
-          <span className="rounded-full border border-line bg-white px-[13px] py-2 text-xs font-bold text-[#6a564a]">
+          </button>
+          <button
+            type="button"
+            onClick={() => setOrderTab('photo')}
+            className={`rounded-full px-[13px] py-2 text-xs font-bold ${
+              orderTab === 'photo'
+                ? 'bg-ink text-white'
+                : 'border border-line bg-white text-[#6a564a]'
+            }`}
+          >
             사진에서 확인
-          </span>
+          </button>
         </div>
 
+        {orderTab === 'photo' ? (
+          <MenuPhotoHighlight lines={lines} scan={scan} />
+        ) : (
+          <>
         {/* 점원에게 보여줄 주문 카드 (오프라인, 서버 안 부름) */}
         <div className="rounded-[20px] border border-line bg-gradient-to-b from-white to-[#FFF3EC] p-[18px] shadow-[0_10px_24px_-12px_rgba(234,90,52,.28)]">
           {card.intro ? (
@@ -107,6 +129,8 @@ function Order({ scan }: { scan: MenuScanResponse }) {
           <p className="mt-2 text-[11px] text-amber-700">
             가격을 읽지 못한 {card.missingPrice}개는 합계에서 빠졌어요
           </p>
+        )}
+          </>
         )}
       </div>
 

@@ -33,7 +33,13 @@ from app.core.errors import (
     UpstreamTimeout,
 )
 from app.schemas.chat import ChatRequest, Translation, VoiceResult
-from app.schemas.menu import ExplainRequest, ItemExplanation, MenuExtraction
+from app.schemas.menu import (
+    ExplainRequest,
+    ItemExplanation,
+    LocateResult,
+    LocateTarget,
+    MenuExtraction,
+)
 from app.services.image import PreparedImage
 
 log = logging.getLogger(__name__)
@@ -43,6 +49,7 @@ _NON_RETRYABLE = {400, 401, 403, 404}
 
 _PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 _MENU_SCAN_PROMPT = (_PROMPT_DIR / "menu_scan.md").read_text(encoding="utf-8")
+_MENU_LOCATE_PROMPT = (_PROMPT_DIR / "menu_locate.md").read_text(encoding="utf-8")
 _ITEM_EXPLAIN_PROMPT = (_PROMPT_DIR / "item_explain.md").read_text(encoding="utf-8")
 _CHAT_TRANSLATE_PROMPT = (_PROMPT_DIR / "chat_translate.md").read_text(encoding="utf-8")
 _CHAT_VOICE_PROMPT = (_PROMPT_DIR / "chat_voice.md").read_text(encoding="utf-8")
@@ -79,6 +86,13 @@ class ScanOutcome:
 @dataclass(slots=True)
 class ExplainOutcome:
     explanation: ItemExplanation
+    model: str
+    usage: Usage
+
+
+@dataclass(slots=True)
+class LocateOutcome:
+    result: LocateResult
     model: str
     usage: Usage
 
@@ -132,6 +146,44 @@ class GeminiService:
                 raise UnreadableMenu(detail=f"empty items model={model}")
             return ScanOutcome(extraction=parsed, model=model, usage=usage)
 
+        return await self._with_fallback(call, models)
+
+    async def locate_items(
+        self, image: PreparedImage, targets: list[LocateTarget], *, models: list[str] | None = None
+    ) -> LocateOutcome:
+        """장바구니 항목 몇 개의 사진 속 위치(바운딩 박스). 대상이 적어 목록 스캔처럼 곱해지지 않는다.
+
+        사용자가 주문서의 '사진에서 확인' 탭을 열 때만 호출한다. 사진을 다시 보내는 비전 호출.
+        """
+
+        async def call(model: str) -> LocateOutcome:
+            listing = "\n".join(
+                f"{t.index}. {t.name_local}" + (f"  (분류: {t.section})" if t.section else "")
+                for t in targets
+            )
+            parsed, usage = await self._generate(
+                model=model,
+                contents=[
+                    types.Part.from_bytes(data=image.data, mime_type=image.mime_type),
+                    types.Part.from_text(
+                        text="아래 항목들의 위치를 이 메뉴판 사진에서 찾아 주세요.\n\n" + listing
+                    ),
+                ],
+                system_instruction=_MENU_LOCATE_PROMPT,
+                schema=LocateResult,
+                with_media=True,
+                # 공간 그라운딩엔 사고 예산이 도움이 된다(OCR 과 다름). config 에서 온다.
+                thinking_level=self._settings.gemini_locate_thinking_level,
+            )
+            # boxes 가 비면(스키마 위반 삼킴 포함) 재시도/폴백으로 넘긴다. '못 찾은 항목'은
+            # 요청을 실패시키지 않고 found=false 로 항목 단위에서 처리된다.
+            if not parsed.boxes:
+                raise UnreadableMenu(detail=f"empty boxes model={model}")
+            return LocateOutcome(result=parsed, model=model, usage=usage)
+
+        # locate 는 정확도가 중요하고 on-demand·소수 항목이라, 상위 모델을 1차로 쓴다
+        # (lite 로 폴백). bench 는 models 를 직접 지정해 이 기본을 덮어쓴다.
+        models = models or [self._settings.gemini_locate_model, self._settings.gemini_model]
         return await self._with_fallback(call, models)
 
     async def explain_item(
@@ -233,7 +285,12 @@ class GeminiService:
         raise last_error or UpstreamError()
 
     def _config(
-        self, *, system_instruction: str, schema: type[BaseModel], with_media: bool
+        self,
+        *,
+        system_instruction: str,
+        schema: type[BaseModel],
+        with_media: bool,
+        thinking_level: str | None = None,
     ) -> types.GenerateContentConfig:
         kwargs: dict = {
             "system_instruction": system_instruction,
@@ -242,8 +299,9 @@ class GeminiService:
             "response_schema": schema,
             # Gemini 3 의 thinking_level 기본값은 HIGH 다. 명시하지 않으면 지연이 2~4배가 되고
             # thinking 토큰이 '출력' 단가로 과금된다. (thinking_budget 과 동시 지정하면 400)
+            # 호출별 override 가 있으면 그걸, 없으면 전역 설정을 쓴다(예: locate 는 상향).
             "thinking_config": types.ThinkingConfig(
-                thinking_level=self._settings.gemini_thinking_level.upper()
+                thinking_level=(thinking_level or self._settings.gemini_thinking_level).upper()
             ),
             "temperature": 0.2,
         }
@@ -261,6 +319,7 @@ class GeminiService:
         system_instruction: str,
         schema: type[T],
         with_media: bool,
+        thinking_level: str | None = None,
     ) -> tuple[T, Usage]:
         try:
             resp = await asyncio.wait_for(
@@ -271,6 +330,7 @@ class GeminiService:
                         system_instruction=system_instruction,
                         schema=schema,
                         with_media=with_media,
+                        thinking_level=thinking_level,
                     ),
                 ),
                 timeout=self._settings.gemini_timeout_s,
