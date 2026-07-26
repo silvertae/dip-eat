@@ -12,6 +12,28 @@ type ScanPhase = 'idle' | 'resizing' | 'scanning' | 'streaming' | 'done' | 'erro
 /** 같은 메뉴판에 같은 이름이 두 분류에 걸쳐 나올 수 있어 분류까지 묶어 키로 쓴다. */
 export const itemKey = (item: MenuItem) => `${item.section} ${item.name_local}`
 
+/** 진행 중인 스캔의 식별자와 중단 스위치.
+ *
+ *  ⚠️ 스트리밍 전에는 `/result` 에 **다 끝난 뒤에야** 도달했으므로 스캔이 겹칠 수 없었다.
+ *  지금은 첫 항목(~2초)에 결과 화면이 뜨고 그 화면엔 탭바가 있다 — 사용자가 홈으로 가서
+ *  **아직 흐르는 중에 새 스캔을 시작할 수 있다.** 그때 낡은 스트림을 방치하면:
+ *    - 낡은 항목이 새 식당 목록에 섞이고
+ *    - 낡은 스트림이 끝나며 `phase:'done'` 으로 새 스캔의 진행 상태를 덮어쓰고
+ *    - 낡은 스트림이 실패하면 멀쩡한 새 스캔이 에러 화면으로 간다.
+ *
+ *  그래서 (1) 이전 요청을 abort 하고 — Gemini 토큰도 아낀다 — (2) 그래도 이미 큐에 들어간
+ *  콜백이 있을 수 있으니 실행 번호로 한 번 더 막는다. 둘 중 하나만으로는 부족하다.
+ */
+let scanRun = 0
+let scanAbort: AbortController | null = null
+
+/** 활성 스캔을 끊고 진행 중이던 콜백을 전부 무효화한다. */
+function cancelActiveScan() {
+  scanAbort?.abort()
+  scanAbort = null
+  scanRun += 1
+}
+
 /** 대화 말풍선. me=내가 점원에게, them=점원이 나에게. */
 export interface ChatBubble {
   from: 'me' | 'them'
@@ -116,6 +138,14 @@ export const useApp = create<AppState>()(
   },
 
   async startScan(file) {
+    // 아직 흐르고 있는 스캔이 있으면 먼저 끊는다(위 주석 참고).
+    cancelActiveScan()
+    const run = scanRun
+    const controller = new AbortController()
+    scanAbort = controller
+    /** 내가 아직 '현재 스캔' 인가. 아니면 어떤 상태도 건드리면 안 된다. */
+    const isStale = () => run !== scanRun
+
     // 이전 촬영본의 objectURL 을 놓아준다(누수 방지).
     const previous = get().preview
     if (previous) URL.revokeObjectURL(previous)
@@ -139,13 +169,16 @@ export const useApp = create<AppState>()(
         throw new Error('이 사진은 열 수 없는 형식이에요. 다른 사진으로 시도해주세요.')
       }
 
+      if (isStale()) return
       set({ phase: 'scanning' })
 
       // 항목이 오는 대로 화면에 붙인다. 첫 항목이 ~2초에 오므로 24초 스피너가 사라진다.
       // meta 가 항상 먼저 오기 때문에 onItem 시점에 scan 은 반드시 존재한다.
       const tail = await scanMenuStream(resized.blob, {
         mode: get().captureMode,
-        onMeta: (meta) =>
+        signal: controller.signal,
+        onMeta: (meta) => {
+          if (isStale()) return
           set({
             phase: 'streaming',
             scan: {
@@ -155,11 +188,16 @@ export const useApp = create<AppState>()(
               // done 이 오기 전까지는 알 수 없다. 화면은 이 값을 쓰지 않는다.
               meta: { model: '', latency_ms: 0, image_px: '' },
             },
-          }),
-        onItem: (item) =>
-          set((s) => (s.scan ? { scan: { ...s.scan, items: [...s.scan.items, item] } } : {})),
+          })
+        },
+        onItem: (item) => {
+          if (isStale()) return
+          set((s) => (s.scan ? { scan: { ...s.scan, items: [...s.scan.items, item] } } : {}))
+        },
       })
 
+      if (isStale()) return
+      scanAbort = null
       const scan = get().scan
       if (!scan) throw new Error('메뉴판을 읽지 못했어요. 다시 시도해주세요.')
       const complete = { ...scan, warnings: tail.warnings, meta: tail.meta }
@@ -169,6 +207,11 @@ export const useApp = create<AppState>()(
       // 저장 실패가 핵심 흐름(스캔 성공)을 막지 않도록 조용히 삼킨다.
       void putRecent(complete, resized.blob).catch(() => {})
     } catch (err) {
+      // 내가 밀려난 스캔이면 조용히 사라진다. 여기서 상태를 건드리면 abort 된 낡은 요청이
+      // 멀쩡히 돌아가는 새 스캔을 에러 화면으로 보낸다.
+      if (isStale()) return
+      scanAbort = null
+
       const message =
         err instanceof ApiError || err instanceof Error
           ? err.message
@@ -189,6 +232,9 @@ export const useApp = create<AppState>()(
   },
 
   reset() {
+    // 스트리밍 중에 홈으로 돌아와 초기화할 수 있다 — 흐르던 스트림을 끊지 않으면
+    // 비운 직후에 낡은 항목이 다시 채워진다.
+    cancelActiveScan()
     // 활성 세션만 비운다 — IndexedDB 의 "최근 식당" 기록은 남겨 재열람할 수 있게 한다.
     const previous = get().preview
     if (previous) URL.revokeObjectURL(previous)
@@ -212,6 +258,9 @@ export const useApp = create<AppState>()(
     if (get().scan?.scan_id === scanId) return true // 이미 활성 세션 — 장바구니·대화 유지
     const entry = await getRecent(scanId).catch(() => undefined)
     if (!entry) return false // 기록이 사라짐(다른 탭이 정리 등) — 호출부가 이동을 취소한다
+    // 스트리밍 중에 '최근 식당' 을 열 수 있다. 낡은 스트림이 이 목록에 항목을 섞지 않게 끊는다.
+    // ⚠️ 기록이 없어 되돌아가는 위 경우에는 끊지 않는다 — 보던 화면이 그대로 남아야 한다.
+    cancelActiveScan()
     const previous = get().preview
     if (previous) URL.revokeObjectURL(previous)
     set({
