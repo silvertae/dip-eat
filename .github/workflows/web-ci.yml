@@ -1,0 +1,31 @@
+name: web-ci
+on:
+  pull_request:
+    paths: ['web/**', '.github/workflows/web-ci.yml']
+
+concurrency:
+  group: web-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.0'          # 로컬과 동일
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      # 진짜 게이트는 이것 — oxlint 는 타입을 보지 않는다. tsc -b 가 본다.
+      # Vercel 빌드와 중복이 아니다: Vercel 은 실패해도 '배포만' 막고 PR 은 초록으로 남는다.
+      # ⚠️ npm run gen:api 를 여기에 넣지 말 것 — ../api/openapi.json 을 읽는다(docs/deploy.md 4장).
+      - run: npm run build

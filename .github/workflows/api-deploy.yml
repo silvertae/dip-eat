@@ -1,0 +1,110 @@
+name: api-deploy
+on:
+  push:
+    branches: [main]
+    paths: ['api/**', '.github/workflows/api-deploy.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: api-deploy          # 배포는 절대 병렬로 돌리지 않는다
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_ID: dip-eat
+  PROJECT_NUMBER: '178327258666'
+  REGION: asia-northeast3
+  SERVICE: dipeat-api
+  AR_REPO: dipeat
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: api } }
+    env:
+      GEMINI_API_KEY: ci-dummy-not-a-real-key
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9.0.0   # ⚠️ 이동 태그가 v7 에서 멈춰 있다 — 전체 버전 고정
+        with: { enable-cache: true, cache-dependency-glob: api/uv.lock }
+      - run: uv sync --locked
+      - run: uv run pytest -q
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write        # ⚠️ 없으면 WIF 가 조용히 실패한다
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/dip-eat
+          service_account: gh-deployer@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v3
+      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: 빌드 & 푸시 (amd64 고정)
+        env:
+          IMG: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.SERVICE }}
+        run: |
+          # 기본 docker 드라이버는 registry 캐시를 못 내보낸다 → container 드라이버.
+          docker buildx create --use --driver docker-container --name dipeat || true
+          docker buildx build \
+            --platform linux/amd64 \
+            --file api/Dockerfile \
+            --tag "$IMG:${{ github.sha }}" --tag "$IMG:latest" \
+            --cache-from type=registry,ref=$IMG:buildcache \
+            --cache-to   type=registry,ref=$IMG:buildcache,mode=max \
+            --push api
+
+      - name: 트래픽 없이 배포 (candidate 태그)
+        env:
+          IMG: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.SERVICE }}
+        # ⚠️ --set-env-vars 는 환경변수 집합을 통째로 교체한다.
+        #    콘솔에서 DIPEAT_CORS_ORIGINS 등을 추가했다면 여기에도 같이 넣어야 다음 배포가 날리지 않는다.
+        #    콤마는 gcloud 가 항목 구분자로 먹으므로 커스텀 구분자 ^@^ 를 유지할 것(docs/deploy.md 5.5).
+        # ⚠️ --min-instances 0 이 박혀 있다. 발표 당일 1 로 올려둔 상태에서 이 워크플로가 돌면
+        #    콜드스타트가 되돌아온다. 발표일에는 배포하지 말 것(docs/deploy.md 9장).
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --image "$IMG:${{ github.sha }}" \
+            --region "$REGION" \
+            --no-traffic --tag candidate \
+            --allow-unauthenticated \
+            --service-account "dipeat-api-run@${PROJECT_ID}.iam.gserviceaccount.com" \
+            --cpu 1 --memory 2Gi --cpu-boost \
+            --concurrency 8 --max-instances 4 --min-instances 0 \
+            --timeout 105 \
+            --startup-probe httpGet.path=/api/v1/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=3,periodSeconds=3,failureThreshold=10 \
+            --set-secrets GEMINI_API_KEY=gemini-key:latest \
+            --set-env-vars '^@^DIPEAT_GEMINI_MAX_ATTEMPTS=1@DIPEAT_MAX_UPLOAD_BYTES=2097152@DIPEAT_LOG_LEVEL=INFO'
+
+      - name: 스모크 — 실배포본에서 시크릿·모델·라우팅 확인
+        run: |
+          # Cloud Run URL 은 결정적이다. describe 로 파싱할 필요가 없다.
+          TAG_URL="https://candidate---${SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app"
+
+          # 1) 부팅 + 시크릿 주입
+          curl -fsS --max-time 30 "$TAG_URL/api/v1/health" | tee /dev/stderr | jq -e '.has_api_key == true'
+
+          # 2) 1차 모델이 이 키로 실제 응답하는지. 텍스트 전용 ~1초, 1원 미만.
+          #    .model 까지 찍어두면 폴백으로 에스컬레이션했는지도 로그에 남는다.
+          curl -fsS --max-time 60 -X POST "$TAG_URL/api/v1/chat" \
+            -H 'content-type: application/json' \
+            -d '{"text":"물 한 잔 주세요","source_lang":"ja","direction":"ko2local"}' \
+          | tee /dev/stderr | jq -e '.translated | length > 0'
+
+      - name: 스모크 통과 → 트래픽 전환
+        run: gcloud run services update-traffic "$SERVICE" --region "$REGION" --to-latest
+
+      - name: 실패 시 — candidate 는 트래픽 0 이므로 운영은 무사
+        if: failure()
+        run: echo "::warning::candidate 리비전이 스모크에서 떨어졌습니다. 운영 트래픽은 이전 리비전에 그대로 있습니다."
