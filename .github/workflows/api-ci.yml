@@ -1,0 +1,35 @@
+name: api-ci
+on:
+  pull_request:
+    paths: ['api/**', '.github/workflows/api-ci.yml']
+
+concurrency:
+  group: api-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    env:
+      # ⚠️ 진짜 키가 아니다. 테스트는 네트워크를 타지 않는다(conftest 가 FakeGemini 주입).
+      #    다만 GeminiService.__init__ 이 빈 키를 거부하므로 비어 있으면 16개가 깨진다.
+      #    ⚠️ 반드시 접두사 없는 이름. DIPEAT_ 접두사로 주면 test_config 가 깨진다.
+      GEMINI_API_KEY: ci-dummy-not-a-real-key
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9.0.0   # ⚠️ 이동 태그가 v7 에서 멈춰 있다 — 전체 버전 고정 (docs/deploy.md 7.2b)
+        with:
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+      - run: uv sync --locked
+      # ruff 는 uv.lock 에 없다 → uv run 이 아니라 uvx.
+      # ⚠️ 현재 19건이 남아 있어 비차단. `uvx ruff check --fix .` 로 정리한 뒤 이 continue-on-error 를 지운다.
+      - run: uvx ruff check .
+        continue-on-error: true
+      - run: uv run pytest -q
