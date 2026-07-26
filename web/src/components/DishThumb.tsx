@@ -30,6 +30,10 @@ export function DishThumb({
           <img
             src={image.url}
             alt={`${item.name_translated} 참고 이미지`}
+            // ⚠️ 지우지 말 것 — 이게 없으면 응답이 opaque(status 0)가 되고, 그걸 SW 가 캐시하면
+            // 크롬이 항목마다 무작위 패딩(실측 4.77MB/장)을 quota 에 더한다. 24KB 썸네일 92장이
+            // 441MB 로 잡혔다. 커먼즈는 ACAO 를 주므로 CORS 로 받아도 잘 뜬다.
+            crossOrigin="anonymous"
             loading="lazy"
             onError={() => setBroken(true)}
             className="size-full object-cover"
