@@ -1015,3 +1015,77 @@ MVP 전체 Gemini 비용의 20배다. **캘린더에 알림을 걸어라.**
   분리하려면 프런트에 `VITE_API_BASE` 탈출구(절대 URL + CORS 경로)를 만들고 스테이징 Cloud Run 서비스를 띄워야 한다.
 - **테스트가 `GEMINI_API_KEY` 환경변수에 우발적으로 의존한다**([7.1](#71-57개-테스트에는-더미-키가-필요하다)).
   `Settings(gemini_api_key=...)` 가 alias 때문에 안 먹는 것을 고치면 더미 키도 필요 없어진다.
+
+---
+
+## 부록 A. 스트리밍 통과 검증 (`/api/v1/_probe/stream`)
+
+> 임시 진단 장치다. 결론이 나면 `api/app/api/routes/probe.py`,
+> `api/tests/test_probe_stream.py`, `main.py` 의 라우터 등록 한 줄, 그리고 이 부록을 함께 지운다.
+
+### 왜 재는가
+
+메뉴 스캔 지연은 거의 전부 **출력 토큰**에서 나온다. 실측(58개 항목):
+
+| | |
+|---|---|
+| 출력 토큰 | 9,243 |
+| 생성 시간 | 34.5초 |
+| 생성 속도 | **약 268 tok/s** |
+| 항목당 | 약 159 토큰 |
+
+항목이 JSON 배열에 **순서대로** 완성되므로, 스트리밍하면 첫 항목은
+앞부분(~30토큰) + 159토큰 ≈ 190토큰에서 완성된다 → **약 0.7초**.
+34.5초 스피너가 0.7초 첫 카드로 바뀐다. 총 시간은 그대로지만 체감이 완전히 달라진다.
+
+**단, Vercel 리라이트 프록시가 청크를 그대로 흘려보낼 때만 성립한다.**
+프록시가 응답을 다 모았다가 뱉으면 백엔드가 아무리 스트리밍해도 브라우저는 34초 뒤에 통째로 받는다.
+프록시 계층의 스트리밍 버퍼링은 실제로 흔하다. 그래서 **구현 전에** 경로부터 검증한다.
+
+### 어떻게 재는가
+
+`--no-buffer` 와 `-w` 로 **각 줄의 도착 시각**을 찍는다. 백엔드 직결과 Vercel 경유를 비교하는 게 핵심이다.
+
+```bash
+# ① 백엔드 직결 — 기준선
+curl -N -s "https://dipeat-api-178327258666.asia-northeast3.run.app/api/v1/_probe/stream?chunks=10&delay_ms=500" \
+  | while IFS= read -r line; do printf '%s  %s\n' "$(date +%H:%M:%S.%3N)" "$line"; done
+
+# ② Vercel 경유 — 이게 진짜 시험
+curl -N -s "https://dip-eat.vercel.app/api/v1/_probe/stream?chunks=10&delay_ms=500" \
+  | while IFS= read -r line; do printf '%s  %s\n' "$(date +%H:%M:%S.%3N)" "$line"; done
+```
+
+> macOS 기본 `date` 는 `%3N` 을 모른다. `brew install coreutils` 후 `gdate` 를 쓰거나,
+> 아래처럼 `ts`(moreutils) 를 쓰거나, 그냥 **줄이 뚝뚝 끊겨 나오는지 눈으로** 봐도 충분하다.
+> ```bash
+> curl -N -s "https://dip-eat.vercel.app/api/v1/_probe/stream?chunks=10&delay_ms=500" | ts '%.T'
+> ```
+
+### 어떻게 읽는가
+
+| 관찰 | 해석 | 다음 |
+|---|---|---|
+| 두 경우 모두 0.5초 간격으로 한 줄씩 | ✅ 경로가 스트리밍을 통과한다 | 스트리밍 구현 진행 |
+| ①은 한 줄씩, **②만 끝에 몰림** | ❌ **Vercel 프록시가 버퍼링**한다 | 아래 완화책 → 그래도 안 되면 설계 변경 |
+| ①도 몰림 | 백엔드/Cloud Run 문제 | `X-Accel-Buffering` 은 이미 붙어 있다. Cloud Run 설정을 본다 |
+
+각 줄의 `server_elapsed_ms` 가 `0, 500, 1000...` 으로 정상인데 도착만 몰렸다면,
+**백엔드는 제때 뱉었고 중간이 범인**이라는 확정 증거다. 이게 이 필드를 넣은 이유다.
+
+### ②만 막혔을 때
+
+1. **최소 버퍼 임계값 가설** — 프록시가 일정 바이트가 쌓여야 흘리는 경우가 있다. 패딩을 키워 확인:
+   ```bash
+   curl -N -s "https://dip-eat.vercel.app/api/v1/_probe/stream?chunks=10&delay_ms=500&pad_bytes=4096" | ts '%.T'
+   ```
+   이걸로 뚫리면 원인은 경로가 아니라 임계값이다(실용적 완화책이 된다).
+2. **그래도 막히면 설계를 바꾼다** — 프런트가 Cloud Run 을 직접 호출한다.
+   `VITE_API_BASE` 를 추가하고 `DIPEAT_CORS_ORIGINS` 에 Vercel 도메인을 넣는 경로다
+   ([12장](#12-알면서-남겨둔-것)에 "탈출구"로 적어둔 그 구조). 스캔만 직결하고 나머지는 리라이트로 둬도 된다.
+
+### 안전장치
+
+인증 없는 공개 엔드포인트라 상한을 걸어뒀다(초과 시 422):
+`chunks` ≤ 30, `delay_ms` ≤ 1,000, `pad_bytes` ≤ 8,192 → **최악 30초**.
+`--timeout 105` 와 `--concurrency 8` 에 여유가 있다. Gemini 를 부르지 않으므로 **비용은 0**이다.
