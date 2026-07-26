@@ -100,21 +100,36 @@ Cloud Run 에서 리전 내부로 빠지는 경로가 따로 있지 않다. 어�
 
 ### 2.1 GCP 프로젝트 · 결제 · API
 
+> ✅ **프로젝트와 결제는 이미 되어 있다.** `dip-eat`(번호 `178327258666`), 결제 연결 확인됨.
+> 아래 `projects create` 와 결제 연결은 **건너뛴다.** 남은 건 API 활성화부터다.
+
 ```bash
 # gcloud 설치 후
 gcloud auth login
 
-export PROJECT_ID=dipeat-prod          # 전역 유일해야 한다. 이미 있으면 뒤에 숫자를 붙인다
+export PROJECT_ID=dip-eat
+export PROJECT_NUMBER=178327258666
 export REGION=asia-northeast3
 export SERVICE=dipeat-api
 export AR_REPO=dipeat
 
-gcloud projects create "$PROJECT_ID"
 gcloud config set project "$PROJECT_ID"
 ```
 
+<details>
+<summary>프로젝트를 처음부터 만들어야 한다면 (지금은 해당 없음)</summary>
+
+```bash
+gcloud projects create dip-eat          # 프로젝트 ID 는 전역 유일해야 한다
+gcloud config set project dip-eat
+```
+
 결제 계정 연결은 **콘솔에서** 한다: https://console.cloud.google.com/billing → 프로젝트에 연결.
-(CLI 로도 되지만 결제 계정 ID를 먼저 찾아야 해서 콘솔이 빠르다.)
+(CLI 로도 되지만 결제 계정 ID를 먼저 찾아야 해서 콘솔이 빠르다. 무료 티어도 카드가 필요하다.)
+
+</details>
+
+**API 활성화 — 이게 지금 시작점이다.** 조회해 보니 아래 다섯 개가 **하나도 켜져 있지 않다.**
 
 ```bash
 gcloud services enable \
@@ -128,11 +143,17 @@ gcloud services enable \
 ### 2.2 프로젝트 번호 → 최종 URL 확정
 
 ```bash
-export PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
-echo "https://${SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app"
+gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)'   # → 178327258666
 ```
 
-**이 URL 이 최종 운영 URL 이다. 아직 아무것도 배포하지 않았는데 이미 확정됐다.** ([3장](#3-첫-배포-순서--닭과-달걀은-없다) 참고)
+**최종 운영 URL 은 이미 확정됐다. 아직 아무것도 배포하지 않았는데도.**
+
+```
+https://dipeat-api-178327258666.asia-northeast3.run.app
+```
+
+DNS 세그먼트 `dipeat-api-178327258666` 는 23자로 63자 제한에 한참 못 미친다 → 결정적 URL 이 부여된다.
+스모크용 태그 URL `candidate---dipeat-api-178327258666`(35자)도 마찬가지다. ([3장](#3-첫-배포-순서--닭과-달걀은-없다) 참고)
 
 ### 2.3 Artifact Registry
 
@@ -233,29 +254,31 @@ https://[태그---]SERVICE-PROJECT_NUMBER.REGION.run.app
 `PROJECT_NUMBER` 는 프로젝트를 만든 직후 조회되므로 **배포 전에 최종 URL 을 알 수 있다.**
 (해시 기반 URL 도 함께 부여되지만 예측 불가다. 우리는 결정적 쪽을 쓴다.)
 
+**이미 끝난 것:** ✅ GCP 프로젝트 `dip-eat` 생성 · ✅ 결제 연결 · ✅ 프로젝트 번호 `178327258666` →
+운영 URL `https://dipeat-api-178327258666.asia-northeast3.run.app` **확정**.
+
 | # | 단계 | 왜 이 순서인가 |
 |---|---|---|
-| 1 | GCP 프로젝트 + 결제 + API 활성화 ([2.1](#21-gcp-프로젝트--결제--api)) | 나머지 전부의 전제 |
-| 2 | `PROJECT_NUMBER` 조회 → **최종 URL 확정** ([2.2](#22-프로젝트-번호--최종-url-확정)) | 닭-달걀이 여기서 해소된다 |
-| 3 | Artifact Registry + Secret Manager ([2.3](#23-artifact-registry), [2.4](#24-secret-manager-에-gemini-키)) | 배포가 이 둘을 참조한다 |
-| 4 | SA 2개 + WIF ([2.5](#25-서비스-계정-두-개), [2.6](#26-workload-identity-federation--json-키를-만들지-않는다)) | |
-| 5 | `web/vercel.json` REPLACE-ME 교체 + `engines.node` 추가 → main 에 커밋 ([4장](#4-verceljson--고친-전문)) | 백엔드가 아직 없어도 된다. URL 이 확정이니까 |
-| 6 | **로컬에서 백엔드 최초 1회 수동 배포** ([8장](#8-로컬에서-손으로-배포할-때)) | 자동화 전에 사람이 한 번 성공시켜야, 실패했을 때 CI 문제인지 앱 문제인지 구분된다 |
-| 7 | `curl .../api/v1/health` → `has_api_key: true` | 시크릿 배선 검증. 여기서 걸리면 8~9는 의미 없다 |
-| 8 | Vercel import → Root Directory `web/` → 배포 ([2.7](#27-vercel)) | 5번이 이미 커밋돼 있으니 첫 배포부터 정상 동작 |
-| 9 | 운영 도메인에서 **실제 스캔 1회** | 동일 출처 리라이트 관통 확인 |
-| 10 | `DIPEAT_CORS_ORIGINS` 를 확정된 Vercel 도메인으로 갱신 → 재배포 | Vercel 도메인은 프로젝트를 만들기 전엔 모른다 |
-| 11 | 워크플로 5개 커밋 → `api/**` 를 건드려 파이프라인 첫 실전 ([7장](#7-cicd--워크플로-5개)) | 사람이 성공시킨 뒤에 자동화한다 |
-| 12 | 예산 알림 + `--min-instances=0` 확인 ([10장](#10-비용)) | |
+| 1 | **API 활성화 5개** ([2.1](#21-gcp-프로젝트--결제--api)) | ⬅ **실제 시작점.** 조회해 보니 `run`·`artifactregistry`·`secretmanager`·`iamcredentials`·`cloudbuild` 가 하나도 안 켜져 있다 |
+| 2 | Artifact Registry + Secret Manager ([2.3](#23-artifact-registry), [2.4](#24-secret-manager-에-gemini-키)) | 배포가 이 둘을 참조한다 |
+| 3 | SA 2개 + WIF ([2.5](#25-서비스-계정-두-개), [2.6](#26-workload-identity-federation--json-키를-만들지-않는다)) | |
+| 4 | `web/vercel.json` 전문 교체 + `engines.node` 추가 → main 에 커밋 ([4장](#4-verceljson--고친-전문)) | **백엔드가 아직 없어도 된다.** URL 이 확정이니까 |
+| 5 | **로컬에서 백엔드 최초 1회 수동 배포** ([8장](#8-로컬에서-손으로-배포할-때)) | 자동화 전에 사람이 한 번 성공시켜야, 실패했을 때 CI 문제인지 앱 문제인지 구분된다 |
+| 6 | `curl .../api/v1/health` → `has_api_key: true` | 시크릿 배선 검증. 여기서 걸리면 이후는 의미 없다 |
+| 7 | Vercel import → Root Directory `web/` → 배포 ([2.7](#27-vercel)) | 4번이 이미 커밋돼 있으니 첫 배포부터 정상 동작 |
+| 8 | 운영 도메인에서 **실제 스캔 1회** | 동일 출처 리라이트 관통 확인 |
+| 9 | `DIPEAT_CORS_ORIGINS` 를 확정된 Vercel 도메인으로 갱신 → 재배포 | Vercel 도메인은 프로젝트를 만들기 전엔 모른다 |
+| 10 | 워크플로 5개 커밋 → `api/**` 를 건드려 파이프라인 첫 실전 ([7장](#7-cicd--워크플로-5개)) | 사람이 성공시킨 뒤에 자동화한다 |
+| 11 | 예산 알림 + `--min-instances=0` 확인 ([10장](#10-비용)) | |
 
-**남는 순환은 10번 하나뿐이고 무해하다** — 리라이트로 동일 출처가 되므로 `DIPEAT_CORS_ORIGINS` 가
-비어 있어도 앱은 정상 동작한다. 6번에서는 아예 생략하고 10번에서 채운다.
+**남는 순환은 9번 하나뿐이고 무해하다** — 리라이트로 동일 출처가 되므로 `DIPEAT_CORS_ORIGINS` 가
+비어 있어도 앱은 정상 동작한다. 5번(최초 배포)에서는 아예 생략하고 9번에서 채운다.
 
 ---
 
 ## 4. `vercel.json` — 고친 전문
 
-`web/vercel.json` 전체를 아래로 교체한다. `<PROJECT_NUMBER>` 만 [2.2](#22-프로젝트-번호--최종-url-확정) 값으로 바꾼다.
+`web/vercel.json` 전체를 아래로 교체한다. **프로젝트 번호가 이미 박혀 있으니 그대로 복붙하면 된다.**
 
 ```json
 {
@@ -263,7 +286,7 @@ https://[태그---]SERVICE-PROJECT_NUMBER.REGION.run.app
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://dipeat-api-<PROJECT_NUMBER>.asia-northeast3.run.app/api/:path*"
+      "destination": "https://dipeat-api-178327258666.asia-northeast3.run.app/api/:path*"
     },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
@@ -622,8 +645,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PROJECT_ID: dipeat-prod
-  PROJECT_NUMBER: '000000000000'        # 2.2 에서 얻은 값
+  PROJECT_ID: dip-eat
+  PROJECT_NUMBER: '178327258666'
   REGION: asia-northeast3
   SERVICE: dipeat-api
   AR_REPO: dipeat
