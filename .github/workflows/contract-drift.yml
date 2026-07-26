@@ -1,0 +1,50 @@
+name: contract-drift
+on:
+  pull_request:
+    paths:
+      - 'api/app/schemas/**'
+      - 'api/app/api/**'
+      - 'api/openapi.json'
+      - 'web/src/types/api.gen.ts'
+      - '.github/workflows/contract-drift.yml'
+
+concurrency:
+  group: contract-drift-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_API_KEY: ci-dummy-not-a-real-key
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9.0.0   # ⚠️ 이동 태그가 v7 에서 멈춰 있다 — 전체 버전 고정
+        with: { enable-cache: true, cache-dependency-glob: api/uv.lock }
+      - uses: actions/setup-node@v7
+        with: { node-version: '22.22.0' }
+
+      - name: openapi.json 재생성 (AGENTS.md 와 동일한 명령)
+        working-directory: api
+        run: |
+          uv sync --locked
+          uv run python -c "import json;from app.main import create_app;open('openapi.json','w').write(json.dumps(create_app().openapi(),ensure_ascii=False,indent=2))"
+
+      - name: api.gen.ts 재생성
+        working-directory: web
+        # ⚠️ package.json 의 gen:api 는 openapi-typescript@7 이라 마이너가 떠다닌다.
+        #    떠다니면 코드를 안 고쳐도 어느 날 diff 가 나서 무관한 PR 을 막는다 → 여기서는 정확히 박는다.
+        #    커밋된 api.gen.ts 와 바이트 동일함을 확인한 버전이다(7.9.1 도 동일 출력).
+        #    올릴 때는 로컬에서 재생성해 diff 가 없음을 확인한 뒤 이 숫자를 바꿀 것.
+        run: npx -y openapi-typescript@7.13.0 ../api/openapi.json -o src/types/api.gen.ts
+
+      - name: 커밋된 산출물과 비교
+        run: |
+          if ! git diff --exit-code -- api/openapi.json web/src/types/api.gen.ts; then
+            echo "::error::스키마를 고치고 openapi.json / api.gen.ts 를 커밋하지 않았습니다."
+            echo "로컬에서 AGENTS.md 의 '스키마를 바꿨으면' 두 줄을 실행하고 커밋하세요."
+            exit 1
+          fi

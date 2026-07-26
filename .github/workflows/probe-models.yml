@@ -1,0 +1,28 @@
+name: probe-models
+on:
+  schedule: [{ cron: '0 0 * * *' }]     # 모델 사망은 커밋이 아니라 시간 이벤트다
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: api } }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9.0.0   # ⚠️ 이동 태그가 v7 에서 멈춰 있다 — 전체 버전 고정
+        with: { enable-cache: true, cache-dependency-glob: api/uv.lock }
+      - run: uv sync --locked
+      - name: 이 키로 실제 응답하는 모델 확인
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}   # ← 이 리포의 유일한 진짜 시크릿
+        run: |
+          # ⚠️ 이 스크립트는 모델이 죽어 있어도 exit 0 이다(⚠️ 만 출력).
+          #    그래서 출력에서 직접 잡아 실패시킨다.
+          uv run python scripts/probe_models.py | tee probe.log
+          if grep -q '⚠️' probe.log; then
+            echo "::error::1차/폴백 모델이 응답하지 않습니다. gemini-3.5-flash 때와 같은 상황입니다."
+            exit 1
+          fi
