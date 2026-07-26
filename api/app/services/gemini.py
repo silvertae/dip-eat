@@ -13,15 +13,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from collections.abc import AsyncIterator, Awaitable, Callable
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeVar
 
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.core.config import Settings
 from app.core.errors import (
@@ -39,8 +39,11 @@ from app.schemas.menu import (
     LocateResult,
     LocateTarget,
     MenuExtraction,
+    MenuItemSummary,
+    Restaurant,
 )
 from app.services.image import PreparedImage
+from app.services.jsonstream import MenuStreamParser
 
 log = logging.getLogger(__name__)
 
@@ -81,6 +84,41 @@ class ScanOutcome:
     extraction: MenuExtraction
     model: str
     usage: Usage
+
+
+@dataclass(slots=True)
+class ScanHead:
+    """항목보다 먼저 확정되는 값들. 스트림의 첫 이벤트."""
+
+    source_lang: str
+    currency: str
+    restaurant: Restaurant
+    model: str
+
+
+@dataclass(slots=True)
+class ScanTail:
+    """스트림의 마지막 이벤트. warnings 는 스키마상 items 뒤에 오므로 여기서 온다."""
+
+    warnings: list[str] = field(default_factory=list)
+    model: str = ""
+    usage: Usage = field(default_factory=Usage)
+    items: int = 0
+
+
+# 스트림이 내보내는 것: 머리 1개 → 항목 N개 → 꼬리 1개.
+ScanEvent = ScanHead | MenuItemSummary | ScanTail
+
+
+def _restaurant_of(head: dict) -> Restaurant:
+    """머리 파싱이 실패했거나 필드가 비어도 화면이 그려져야 한다."""
+    raw = head.get("restaurant")
+    if isinstance(raw, dict):
+        try:
+            return Restaurant.model_validate(raw)
+        except ValidationError:
+            pass
+    return Restaurant(name_local="", name_translated="", cuisine_hint="")
 
 
 @dataclass(slots=True)
@@ -147,6 +185,130 @@ class GeminiService:
             return ScanOutcome(extraction=parsed, model=model, usage=usage)
 
         return await self._with_fallback(call, models)
+
+    async def stream_menu(
+        self, image: PreparedImage, *, mode: str, models: list[str] | None = None
+    ) -> AsyncIterator[ScanEvent]:
+        """`extract_menu` 의 스트리밍판. 항목이 완성되는 대로 하나씩 내보낸다.
+
+        ⚠️ **첫 항목이 나오기 전까지는 아무것도 내보내지 않는다.** 그래야 그 전에 터진
+        실패(오늘 관측한 503 은 전부 여기서 났다)를 `_with_fallback` 이 폴백 모델로
+        조용히 넘길 수 있다. 이미 내보낸 뒤에 모델을 바꾸면 항목이 중복된다.
+
+        ⚠️ `_generate` 의 `resp.parsed` 가드가 여기엔 없다(스트리밍이라 `parsed` 자체가
+        없다). 대신 **항목마다 Pydantic 검증**을 하고, 끝에서 전체를 다시 파싱한다.
+        `items` 가 0개면 `UnreadableMenu` — 그게 그 가드의 대체물이다. 지우지 말 것.
+        """
+        hint = _MODE_HINT.get(mode, "")
+        system_instruction = (
+            f"{_MENU_SCAN_PROMPT}\n\n## 이번 사진에 대한 힌트\n\n{hint}".strip()
+        )
+        contents = [
+            types.Part.from_bytes(data=image.data, mime_type=image.mime_type),
+            types.Part.from_text(text="이 메뉴판을 읽고 스키마대로 정리해 주세요."),
+        ]
+
+        candidates = models or [
+            self._settings.gemini_model,
+            self._settings.gemini_model_fallback,
+        ]
+        last_error: Exception | None = None
+
+        for model in candidates:
+            started = asyncio.get_running_loop().time()
+            try:
+                # 첫 항목까지는 버퍼에만 쌓는다. 여기서 예외가 나면 다음 모델로 넘어간다.
+                stream = self._stream_items(model, contents, system_instruction)
+                first = await anext(stream)
+            except (UpstreamConfigError, UpstreamRateLimited):
+                raise  # 재시도해도 똑같다 — 폴백 모델로도 넘기지 않는다
+            except (UnreadableMenu, UpstreamError, UpstreamTimeout) as exc:
+                last_error = exc
+                log.warning("gemini stream failed before first item model=%s err=%s", model, exc)
+                continue
+
+            yield first
+            async for event in stream:
+                yield event
+            log.info(
+                "menu.scan.stream ok model=%s elapsed_ms=%d",
+                model,
+                int((asyncio.get_running_loop().time() - started) * 1000),
+            )
+            return
+
+        raise last_error or UpstreamError()
+
+    async def _stream_items(
+        self, model: str, contents: list[types.Part], system_instruction: str
+    ) -> AsyncIterator[ScanEvent]:
+        """한 모델로 스트리밍한다. 첫 yield 전에 실패하면 호출부가 폴백할 수 있다."""
+        parser = MenuStreamParser()
+        pending_head: ScanHead | None = None
+        count = 0
+        usage = Usage()
+
+        try:
+            raw_stream = await asyncio.wait_for(
+                self._client.aio.models.generate_content_stream(
+                    model=model,
+                    contents=contents,
+                    config=self._config(
+                        system_instruction=system_instruction,
+                        schema=MenuExtraction,
+                        with_media=True,
+                    ),
+                ),
+                timeout=self._settings.gemini_timeout_s,
+            )
+            async for chunk in raw_stream:
+                if chunk.usage_metadata:
+                    usage = Usage(
+                        input_tokens=chunk.usage_metadata.prompt_token_count or 0,
+                        output_tokens=chunk.usage_metadata.candidates_token_count or 0,
+                        thought_tokens=chunk.usage_metadata.thoughts_token_count or 0,
+                    )
+                for raw in parser.feed(chunk.text or ""):
+                    try:
+                        item = MenuItemSummary.model_validate_json(raw)
+                    except ValidationError:
+                        # 한 항목이 스키마를 어겨도 나머지는 멀쩡하다. 통째로 버리지 않는다.
+                        log.warning("stream item dropped model=%s raw=%.120s", model, raw)
+                        continue
+                    if pending_head is None:
+                        head = parser.head or {}
+                        pending_head = ScanHead(
+                            source_lang=str(head.get("source_lang") or ""),
+                            currency=str(head.get("currency") or ""),
+                            restaurant=_restaurant_of(head),
+                            model=model,
+                        )
+                        yield pending_head
+                    count += 1
+                    yield item
+        except TimeoutError as exc:
+            raise UpstreamTimeout(detail=f"model={model}") from exc
+        except genai_errors.APIError as exc:
+            status = getattr(exc, "code", None) or getattr(exc, "status", None)
+            if status == 429:
+                raise UpstreamRateLimited(detail=str(exc)) from exc
+            if status in _NON_RETRYABLE:
+                raise UpstreamConfigError(detail=f"{status}: {exc}") from exc
+            raise UpstreamError(detail=f"{status}: {exc}") from exc
+
+        if count == 0:
+            # resp.parsed 가드의 대체물. 이게 없으면 '메뉴 0개'가 조용히 나간다.
+            raise UnreadableMenu(
+                detail=f"no items model={model} head={parser.buffer[:200]!r}"
+            )
+
+        # 전체를 다시 파싱해 warnings 를 얻는다. 실패해도 항목은 이미 나갔으므로 치명적이지 않다.
+        warnings: list[str] = []
+        try:
+            warnings = list(MenuExtraction.model_validate_json(parser.buffer).warnings)
+        except ValidationError:
+            log.warning("stream tail unparseable model=%s — warnings dropped", model)
+        yield ScanTail(warnings=warnings, model=model, usage=usage, items=count)
 
     async def locate_items(
         self, image: PreparedImage, targets: list[LocateTarget], *, models: list[str] | None = None

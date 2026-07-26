@@ -1,11 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { resizeForUpload } from '../features/capture/resizeImage'
-import { ApiError, chatTranslate, chatVoice, scanMenu } from '../lib/api'
+import { ApiError, chatTranslate, chatVoice, scanMenuStream } from '../lib/api'
 import { getRecent, putRecent } from '../lib/db'
 import type { CaptureMode, MenuItem, MenuScanResponse } from '../types/api'
 
-type ScanPhase = 'idle' | 'resizing' | 'scanning' | 'done' | 'error'
+/** 'scanning' = 첫 항목을 기다리는 중(화면은 로딩), 'streaming' = 항목이 들어오는 중(화면은 결과).
+ *  둘을 나눠야 로딩 화면이 언제 결과 화면으로 넘어갈지 알 수 있다. */
+type ScanPhase = 'idle' | 'resizing' | 'scanning' | 'streaming' | 'done' | 'error'
 
 /** 같은 메뉴판에 같은 이름이 두 분류에 걸쳐 나올 수 있어 분류까지 묶어 키로 쓴다. */
 export const itemKey = (item: MenuItem) => `${item.section} ${item.name_local}`
@@ -138,19 +140,51 @@ export const useApp = create<AppState>()(
       }
 
       set({ phase: 'scanning' })
-      const scan = await scanMenu(resized.blob, { mode: get().captureMode })
-      set({ scan, phase: 'done' })
-      // 최근 식당 재열람용으로 결과 + 축소본을 IndexedDB 에 남긴다.
-      // 저장 실패가 핵심 흐름(스캔 성공)을 막지 않도록 조용히 삼킨다.
-      void putRecent(scan, resized.blob).catch(() => {})
-    } catch (err) {
-      set({
-        phase: 'error',
-        error:
-          err instanceof ApiError || err instanceof Error
-            ? err.message
-            : '알 수 없는 오류가 발생했어요.',
+
+      // 항목이 오는 대로 화면에 붙인다. 첫 항목이 ~2초에 오므로 24초 스피너가 사라진다.
+      // meta 가 항상 먼저 오기 때문에 onItem 시점에 scan 은 반드시 존재한다.
+      const tail = await scanMenuStream(resized.blob, {
+        mode: get().captureMode,
+        onMeta: (meta) =>
+          set({
+            phase: 'streaming',
+            scan: {
+              ...meta,
+              items: [],
+              warnings: [],
+              // done 이 오기 전까지는 알 수 없다. 화면은 이 값을 쓰지 않는다.
+              meta: { model: '', latency_ms: 0, image_px: '' },
+            },
+          }),
+        onItem: (item) =>
+          set((s) => (s.scan ? { scan: { ...s.scan, items: [...s.scan.items, item] } } : {})),
       })
+
+      const scan = get().scan
+      if (!scan) throw new Error('메뉴판을 읽지 못했어요. 다시 시도해주세요.')
+      const complete = { ...scan, warnings: tail.warnings, meta: tail.meta }
+      set({ scan: complete, phase: 'done' })
+      // 최근 식당 재열람용으로 결과 + 축소본을 IndexedDB 에 남긴다.
+      // ⚠️ 완성된 뒤에만 저장한다 — 스트리밍 도중 저장하면 반쪽짜리 스캔이 '최근 식당'에 남는다.
+      // 저장 실패가 핵심 흐름(스캔 성공)을 막지 않도록 조용히 삼킨다.
+      void putRecent(complete, resized.blob).catch(() => {})
+    } catch (err) {
+      const message =
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : '알 수 없는 오류가 발생했어요.'
+
+      // 중간에 끊겼어도 이미 받은 항목은 유효하다(서버가 partial 로 알려준다).
+      // 30개를 받아놓고 전부 버리는 건 사용자에게 최악이다 — 경고를 달고 살린다.
+      const partial = get().scan
+      if (partial && partial.items.length > 0) {
+        set({
+          phase: 'done',
+          scan: { ...partial, warnings: [...partial.warnings, `${message} 일부만 표시해요.`] },
+        })
+        return
+      }
+      set({ phase: 'error', error: message })
     }
   },
 
@@ -198,7 +232,11 @@ export const useApp = create<AppState>()(
       // 되살리면 안 되는 값이라 제외. 이미지 Blob 은 여기가 아니라 IndexedDB(lib/db) 에 있다.
       partialize: (s) => ({
         captureMode: s.captureMode,
-        scan: s.scan,
+        // ⚠️ 스트리밍 중에는 저장하지 않는다. persist 는 상태가 바뀔 때마다 쓰는데,
+        // 항목마다 쓰면 90개짜리 메뉴판에서 '점점 커지는 JSON' 을 90번 직렬화하게 된다
+        // (누적 1MB+). 모바일에서 눈에 띄게 버벅인다. done 에서 한 번만 쓰면 충분하고,
+        // 도중에 앱이 죽으면 반쪽 스캔은 복원하지 않는 게 맞다.
+        scan: s.phase === 'streaming' ? undefined : s.scan,
         cart: s.cart,
         convo: s.convo,
       }),

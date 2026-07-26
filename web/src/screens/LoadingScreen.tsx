@@ -2,8 +2,9 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useApp } from '../store/app'
 
-/** 단계 표시는 실제 진행률이 아니다 — 서버가 응답을 통째로 주기 때문에 중간 상태가 없다.
- *  다만 '사진 축소'와 '스캔'은 실제로 구분되는 단계라 그 둘만 진짜로 표시한다. */
+/** '사진 축소'와 '스캔'은 실제로 구분되는 단계라 그 둘만 표시한다. 가짜 진행률은 쓰지 않는다.
+ *  스캔이 시작되고 첫 항목이 오면(phase='streaming') 곧바로 결과 화면으로 넘어가므로,
+ *  이 화면이 떠 있는 시간은 실측 ~2초다. */
 const STEPS = [
   { key: 'resizing', label: '사진 준비' },
   { key: 'scanning', label: '메뉴판 읽기' },
@@ -14,7 +15,9 @@ export function LoadingScreen() {
   const { phase, preview, error } = useApp()
 
   useEffect(() => {
-    if (phase === 'done') navigate('/result', { replace: true })
+    // 'streaming' = 첫 항목이 도착했다. 나머지가 오는 동안 결과 화면에서 기다리게 한다 —
+    // 이게 스트리밍의 요점이다. 여기서 'done' 만 기다리면 아무 이득이 없다.
+    if (phase === 'streaming' || phase === 'done') navigate('/result', { replace: true })
     // 촬영을 시작하지 않고 이 화면에 직접 들어온 경우(새로고침 등)
     if (phase === 'idle') navigate('/', { replace: true })
   }, [phase, navigate])

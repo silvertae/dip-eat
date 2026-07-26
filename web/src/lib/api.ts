@@ -4,7 +4,9 @@ import type {
   ExplainRequest,
   ExplainResponse,
   LocateResponse,
+  MenuItem,
   MenuScanResponse,
+  Restaurant,
 } from '../types/api'
 
 /** '사진에서 확인' 이 보내는 대상 항목. index 는 1부터, 응답 박스와 1:1 로 맞춘다. */
@@ -62,6 +64,102 @@ export async function scanMenu(
 
   if (!resp.ok) throw await toApiError(resp)
   return (await resp.json()) as MenuScanResponse
+}
+
+/** 스캔 스트림이 알려주는 것. `/menu/scan/stream` 의 NDJSON 계약과 1:1. */
+export interface ScanStreamHandlers {
+  /** 첫 항목보다 먼저 온다 — 가게 이름·통화를 바로 그릴 수 있다. */
+  onMeta: (meta: {
+    scan_id: string
+    source_lang: string
+    currency: string
+    restaurant: Restaurant
+  }) => void
+  /** 항목 하나가 완성될 때마다. 실측 첫 항목 ~2초, 이후 ~0.4초 간격. */
+  onItem: (item: MenuItem) => void
+}
+
+/** 1단계(스트리밍): 사진 → 목록을 항목이 완성되는 대로 받는다.
+ *
+ *  왜 이게 있나: 지연이 거의 전부 출력 토큰에서 나와서, 54개 메뉴판은 통째로 받으면
+ *  24초를 기다린다. 스트리밍하면 **첫 카드가 ~2초**에 뜬다(실측). 총 시간은 같다.
+ *
+ *  ⚠️ **HTTP 상태가 항상 200 이다.** 첫 바이트가 나가는 순간 상태가 확정되므로 서버가
+ *  생성 도중 난 오류를 4xx/5xx 로 바꿀 수 없다. 그래서 오류는 본문의 `type:"error"`
+ *  줄로 온다 — `resp.ok` 만 보고 성공으로 판단하면 안 된다.
+ *
+ *  실패해도 그때까지 받은 항목은 유효하다(`partial`). 호출부가 살릴지 버릴지 정한다.
+ */
+export async function scanMenuStream(
+  image: Blob,
+  {
+    mode = 'poster',
+    signal,
+    onMeta,
+    onItem,
+  }: { mode?: CaptureMode; signal?: AbortSignal } & ScanStreamHandlers,
+): Promise<{ warnings: string[]; meta: MenuScanResponse['meta'] }> {
+  const form = new FormData()
+  form.append('image', image, 'menu.jpg')
+  form.append('mode', mode)
+
+  let resp: Response
+  try {
+    resp = await fetch('/api/v1/menu/scan/stream', { method: 'POST', body: form, signal })
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err
+    throw new ApiError(0, GENERIC)
+  }
+  // 스트림이 시작되기 '전에' 죽은 경우(413, 프록시 5xx 등)는 평소대로 상태가 온다.
+  if (!resp.ok) throw await toApiError(resp)
+  if (!resp.body) throw new ApiError(0, GENERIC)
+
+  const reader = resp.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let tail: { warnings: string[]; meta: MenuScanResponse['meta'] } | null = null
+
+  const handle = (line: string) => {
+    if (!line.trim()) return
+    // 한 줄이 깨졌다고 스캔 전체를 버리지 않는다 — 나머지 줄은 멀쩡하다.
+    let event: Record<string, unknown>
+    try {
+      event = JSON.parse(line)
+    } catch {
+      return
+    }
+    switch (event.type) {
+      case 'meta':
+        onMeta(event as never)
+        break
+      case 'item':
+        onItem(event.item as MenuItem)
+        break
+      case 'done':
+        tail = { warnings: (event.warnings as string[]) ?? [], meta: event.meta as never }
+        break
+      case 'error':
+        throw new ApiError(200, {
+          code: String(event.code ?? 'upstream_error'),
+          message: String(event.message ?? GENERIC.message),
+        })
+    }
+  }
+
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    // NDJSON: 마지막 조각은 아직 줄이 안 끝났을 수 있으니 버퍼에 남긴다.
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) handle(line)
+  }
+  handle(buffer)
+
+  // done 없이 스트림이 끊겼다 — 네트워크가 중간에 죽은 경우.
+  if (!tail) throw new ApiError(0, GENERIC)
+  return tail
 }
 
 /** 2단계: 카드를 탭했을 때만 부른다.

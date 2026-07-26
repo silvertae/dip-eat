@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import json
 import logging
 import time
 import uuid
+from collections.abc import AsyncIterator
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import TypeAdapter, ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import Settings, get_settings
-from app.core.errors import InvalidRequest
+from app.core.errors import DipeatError, InvalidRequest
 from app.schemas.menu import (
     ExplainRequest,
     ExplainResponse,
@@ -20,7 +23,7 @@ from app.schemas.menu import (
     MenuScanResponse,
     ScanMeta,
 )
-from app.services.gemini import GeminiService
+from app.services.gemini import GeminiService, ScanHead, ScanTail
 from app.services.image import prepare_image
 
 _TARGETS_ADAPTER = TypeAdapter(list[LocateTarget])
@@ -71,6 +74,116 @@ async def scan_menu(
         scan_id=uuid.uuid4().hex,
         meta=ScanMeta(model=outcome.model, latency_ms=latency_ms, image_px=prepared.px),
     )
+
+
+@router.post(
+    "/menu/scan/stream",
+    summary="메뉴판 사진 1장 → 메뉴 목록 (NDJSON 스트리밍)",
+    response_class=StreamingResponse,
+    # 스트림은 한 줄마다 형태가 달라 response_model 로 표현할 수 없다. 계약은 아래 docstring 과
+    # web/src/lib/api.ts 의 파서가 함께 지킨다. openapi 에 반쪽짜리 스키마를 넣지 않는다.
+    include_in_schema=False,
+)
+async def scan_menu_stream(
+    request: Request,
+    image: Annotated[UploadFile, File(description="메뉴판 사진 (JPEG/PNG/WEBP)")],
+    mode: Annotated[CaptureMode, Form(description="촬영 모드")] = "poster",
+    target_lang: Annotated[str, Form(description="번역 대상 언어")] = "ko",
+) -> StreamingResponse:
+    """`/menu/scan` 과 같은 결과를 항목이 완성되는 대로 흘려보낸다.
+
+    한 줄 = 한 이벤트(NDJSON). 순서는 항상 `meta` → `item`* → `done`:
+
+        {"type":"meta","scan_id":"...","source_lang":"ja","currency":"JPY","restaurant":{...}}
+        {"type":"item","item":{...MenuItemSummary...}}
+        {"type":"done","warnings":[],"meta":{"model":"...","latency_ms":123,"image_px":"..."}}
+
+    실패는 `{"type":"error","code":"...","message":"...","partial":bool}` 한 줄로 끝난다.
+    `partial=true` 면 앞서 보낸 항목들은 유효하다.
+
+    ⚠️ **HTTP 상태는 항상 200 이다.** 첫 바이트를 보내는 순간 상태 코드가 확정되므로,
+    생성 도중 난 오류를 4xx/5xx 로 바꿀 방법이 없다. 그래서 오류도 본문 안에서 전달한다.
+    클라이언트는 상태 코드가 아니라 `type` 을 봐야 한다.
+    """
+    settings: Settings = get_settings()
+    started = time.perf_counter()
+
+    raw = await image.read()
+    prepared = await run_in_threadpool(
+        prepare_image,
+        raw,
+        target_long_edge=settings.target_long_edge,
+        jpeg_quality=settings.jpeg_quality,
+    )
+
+    gemini: GeminiService = request.app.state.gemini
+    scan_id = uuid.uuid4().hex
+
+    async def emit() -> AsyncIterator[bytes]:
+        sent_items = 0
+        try:
+            async for event in gemini.stream_menu(prepared, mode=mode):
+                if isinstance(event, ScanHead):
+                    yield _line(
+                        {
+                            "type": "meta",
+                            "scan_id": scan_id,
+                            "source_lang": event.source_lang,
+                            "currency": event.currency,
+                            "restaurant": event.restaurant.model_dump(),
+                        }
+                    )
+                elif isinstance(event, ScanTail):
+                    latency_ms = int((time.perf_counter() - started) * 1000)
+                    log.info(
+                        "menu.scan.stream ok items=%d model=%s px=%s bytes_in=%d "
+                        "tok_in=%d tok_out=%d latency_ms=%d",
+                        event.items, event.model, prepared.px, len(raw),
+                        event.usage.input_tokens, event.usage.output_tokens, latency_ms,
+                    )
+                    yield _line(
+                        {
+                            "type": "done",
+                            "warnings": event.warnings,
+                            "meta": ScanMeta(
+                                model=event.model,
+                                latency_ms=latency_ms,
+                                image_px=prepared.px,
+                            ).model_dump(),
+                        }
+                    )
+                else:
+                    sent_items += 1
+                    yield _line({"type": "item", "item": event.model_dump()})
+        except DipeatError as exc:
+            # 스트림 도중이라 상태 코드를 못 바꾼다. 본문으로 알린다.
+            log.warning(
+                "menu.scan.stream failed code=%s sent=%d detail=%s",
+                exc.code, sent_items, exc.detail,
+            )
+            yield _line(
+                {
+                    "type": "error",
+                    "code": exc.code,
+                    "message": exc.message,
+                    "partial": sent_items > 0,
+                }
+            )
+
+    return StreamingResponse(
+        emit(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-store, no-transform",
+            # 중간 프록시의 응답 버퍼링을 끈다. 이게 없으면 스트리밍이 무의미해진다.
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+def _line(payload: dict) -> bytes:
+    """NDJSON 한 줄. ensure_ascii=False 라야 일본어가 이스케이프로 부풀지 않는다."""
+    return (json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n").encode()
 
 
 @router.post(
