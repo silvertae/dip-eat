@@ -827,6 +827,31 @@ jobs:
 
 GitHub Secret 은 **`GEMINI_API_KEY` 단 하나**(이 워크플로 전용). 배포 경로에는 시크릿이 0개다.
 
+⚠️ **Repository secret 으로 넣어야 한다.** Environment secret 으로 넣으면 이 워크플로가 `environment:` 를
+선언하지 않으므로 값이 빈 문자열로 들어가고, `probe_models.py` 가 키 없음으로 죽는다.
+
+⚠️ **크론은 default 브랜치의 워크플로만 실행된다** → main 에 머지되기 전엔 안 돈다.
+그리고 **리포에 60일간 활동이 없으면 GitHub 이 스케줄을 자동 비활성화**한다.
+
+### 7.9 브랜치 보호 — 경로 필터 워크플로는 required 로 걸지 않는다
+
+**MVP 의 선택: main 에 required status check 를 걸지 않는다.** (현재 main 은 보호 규칙·룰셋이 0개다.)
+
+이유는 취향이 아니라 함정 회피다. `api-ci`·`web-ci`·`contract-drift` 는 **셋 다 경로 필터**를 쓴다.
+경로 필터가 걸린 잡을 required 로 지정하면, 그 경로를 건드리지 않은 PR 에서는 잡이 **아예 생성되지 않고**,
+GitHub 은 그것을 "성공"이 아니라 *"Expected — Waiting for status to be reported"* 로 본다
+→ **`web/**` 만 고친 PR 이 `api-ci` 를 기다리며 영구히 머지 불가**가 된다.
+
+| 안 | 대가 |
+|---|---|
+| **required 안 건다 (채택)** | 게이트가 관행에 의존한다. 빨간 PR 을 사람이 머지할 수 있다 |
+| 경로 필터를 지운다 | 모든 PR 이 web+api 를 다 돌린다. 게이트 시간·러너 낭비 |
+| 항상 도는 더미 잡을 추가 | 워크플로마다 skip-guard 잡 + `if:` 배선. MVP 에 과하다 |
+
+발표용 MVP 는 커밋하는 사람이 한 명이고 PR 에서 체크를 눈으로 보므로 1안으로 충분하다.
+**협업자가 늘거나 main 직push 를 막아야 하면 3안으로 올린다** — 그때도 1·2안으로는 가지 말 것.
+경로 필터를 지우는 건 게이트를 느리게 만들고, required 를 그냥 켜는 건 위의 무한 대기를 부른다.
+
 ---
 
 ## 8. 로컬에서 손으로 배포할 때
@@ -1042,6 +1067,31 @@ MVP 전체 Gemini 비용의 20배다. **캘린더에 알림을 걸어라.**
 프록시가 응답을 다 모았다가 뱉으면 백엔드가 아무리 스트리밍해도 브라우저는 34초 뒤에 통째로 받는다.
 프록시 계층의 스트리밍 버퍼링은 실제로 흔하다. 그래서 **구현 전에** 경로부터 검증한다.
 
+### 재기 전에 — ⚠️ 머지는 배포가 아니다
+
+**CI/CD 를 붙이기 전까지 `main` 머지만으로는 Cloud Run 이 바뀌지 않는다.**
+이미지를 다시 빌드해 푸시하고 배포해야 한다. 이걸 잊으면 새 엔드포인트가 **404** 로 나오고,
+"코드가 잘못됐나" 를 한참 뒤진다(실제로 한 번 당했다).
+
+```bash
+# 레포 루트에서 — main 을 먼저 받아온다
+git checkout main && git pull
+
+docker buildx build --platform linux/amd64 -f api/Dockerfile \
+  -t asia-northeast3-docker.pkg.dev/dip-eat/dipeat/dipeat-api:latest --push api
+
+gcloud run deploy dipeat-api \
+  --image asia-northeast3-docker.pkg.dev/dip-eat/dipeat/dipeat-api:latest \
+  --region asia-northeast3
+
+# 배포 확인 — 404 면 아직 옛 리비전이다
+curl -s -o /dev/null -w "%{http_code}\n" \
+  "https://dipeat-api-178327258666.asia-northeast3.run.app/api/v1/_probe/stream?chunks=2&delay_ms=0"
+```
+
+> `gcloud run deploy` 에 `--image` 와 `--region` 만 주면 나머지 설정(동시성·타임아웃·시크릿·
+> 환경변수·서비스 계정)은 **이전 리비전에서 그대로 승계**된다. 매번 전체 플래그를 다시 칠 필요 없다.
+
 ### 어떻게 재는가
 
 `--no-buffer` 와 `-w` 로 **각 줄의 도착 시각**을 찍는다. 백엔드 직결과 Vercel 경유를 비교하는 게 핵심이다.
@@ -1049,18 +1099,25 @@ MVP 전체 Gemini 비용의 20배다. **캘린더에 알림을 걸어라.**
 ```bash
 # ① 백엔드 직결 — 기준선
 curl -N -s "https://dipeat-api-178327258666.asia-northeast3.run.app/api/v1/_probe/stream?chunks=10&delay_ms=500" \
-  | while IFS= read -r line; do printf '%s  %s\n' "$(date +%H:%M:%S.%3N)" "$line"; done
+  | perl -MTime::HiRes=time -ne 'BEGIN{$t=time; $|=1} printf "  +%5.2fs  %s", time-$t, $_'
 
 # ② Vercel 경유 — 이게 진짜 시험
 curl -N -s "https://dip-eat.vercel.app/api/v1/_probe/stream?chunks=10&delay_ms=500" \
-  | while IFS= read -r line; do printf '%s  %s\n' "$(date +%H:%M:%S.%3N)" "$line"; done
+  | perl -MTime::HiRes=time -ne 'BEGIN{$t=time; $|=1} printf "  +%5.2fs  %s", time-$t, $_'
 ```
 
-> macOS 기본 `date` 는 `%3N` 을 모른다. `brew install coreutils` 후 `gdate` 를 쓰거나,
-> 아래처럼 `ts`(moreutils) 를 쓰거나, 그냥 **줄이 뚝뚝 끊겨 나오는지 눈으로** 봐도 충분하다.
-> ```bash
-> curl -N -s "https://dip-eat.vercel.app/api/v1/_probe/stream?chunks=10&delay_ms=500" | ts '%.T'
-> ```
+`perl` 은 macOS 에 기본 탑재라 설치가 필요 없다.
+⚠️ `ts`(moreutils)나 `date +%3N` 은 macOS 기본에 **없다** — `command not found` 를 본다면 그 이유다.
+⚠️ `$|=1` 을 빼지 말 것. perl 이 출력을 버퍼링하면 우리가 재려던 바로 그 현상을 우리가 만들어낸다.
+
+정상이면 이렇게 나온다:
+
+```
+  + 0.05s  {"i":0,"server_elapsed_ms":0,"last":false}
+  + 0.55s  {"i":1,"server_elapsed_ms":501,"last":false}
+  + 1.05s  {"i":2,"server_elapsed_ms":1002,"last":false}
+  ...
+```
 
 ### 어떻게 읽는가
 
@@ -1077,7 +1134,8 @@ curl -N -s "https://dip-eat.vercel.app/api/v1/_probe/stream?chunks=10&delay_ms=5
 
 1. **최소 버퍼 임계값 가설** — 프록시가 일정 바이트가 쌓여야 흘리는 경우가 있다. 패딩을 키워 확인:
    ```bash
-   curl -N -s "https://dip-eat.vercel.app/api/v1/_probe/stream?chunks=10&delay_ms=500&pad_bytes=4096" | ts '%.T'
+   curl -N -s "https://dip-eat.vercel.app/api/v1/_probe/stream?chunks=10&delay_ms=500&pad_bytes=4096" \
+     | perl -MTime::HiRes=time -ne 'BEGIN{$t=time; $|=1} printf "  +%5.2fs  %s", time-$t, $_'
    ```
    이걸로 뚫리면 원인은 경로가 아니라 임계값이다(실용적 완화책이 된다).
 2. **그래도 막히면 설계를 바꾼다** — 프런트가 Cloud Run 을 직접 호출한다.
