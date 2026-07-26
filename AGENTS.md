@@ -3,12 +3,14 @@
 찍먹(dipeat) — 메뉴판 사진 1장을 구조화해 해석·주문·점원 대화까지 잇는 발표용 MVP.
 모노레포: `web/`(React+TS+Vite 모바일 웹 → Vercel), `api/`(FastAPI → Cloud Run 서울).
 설치형 PWA(오프라인 앱 셸·세션 복원·최근 식당 재열람)는 Phase 5 에서 구현했다.
-배포·로컬 실행·실측 수치는 [README.md](README.md)에 있다. 이 파일은 **깨지기 쉬운 규칙**만 모은다.
+**운영 배포 중이다** — 프론트 https://dip-eat.vercel.app, 백엔드 Cloud Run(서울), CI/CD 는 GitHub Actions.
+배포·로컬 실행·실측 수치는 [README.md](README.md)에, 배포 근거 전문은 [docs/deploy.md](docs/deploy.md)에 있다.
+이 파일은 **깨지기 쉬운 규칙**만 모은다.
 
 ## 명령어
 
 ```bash
-cd api && uv run pytest                      # 55개
+cd api && uv run pytest                      # 91개
 cd api && uv run uvicorn app.main:app --reload --reload-include '*.md' --port 8000
 cd web && npm run dev                        # /api 는 127.0.0.1:8000 으로 프록시
 cd web && npm run build                      # tsc -b + vite build
@@ -76,6 +78,9 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 - `response.parsed` 는 스키마 위반 시 예외 없이 **`None`** 이 된다(SDK가 삼킴). `isinstance` 로 확인하고 재시도하는 분기를 지울 것 → "메뉴 0개"가 조용히 나간다.
 - `thinking_level` 기본값은 HIGH. 우리는 **`minimal`**(OCR은 추론 과제가 아님). config 에서 온다.
 - 1차 `gemini-3.1-flash-lite` → 폴백 `gemini-3.6-flash`. `gemini-3.5-flash` 는 503-dead라 뺐다. 모델 ID 는 문서보다 빨리 바뀌므로 배포 전 `probe_models.py`.
+- ⚠️ **`probe_models.py` 는 설정된 모델이 죽어 있어도 `exit 0`** 이다(`⚠️` 만 출력). 게이트가 아니다 —
+  그래서 `probe-models.yml` 이 출력에서 `⚠️` 를 grep 해 강제 실패시킨다. 손으로 돌릴 때는 눈으로 읽을 것.
+  (2026-07-26 재확인: `gemini-3.5-flash` 가 지금은 응답한다. 되돌리지 않는다 — 폴백은 1차보다 **상위** 모델이어야 한다.)
 
 **Pydantic 스키마 = Gemini `response_schema` (`app/schemas/menu.py`)**
 - 필드 `description` 이 곧 **모델에 대한 지시문**이다. 성의 있게 쓸 것.
@@ -103,6 +108,24 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 - 커먼즈 썸네일 런타임 캐시(`vite.config.ts` workbox runtimeCaching)는 `<img>` opaque 응답(status 0)이라 성공/실패를 구분 못 한다 → **CacheFirst 면 일시 404/429/5xx 가 30일 박제**된다. 그래서 `StaleWhileRevalidate`(다음 열람에 자가 치유) + `<img onError>` 이모지 폴백(`DishThumb`/`MenuCard`)을 함께 쓴다. `navigateFallback` 은 `/api` 를 denylist 로 제외(백엔드 호출을 셸로 가로채지 않게).
 - 브랜드 아이콘(`public/pwa-*.png`, `apple-touch-icon-180x180.png`)은 홈 로고와 같은 오렌지 '찍' 마크다(favicon.svg 는 옛 템플릿 보라 마크라 아이콘 소스로 쓰지 말 것).
 
+**CI/CD (`.github/workflows/`, 근거는 [docs/deploy.md](docs/deploy.md) 7장)**
+- ⚠️⚠️ **`main` 에 `api/**` 가 들어가면 그 자리에서 운영에 배포된다.** 예전 문서의 "머지는 배포가 아니다"는
+  더 이상 사실이 아니다. `--no-traffic` candidate 로 띄워 스모크(`/health` + `POST /chat`)를 통과해야
+  트래픽이 넘어가므로 안전장치는 있지만, **머지 = 배포**로 알고 움직일 것.
+- ⚠️ **required status check 가 없다**(경로 필터 워크플로를 required 로 걸면 그 경로를 건드리지 않은 PR 이
+  영구히 머지 불가가 된다 — deploy.md 7.9). 즉 **빨간 PR 도 머지 버튼이 눌린다.** 체크를 눈으로 볼 것.
+- ⚠️ 스키마를 고치면 `openapi.json`·`api.gen.ts` **재생성본을 같이 커밋**해야 한다. `contract-drift.yml`
+  이 재생성 후 diff 로 막는다. 단 `include_in_schema=False` 라우트(스트리밍)는 openapi 에 안 잡히므로 무관.
+- ⚠️ 테스트는 **접두사 없는 `GEMINI_API_KEY`** 에 아무 문자열이라도 있어야 통과한다(`Settings(gemini_api_key=…)`
+  는 alias 때문에 안 먹는다). `DIPEAT_GEMINI_API_KEY` 로 주면 `test_config` 가 깨진다. 네트워크는 안 탄다.
+- ⚠️ `--set-env-vars` 는 환경변수를 **통째로 교체**한다. 콘솔에서 변수를 추가했으면 `api-deploy.yml` 에도
+  같이 넣어야 다음 배포가 날리지 않는다. 콤마는 gcloud 가 먹으므로 `^@^` 구분자 유지.
+- ⚠️ `api-deploy.yml` 에 `--min-instances 0` 이 박혀 있다 → **발표 당일 1 로 올려둔 상태에서 배포하면
+  콜드스타트가 되돌아온다.** 그날은 배포하지 말 것.
+- 액션 버전: `astral-sh/setup-uv` 는 이동 태그가 `v7` 에서 멈춰 있어 **전체 버전(`@v9.0.0`) 고정**이 필요하다.
+  `openapi-typescript` 도 정확히 핀한다(떠다니면 코드를 안 고쳐도 어느 날 무관한 PR 이 막힌다).
+- ruff 는 `uv.lock` 에 없다 → `uv run` 이 아니라 `uvx`. 현재 19건이 남아 **비차단**(`continue-on-error`)이다.
+
 ## 제품 불변식 (기능 아님)
 
 - **서버는 원화를 모른다.** 현지 통화만 반환, ₩ 환산은 클라이언트(`web/src/lib/fx.ts`)가 볼 때마다 한다 — 캐시된 결과가 과거 환율에 박제되는 걸 막는다. 외부 API(open.er-api.com) + 하드코딩 폴백이라 발표 중 API 가 죽어도 ₩ 는 계속 나온다.
@@ -121,4 +144,9 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 
 - **결제 화면은 범위 제외.** 현재 구현 화면은 온보딩·홈·촬영·결과·주문서·대화·설정·완료다. 목업 정본: `찍먹 목업.dc.html`(Claude Design).
 - **Phase 5(설치형 PWA·오프라인 앱 셸·세션 복원·최근 식당)까지 구현됐다.** 디자인 토큰은 `web/src/styles/theme.css`(목업 CSS 변수 그대로).
-- **미결:** 완료 화면(`/done`)은 라우트·코드만 있고 어느 흐름에서도 진입하지 않는다(디자인 재구성 때 주문 CTA 가 `/chat` 으로 바뀌며 빠짐). 어디에 다시 붙일지는 결정 안 됨.
+- **그 뒤로 스캔 스트리밍(위 절)과 배포·CI/CD 가 들어갔다.** 운영 배포 완료, GitHub Actions 워크플로 5개 동작 중.
+- **미결:**
+  - 완료 화면(`/done`)은 라우트·코드만 있고 어느 흐름에서도 진입하지 않는다(디자인 재구성 때 주문 CTA 가 `/chat` 으로 바뀌며 빠짐). 어디에 다시 붙일지는 결정 안 됨.
+  - **실기기(iOS Safari) 검증이 남아 있다** — PWA 설치·마이크 권한·폰 촬영본(3024×4032) 스캔. 헤드리스로는 불가.
+  - `/api/v1/_probe/stream` 은 임시 진단 장치다. 스트리밍이 Vercel 을 통과함을 확인했으므로 지울 수 있다(deploy.md 부록 A).
+  - ruff 19건 정리 → `api-ci.yml` 의 `continue-on-error` 제거.

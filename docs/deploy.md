@@ -1005,19 +1005,24 @@ MVP 전체 Gemini 비용의 20배다. **캘린더에 알림을 걸어라.**
 
 ---
 
-## 11. README·AGENTS 에서 직접 고칠 것
+## 11. README·AGENTS 정리 — ✅ 반영 완료 (2026-07-26)
 
-이 문서를 반영하면서 같이 정리한다.
+아래는 이 문서를 쓰면서 발견한 README·AGENTS 의 낡은 사실들이고, **전부 반영했다.** 기록만 남긴다.
 
-| 위치 | 현재 | 고칠 내용 |
+| 위치 | 무엇이 틀렸었나 | 어떻게 고쳤나 |
 |---|---|---|
-| `README.md` 배포 섹션(164~206) | 40줄 런북 | **이 문서로 포인터** + 발표 당일 토글 2줄만 남긴다. 새벽 3시에 필요한 건 그 두 줄뿐이다 |
-| `README.md:173` | `--timeout 120` | **`--timeout 105`** (120은 Vercel 과 동률) |
-| `README.md:169-174` | `--concurrency` 없음, `--memory 1Gi` | `--concurrency 8`, `--memory 2Gi`, `--max-instances 4`, `--service-account`, `--startup-probe` 추가 |
-| `README.md:200` | `--min-instances=1` 시간당 $0.08 | 2GiB 기준 **약 $0.09** |
-| `README.md:153`, `AGENTS.md:11` | "55개" | **57개** |
-| `README.md:111` | "실기기 PWA 검증은 Vercel 프리뷰 URL로" | ⚠️ Vercel **Standard Protection 이 기본 ON** 이라 프리뷰 URL 은 로그인을 요구한다. Hobby 는 공유 링크 1개 / 외부 사용자 1명 제한 — 그대로는 안 된다 |
-| `AGENTS.md` "Gemini" 절 | — | `probe_models.py` 가 **모델이 죽어도 exit 0** 이라는 사실을 명시 |
+| `README.md` 배포 섹션 | 40줄 런북(`--source`, `--memory 1Gi`, `--timeout 120`, `--concurrency` 없음) | **이 문서로 포인터** + 자동 배포 파이프라인 설명 + 발표 당일 토글 2줄 |
+| `README.md` 발표 당일 | `--min-instances=1` 시간당 $0.08 | 2GiB 기준 **약 $0.09**, 방치 시 월 ₩90,000 경고 |
+| `README.md` Vercel 절 | "`vercel.json` 의 `REPLACE-ME` 를 교체" | 이미 실제 URL 이 커밋돼 있다 → 절 삭제 |
+| `README.md` 실기기 테스트 | "PWA 검증은 Vercel 프리뷰 URL로" | ⚠️ Standard Protection 이 기본 ON 이라 로그인을 요구한다 → **운영 도메인**으로 |
+| `README.md`, `AGENTS.md` | 테스트 "55개" | **91개** (이 문서 초안 때 57개 → 스트리밍 테스트가 추가됐다) |
+| `README.md` 모델 구성 | "1차 모델로 2회 시도" | 로컬 기본값은 2회지만 **운영은 `DIPEAT_GEMINI_MAX_ATTEMPTS=1`** ([6장](#6-183초-문제--환경변수-하나로-끝난다)) |
+| `AGENTS.md` "Gemini" 절 | — | `probe_models.py` 가 **모델이 죽어도 exit 0** 이라는 사실 명시 |
+| `AGENTS.md` | CI/CD 규칙 없음 | **"머지 = 배포"** 를 포함한 CI/CD 절 추가. required check 없음, `--set-env-vars` 통째 교체 등 |
+
+> ⚠️ **이 문서 자체에도 낡은 서술이 남아 있다.** 2~3장은 "아직 아무것도 배포하지 않았다"를 전제로 쓰였지만
+> 실제로는 배포·CI/CD 가 모두 끝났다. 최초 구축 기록으로서의 가치가 있어 남겨두되,
+> **현재 상태를 알고 싶으면 [README.md](../README.md) 를 볼 것.**
 
 ---
 
