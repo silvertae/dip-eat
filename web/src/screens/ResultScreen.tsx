@@ -33,6 +33,8 @@ export function ResultScreen() {
 
 function Result({ scan }: { scan: MenuScanResponse }) {
   const cart = useApp((s) => s.cart)
+  // 아직 항목이 들어오는 중인가. 스트리밍 덕에 이 화면은 첫 항목(~2초)에 이미 떠 있다.
+  const streaming = useApp((s) => s.phase === 'streaming')
   const { allergies, vegetarian } = useProfile()
   const [filters, setFilters] = useState<Filters>(NO_FILTERS)
 
@@ -67,11 +69,17 @@ function Result({ scan }: { scan: MenuScanResponse }) {
     }
   }, [scan.currency])
 
-  const [collapsed, setCollapsed] = useState<Set<string>>(() =>
-    groups.length > 1 && scan.items.length > AUTO_COLLAPSE_OVER
-      ? new Set(groups.slice(1).map((g) => g.section))
-      : new Set(),
-  )
+  // ⚠️ 스트리밍이라 최초 렌더 시점엔 항목이 1개뿐이다. 그때 자동 접기를 판단하면 영원히
+  //    안 접힌다(90개짜리가 전부 펼쳐진 채 뜬다). 그래서 '다 받은 뒤'에 한 번 적용한다.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [autoCollapsed, setAutoCollapsed] = useState(false)
+  useEffect(() => {
+    if (streaming || autoCollapsed) return
+    setAutoCollapsed(true)
+    if (groups.length > 1 && scan.items.length > AUTO_COLLAPSE_OVER) {
+      setCollapsed(new Set(groups.slice(1).map((g) => g.section)))
+    }
+  }, [streaming, autoCollapsed, groups, scan.items.length])
 
   const toggle = (section: string) =>
     setCollapsed((prev) => {
@@ -94,6 +102,12 @@ function Result({ scan }: { scan: MenuScanResponse }) {
               .filter(Boolean)
               .join(' · ')}
           </p>
+          {streaming && (
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-brand">
+              <span className="size-2.5 animate-spin rounded-full border-2 border-brand-100 border-t-brand" />
+              계속 읽고 있어요…
+            </p>
+          )}
         </div>
 
         {scan.warnings.map((warning) => (

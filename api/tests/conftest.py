@@ -7,6 +7,7 @@ from httpx import ASGITransport, AsyncClient
 from PIL import Image
 
 from app.main import create_app
+from app.schemas.chat import Translation, VoiceResult
 from app.schemas.menu import (
     ItemExplanation,
     LikelyAllergen,
@@ -16,11 +17,12 @@ from app.schemas.menu import (
     MenuItemSummary,
     Restaurant,
 )
-from app.schemas.chat import Translation, VoiceResult
 from app.services.gemini import (
     ExplainOutcome,
     LocateOutcome,
+    ScanHead,
     ScanOutcome,
+    ScanTail,
     TranslateOutcome,
     Usage,
     VoiceOutcome,
@@ -121,6 +123,36 @@ class FakeGemini:
             extraction=self.result,
             model="fake-model",
             usage=Usage(input_tokens=1120, output_tokens=4200, thought_tokens=100),
+        )
+
+    async def stream_menu(self, image, *, mode: str, models=None):
+        """실물과 같은 순서로 낸다: 머리 1개 → 항목 N개 → 꼬리 1개.
+
+        `error` 를 준 경우, `stream_error_after` 만큼 항목을 내보낸 **뒤에** 터뜨린다.
+        0이면 첫 항목 전에 터진다(= 폴백이 가능한 지점).
+        """
+        self.calls.append({"stream": mode, "bytes": len(image.data), "px": image.px})
+        after = getattr(self, "stream_error_after", 0)
+        if self.error and after == 0:
+            raise self.error
+        yield ScanHead(
+            source_lang=self.result.source_lang,
+            currency=self.result.currency,
+            restaurant=self.result.restaurant,
+            model="fake-model",
+        )
+        for index, item in enumerate(self.result.items):
+            if self.error and index >= after:
+                raise self.error
+            yield item
+        if self.error:
+            # 항목을 다 낸 뒤에 터지는 경우(꼬리 직전). after 가 항목 수 이상일 때 여기로 온다.
+            raise self.error
+        yield ScanTail(
+            warnings=list(self.result.warnings),
+            model="fake-model",
+            usage=Usage(input_tokens=1120, output_tokens=4200),
+            items=len(self.result.items),
         )
 
     async def explain_item(self, req, *, models=None):
