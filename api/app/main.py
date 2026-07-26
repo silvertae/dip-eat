@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import chat, health, menu
+from app.api.routes import chat, health, menu, probe
 from app.core.config import get_settings
 from app.core.errors import DipeatError
 from app.core.limits import BodySizeLimitMiddleware, patch_multipart_part_limit
@@ -57,6 +57,8 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api/v1")
     app.include_router(menu.router, prefix="/api/v1")
     app.include_router(chat.router, prefix="/api/v1")
+    # 스트리밍 통과 진단용. 결론이 나면 이 줄과 routes/probe.py 를 함께 지운다.
+    app.include_router(probe.router, prefix="/api/v1")
 
     @app.exception_handler(DipeatError)
     async def dipeat_error_handler(_: Request, exc: DipeatError) -> JSONResponse:
