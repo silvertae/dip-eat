@@ -3,6 +3,8 @@
 해외 식당에서 **메뉴판을 사진 한 장 찍으면** 해석·설명·주문·점원 대화까지 이어주는 모바일 웹 MVP.
 설치형 PWA(오프라인 앱 셸·세션 복원·최근 식당 재열람)까지 구현했다(Phase 5).
 
+**운영 중:** https://dip-eat.vercel.app — 백엔드는 Cloud Run(서울), 배포는 GitHub Actions 로 자동화돼 있다.
+
 - 프론트: React + TypeScript + Vite + Tailwind v4 → **Vercel**
 - 백엔드: Python 3.13 + FastAPI → **Google Cloud Run (서울 asia-northeast3)**
 - AI: **Gemini** — 사진 스캔은 1회 멀티모달 호출로 OCR·번역·구조화한다(Vision API 별도 호출 없음). 카드 상세와 점원 대화는 별도 호출이다.
@@ -18,9 +20,13 @@
 > 배포 전 `uv run python scripts/probe_models.py` 로 **이 키에서 실제로 응답하는 모델**을 확인할 것 —
 > 문서에 GA 로 적혀 있어도 503 이 계속 나면 폴백이 아니다.
 
-`extract_menu` 는 1차 모델로 2회 시도한 뒤 폴백으로 넘어가므로, 이 구성이 그대로
+`extract_menu` 는 1차 모델로 시도한 뒤 폴백으로 넘어가므로, 이 구성이 그대로
 **"싸게 먼저, 안 되면 좋은 걸로" 에스컬레이션**이 된다. 잘 읽히는 사진은 Lite 값만 내고,
 손글씨·저조도처럼 어려운 사진만 상위 모델 비용을 낸다.
+
+> 모델당 시도 횟수는 로컬 기본값이 **2회**지만 **운영은 `DIPEAT_GEMINI_MAX_ATTEMPTS=1`** 이다.
+> 2모델 × 2시도 × 45초 = 최악 183초로 Vercel 프록시의 120초 천장을 넘기 때문이다
+> ([docs/deploy.md](docs/deploy.md) 6장). 최악 Gemini 비용도 정확히 절반이 된다.
 
 `thinking_level` 은 **`minimal`**. 실측(사진 10장) 결과 `low` 는 thinking 토큰이 0~3,541 로
 널뛰며 p50 19.6초였고, `minimal` 은 thinking 0 에 p50 15.6초이면서 추출량·가격 파싱률은
@@ -47,18 +53,34 @@
 **목록 스키마에 필드를 추가하면 항목 수만큼 곱해진다.** `tests/test_explain_route.py`
 의 `test_scan_list_stays_lean` 이 이걸 지킨다.
 
+### 스캔 스트리밍 — 총 시간이 아니라 첫 카드를 줄였다
+
+출력 토큰이 지연을 만든다는 사실은 그대로다. 다만 **첫 항목은 전체 크기와 거의 무관하게 일찍 완성된다:**
+
+| 항목 수 | 첫 항목 | 전체 |
+|---|---|---|
+| 20개 | 1.55초 | 10.2초 |
+| 40개 | 2.70초 | 19.1초 |
+| 54개 | 2.78초 | 26.1초 |
+
+그래서 `/menu/scan/stream` 이 완성된 항목을 NDJSON 으로 흘려보낸다. 브라우저 실측으로
+결과 화면 진입이 **26.7초 → 4.7초**(클라이언트 축소 포함). 총 시간은 그대로고 체감만 바뀐다 —
+큰 메뉴판일수록 이득이 크다. 스트리밍의 깨지기 쉬운 규칙(상태가 항상 200, 첫 항목 전까지 아무것도
+안 보내는 이유 등)은 [AGENTS.md](AGENTS.md) 에 있다.
+
 개발 계획 전문: `~/.claude/plans/hazy-enchanting-hare.md`
 
 ---
 
-## 현재 상태 — Phase 4 (주문서·점원 대화)
+## 현재 상태 — 운영 배포 + 스캔 스트리밍
 
-사진 → 축소 → `POST /api/v1/menu/scan` → Gemini → 구조화 JSON → 결과·주문서·대화까지 관통한다.
+사진 → 축소 → `POST /api/v1/menu/scan/stream` → Gemini → 구조화 JSON → 결과·주문서·대화까지 관통한다.
 목업 디자인 시스템은 결과·주문서·대화 화면에 이식돼 있다.
 
 | | 상태 |
 |---|---|
 | `POST /api/v1/menu/scan` | ✅ 실사진 10장 검증 (10/10 성공, 가격 파싱 99%) |
+| `POST /api/v1/menu/scan/stream` | ✅ **프런트가 쓰는 경로.** 항목이 완성되는 대로 NDJSON — 첫 카드 26.7초 → **4.7초** |
 | `POST /api/v1/menu/item/explain` | ✅ 상세 조회, 실측 2.3초 |
 | `GET /api/v1/health` | ✅ |
 | `POST /api/v1/chat` | ✅ 자유 텍스트 번역 API. **현재 프론트는 이 경로를 쓰지 않는다**(대화 UI는 음성+빠른응답만) |
@@ -68,7 +90,10 @@
 | 주문서·대화 (독립 화면) | ✅ 오프라인 주문 카드(일본어) + push-to-talk 음성 통역 + 빠른 응답 |
 | Wikimedia Commons 참고 이미지·저작권 표기 | ✅ (썸네일 오프라인 캐시 + 실패 시 이모지 폴백) |
 | PWA(설치·오프라인 앱 셸·세션 복원·최근 식당) | ✅ Phase 5 — 아래 참조 |
+| 배포 (Vercel + Cloud Run 서울) | ✅ https://dip-eat.vercel.app — 동일 출처 리라이트 관통 확인 |
+| CI/CD (GitHub Actions 5개) | ✅ main 의 `api/**` → 스모크 통과 후 자동 배포. [아래](#배포--cicd) |
 | 결제·주문 완료 화면 | 결제 ❌ 범위 제외 / 완료 화면(`/done`)은 코드만 있고 현재 흐름에서 빠짐 |
+| 실기기(iOS) 검증 | ⬜ **미완** — PWA 설치·마이크 권한·폰 촬영본 스캔. 헤드리스로는 불가 |
 
 > **Phase 5 (PWA·오프라인).** `vite-plugin-pwa`(`registerType: 'prompt'` — 업로드·녹음 중
 > 강제 리로드 금지). 스캔 세션(결과·장바구니·대화)은 zustand persist(localStorage
@@ -108,7 +133,10 @@ Vite 개발 서버가 `/api` 를 `127.0.0.1:8000` 으로 프록시한다. 프로
 `npm run dev -- --host` 만으로는 LAN 주소가 평문 http 라 **secure context 가 아니다.**
 현재 사진 촬영은 `<input capture>`라 LAN에서도 열리지만, 음성 대화의 `getUserMedia`와
 service worker/PWA(설치·오프라인)는 HTTPS가 필요하다 — 실기기 PWA 검증은 mkcert 인증서 또는
-Vercel 프리뷰 URL로. (개발 모드는 SW 를 끈다 — `npm run build && npm run preview` 로 검증.)
+**운영 도메인**(https://dip-eat.vercel.app)으로. (개발 모드는 SW 를 끈다 — `npm run build && npm run preview` 로 검증.)
+
+> ⚠️ **Vercel 프리뷰 URL 로는 안 된다.** Standard Protection 이 기본 ON 이라 프리뷰 URL 이 Vercel
+> 로그인을 요구하고, Hobby 는 공유 링크 1개 / 외부 사용자 1명으로 제한된다. 폰에서 그냥 열리지 않는다.
 
 - Android: Chrome DevTools → Port forwarding (localhost 는 secure 로 취급됨). 음성 대화 테스트에 인증서 작업 불필요.
 - iOS: `mkcert` 인증서를 만들어 Vite `server.https` 에 물리고, 아이폰에 **구성 프로파일로 설치한 뒤
@@ -150,60 +178,85 @@ uv run python scripts/bench_menu.py ../samples --no-media-resolution # 400 이 �
 ### 테스트 / 타입 생성
 
 ```bash
-cd api && uv run pytest              # 55개
+cd api && uv run pytest              # 91개
 cd web && npm run build              # tsc -b + vite build
 cd web && npm run lint
 
-# 백엔드 스키마를 바꾼 뒤 프론트 타입 재생성
+# 백엔드 스키마를 바꾼 뒤 프론트 타입 재생성 — 재생성본을 반드시 같이 커밋한다(CI 가 diff 로 막는다)
 cd api && uv run python -c "import json; from app.main import create_app; open('openapi.json','w').write(json.dumps(create_app().openapi(), ensure_ascii=False, indent=2))"
 cd ../web && npm run gen:api
 ```
 
+> ⚠️ **테스트는 `GEMINI_API_KEY` 가 (아무 문자열이라도) 있어야 통과한다.** 네트워크는 타지 않지만
+> `GeminiService.__init__` 이 빈 키를 거부해서, 키 없는 깨끗한 체크아웃에서는 16개가 깨진다.
+> 워크트리·CI 에서는 `GEMINI_API_KEY=ci-dummy uv run pytest -q`. **접두사 없는 이름**으로 줄 것 —
+> `DIPEAT_GEMINI_API_KEY` 로 주면 `test_config` 가 깨진다.
+
 ---
 
-## 배포
+## 배포 · CI/CD
 
-### 백엔드 — Cloud Run
+**이미 배포돼 있다.** 왜 이 조합인지, 각 플래그가 왜 그 값인지, 비용은 얼마인지는
+[**docs/deploy.md**](docs/deploy.md) 에 전부 있다 — 여기는 **매일 필요한 것만** 남긴다.
 
-```bash
-gcloud run deploy dipeat-api \
-  --source ./api \
-  --region asia-northeast3 \
-  --allow-unauthenticated \
-  --memory 1Gi --cpu 1 --timeout 120 \
-  --set-secrets GEMINI_API_KEY=gemini-key:latest
+| | |
+|---|---|
+| 프론트 | https://dip-eat.vercel.app (Vercel, Root Directory `web/`, Node 22.x) |
+| 백엔드 | `https://dipeat-api-178327258666.asia-northeast3.run.app` (Cloud Run 서울) |
+| 이어주는 것 | `web/vercel.json` 의 `/api/:path*` 리라이트 → **동일 출처라 CORS 프리플라이트가 없다** |
 
-gcloud run services describe dipeat-api --region asia-northeast3 --format='value(status.url)'
+### 자동 배포 — `main` 의 `api/**`
+
+```
+push main (api/**) → pytest → amd64 빌드 → --no-traffic candidate 배포
+                   → 스모크(/health has_api_key + POST /chat) → 통과하면 트래픽 100% 전환
 ```
 
-주의할 점:
+⚠️ **머지 = 배포다.** 스모크에서 떨어지면 candidate 는 트래픽 0 이라 운영은 이전 리비전에 그대로 남는다.
+서비스 계정 사칭은 Workload Identity Federation 이므로 **배포 경로에 GitHub Secret 이 없다**
+(`GEMINI_API_KEY` 시크릿은 매일 도는 `probe-models` 전용).
 
-- `--allow-unauthenticated` **필수**. 없으면 브라우저 프리플라이트(비인증 `OPTIONS`)가 FastAPI 에
-  닿기 전에 IAM 에서 403 으로 잘린다. 증상만 보면 CORS 버그처럼 보여 한참 헤맨다.
-- 메모리 **1Gi**. 256Mi 로 5MB 이미지를 디코드하면 OOM 이 랜덤 503 으로 나타난다.
-- 첫 배포는 20~30분 예상 — gcloud 설치, 프로젝트 생성, 결제 계정 연결(무료 티어도 카드 필요),
-  Cloud Run + Cloud Build API 활성화.
-- `DIPEAT_DEBUG_ERRORS` 는 **설정하지 말 것.** 업스트림 원문 에러는 Cloud Run 로그에만 남긴다.
-- 현재 공개 경로에는 요청자별 인증·rate limit 이 없다. 발표용 공개 URL을 넘어 운영하려면
-  Vercel/Cloud Armor 등의 호출 제한과 Gemini 예산 알림을 먼저 둔다.
+| 워크플로 | 트리거 |
+|---|---|
+| `api-ci` / `web-ci` | PR — `pytest` / `oxlint` + `tsc -b` |
+| `api-deploy` | push `main` + `api/**` — 위 파이프라인 |
+| `contract-drift` | PR — `openapi.json`·`api.gen.ts` 재생성 후 diff |
+| `probe-models` | 매일 00:00 UTC — 1차·폴백 모델 생존 확인 |
 
-### 프론트 — Vercel
+required status check 는 **일부러 걸지 않았다**(경로 필터 워크플로를 required 로 걸면 그 경로를 건드리지
+않은 PR 이 영구히 머지 불가가 된다 — deploy.md 7.9). **빨간 PR 도 머지되므로 체크는 눈으로 볼 것.**
 
-1. Vercel 프로젝트의 **Root Directory 를 `web/`** 으로 지정
-2. `web/vercel.json` 의 `REPLACE-ME-...` 를 위에서 얻은 Cloud Run URL 로 교체
-3. `/api/:path*` 리라이트가 `/(.*)` SPA 폴백보다 **먼저** 있어야 한다. 순서가 뒤집히면
-   catch-all 이 API 호출을 삼켜 `index.html` 을 돌려주고 조용히 깨진다.
+### 손으로 배포해야 할 때
+
+```bash
+gh workflow run api-deploy.yml --ref main     # 파이프라인을 그대로 다시 태운다 (권장)
+```
+
+로컬에서 직접 밀어야 하면 [docs/deploy.md 8장](docs/deploy.md) 을 볼 것.
+⚠️ **애플 실리콘에서 `--platform linux/amd64` 를 빼면 Cloud Run 이 `Container failed to start` 한 줄만
+남기고 죽는다.** 그리고 `--set-env-vars` 는 환경변수를 통째로 교체한다.
 
 ### 발표 당일
 
 ```bash
-# 1시간 전 — 콜드스타트(~3초) 제거. 서울 기준 시간당 약 $0.08.
+# 1시간 전 — 콜드스타트(~3초) 제거. 2GiB 기준 시간당 약 $0.09.
 gcloud run services update dipeat-api --region asia-northeast3 --min-instances=1
-curl -s https://<CLOUD_RUN_URL>/api/v1/health     # 워밍업
+curl -s https://dipeat-api-178327258666.asia-northeast3.run.app/api/v1/health   # 워밍업
 
-# 끝나고
+# 끝나고 ⚠️ 이걸 잊는 게 이 프로젝트의 1번 청구서 리스크다 (방치하면 월 ₩90,000)
 gcloud run services update dipeat-api --region asia-northeast3 --min-instances=0
 ```
+
+⚠️ **그날은 `api/**` 를 푸시하지 말 것** — `api-deploy` 에 `--min-instances 0` 이 박혀 있어
+위에서 올린 1 이 되돌아간다.
+
+### 알면서 남겨둔 것
+
+- **공개 경로에 인증도 rate limit 도 없다.** `--max-instances 4` 가 유일한 집행 장치다.
+- `DIPEAT_DEBUG_ERRORS` 는 **설정하지 말 것.** 업스트림 원문 에러는 Cloud Run 로그에만 남긴다.
+- **PR 프리뷰가 운영 백엔드를 공유한다**(리라이트 목적지에 환경변수를 못 쓴다) → 프리뷰에서 스캔하면
+  운영 Gemini 비용이 나간다.
+- 나머지는 [docs/deploy.md 12장](docs/deploy.md).
 
 ---
 
