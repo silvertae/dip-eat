@@ -327,7 +327,17 @@ https://[태그---]SERVICE-PROJECT_NUMBER.REGION.run.app
 
 ## 5. Cloud Run 설정값 — 왜 이 숫자인가
 
-배포 명령 전문:
+> ⚠️⚠️ **이 명령은 이미지가 이미 푸시돼 있다고 가정하는 "참조용 전문"이다.**
+> 처음이라면 저장소가 비어 있으므로 그대로 치면 이렇게 실패한다:
+>
+> ```
+> ERROR: (gcloud.run.deploy) Image 'asia-northeast3-docker.pkg.dev/dip-eat/dipeat/dipeat-api:latest' not found.
+> ```
+>
+> **최초 1회는 [8장](#8-로컬에서-손으로-배포할-때)에서 이미지를 먼저 빌드·푸시하고 오라.**
+> 이 절은 "각 플래그가 왜 이 값인가"를 설명하는 곳이지 실행 순서가 아니다.
+
+배포 명령 전문(이미지가 있을 때):
 
 ```bash
 gcloud run deploy "$SERVICE" \
@@ -821,14 +831,20 @@ GitHub Secret 은 **`GEMINI_API_KEY` 단 하나**(이 워크플로 전용). 배�
 
 ## 8. 로컬에서 손으로 배포할 때
 
-[3장](#3-첫-배포-순서--닭과-달걀은-없다) 6번 단계. 자동화 전에 사람이 한 번 성공시켜야 한다.
+[3장](#3-첫-배포-순서--닭과-달걀은-없다) 5번 단계. 자동화 전에 사람이 한 번 성공시켜야 한다.
+
+**여기가 이미지가 처음 생기는 곳이다.** 저장소가 비어 있는 상태에서 [5장](#5-cloud-run-설정값--왜-이-숫자인가)의
+`--image ...:latest` 를 먼저 치면 `Image ... not found` 로 죽는다. 순서는 **빌드·푸시 → 배포**다.
 
 ```bash
 IMG="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/${SERVICE}"
 gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 
 # ⚠️⚠️ --platform linux/amd64 를 빼지 마라.
-docker buildx build --platform linux/amd64 -f api/Dockerfile -t "$IMG:bootstrap" --push api
+# :latest 도 같이 달아둔다 — 5장 참조 명령이 :latest 를 가리키기 때문.
+# (에뮬레이션이라 arm64 맥에서 첫 빌드는 몇 분 걸린다.)
+docker buildx build --platform linux/amd64 -f api/Dockerfile \
+  -t "$IMG:bootstrap" -t "$IMG:latest" --push api
 
 gcloud run deploy "$SERVICE" --image "$IMG:bootstrap" --region "$REGION" \
   --allow-unauthenticated \
@@ -850,9 +866,15 @@ curl -s "https://${SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app/api/v1/health" |
 > ⚠️ `api/Dockerfile` 은 BuildKit 전용 문법(`--mount=type=cache`, `--mount=type=bind`)을 쓴다.
 > `docker buildx` 를 쓰면 문제없지만, 아주 오래된 도커 데몬의 `docker build` 로는 실패한다.
 
-### 8.1 로컬에 도커가 없거나 arm64 가 귀찮으면 — `--source`
+### 8.1 로컬에 도커가 없다면 — `--source` (⚠️ 이 Dockerfile 에서는 실패할 수 있다)
 
-README 가 쓰던 방식이고, **최초 1회 부트스트랩에는 이쪽이 더 쉽다**:
+README 가 쓰던 방식이다. **로컬 도커가 있으면 [8장](#8-로컬에서-손으로-배포할-때)의 buildx 를 쓰는 게 확실하다.**
+
+> ⚠️ **`api/Dockerfile` 은 BuildKit 전용 문법(`RUN --mount=type=cache`, `--mount=type=bind`)을 쓴다.**
+> Cloud Build 의 기본 docker 빌더는 BuildKit 이 켜져 있지 않을 수 있고, 그러면
+> `the --mount option requires BuildKit` 으로 죽는다.
+> `docker buildx` 는 그 자체가 BuildKit 이라 이 문제가 없다 — **그래서 buildx 가 1순위다.**
+> 아래는 도커를 못 쓸 때의 차선책이고, 실패하면 Dockerfile 의 `--mount` 두 줄을 걷어내야 한다.
 
 ```bash
 gcloud run deploy "$SERVICE" --source ./api --region "$REGION" \
@@ -868,7 +890,7 @@ gcloud run deploy "$SERVICE" --source ./api --region "$REGION" \
 (빌드팩 경로였다면 `Dockerfile` 헤더 주석이 경고하는 gunicorn/WSGI 문제가 터진다).
 
 **장점: Cloud Build 는 amd64 머신에서 도므로 [8장](#8-로컬에서-손으로-배포할-때)의 arm64 함정이 원천적으로 없다.**
-로컬 도커도 필요 없다.
+로컬 도커도 필요 없다. (다만 위의 BuildKit 문제가 그 장점을 상쇄할 수 있다.)
 
 **단점**: 매번 소스를 업로드하고, 이미지 태그가 `github.sha` 로 안 남아 **어느 커밋이 배포됐는지 추적이 흐려진다.**
 그래서 CI([7.6](#76-api-deployyml))는 명시적 빌드 + 다이제스트 배포를 쓴다. `--source` 는 부트스트랩용이다.
