@@ -50,16 +50,19 @@ export default defineConfig({
             },
           },
           {
-            // 실제 썸네일 이미지 바이트. <img> 로 불러 opaque(status 0)라 성공/실패를 구분 못 한다.
-            // 그래서 CacheFirst 로 두면 일시적 404/429/5xx 가 30일간 박제된다. StaleWhileRevalidate
-            // 는 캐시를 먼저 주되 매번 백그라운드 재검증해, 잘못 캐시된 오류가 다음 열람에 자가 치유된다.
-            // (그래도 못 뜨는 이미지는 <img onError> 가 카테고리 이모지로 떨어뜨린다.)
+            // 실제 썸네일 이미지 바이트. <img crossOrigin="anonymous"> 로 불러 CORS 응답(status 200)이다.
+            // ⚠️⚠️ `statuses` 에 0(opaque)을 다시 넣지 말 것. opaque 를 캐시하면 크롬이 크기 유출을
+            // 막으려고 항목마다 무작위 패딩을 quota 에 더한다 — 실측 24KB 썸네일이 장당 4.77MB(181배)로
+            // 잡혀 92장이 441MB 가 됐다. expiration 은 항목 수만 세므로 이걸 절대 못 잡는다.
+            // 캐시 이름의 -v2 는 그 시절 패딩된 캐시와 갈라놓기 위한 것이다(옛 캐시는 main.tsx 가 지운다).
+            // handler 는 StaleWhileRevalidate 유지 — 이제 status 로 오류를 걸러내니 CacheFirst 도
+            // 안전하지만, 그건 별건으로 잰 뒤에 바꾼다.
             urlPattern: /^https:\/\/upload\.wikimedia\.org\/.*/i,
             handler: 'StaleWhileRevalidate',
             options: {
-              cacheName: 'wikimedia-thumbs',
+              cacheName: 'wikimedia-thumbs-v2',
               expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] },
+              cacheableResponse: { statuses: [200] },
             },
           },
           {

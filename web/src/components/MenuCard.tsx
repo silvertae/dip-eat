@@ -176,6 +176,8 @@ export function MenuCard({
               <img
                 src={image.url}
                 alt={`${item.name_translated} 참고 이미지`}
+                // ⚠️ DishThumb 과 같은 이유로 필수 — opaque 응답을 캐시하면 장당 ~4.8MB 패딩이 붙는다.
+                crossOrigin="anonymous"
                 onError={() => setDetailImgBroken(true)}
                 className="h-[150px] w-full rounded-[18px] object-cover"
               />
