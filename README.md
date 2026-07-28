@@ -65,8 +65,13 @@
 
 그래서 `/menu/scan/stream` 이 완성된 항목을 NDJSON 으로 흘려보낸다. 브라우저 실측으로
 결과 화면 진입이 **26.7초 → 4.7초**(클라이언트 축소 포함). 총 시간은 그대로고 체감만 바뀐다 —
-큰 메뉴판일수록 이득이 크다. 스트리밍의 깨지기 쉬운 규칙(상태가 항상 200, 첫 항목 전까지 아무것도
-안 보내는 이유 등)은 [AGENTS.md](AGENTS.md) 에 있다.
+큰 메뉴판일수록 이득이 크다.
+
+이 경로에는 비스트리밍 쪽에만 있던 안전망이 뒤늦게 붙었다. 타임아웃은 전체가 아니라 **청크 간
+20초**다(전체 예산으로 걸면 89개짜리 정상 스캔이 45초라 죽는다). 모델이 MAX_TOKENS 로 끊겨
+`items` 배열이 안 닫히면 "메뉴가 많아 일부만 읽었어요" 경고를 붙인다 — 그 전에는 61/90 이
+완전한 메뉴로 보였다. 나머지 깨지기 쉬운 규칙(상태가 항상 200, 첫 항목 전까지 아무것도 안 보내는
+이유 등)은 [AGENTS.md](AGENTS.md) 에 있다.
 
 개발 계획 전문: `~/.claude/plans/hazy-enchanting-hare.md`
 
@@ -81,6 +86,7 @@
 |---|---|
 | `POST /api/v1/menu/scan` | ✅ 실사진 10장 검증 (10/10 성공, 가격 파싱 99%) |
 | `POST /api/v1/menu/scan/stream` | ✅ **프런트가 쓰는 경로.** 항목이 완성되는 대로 NDJSON — 첫 카드 26.7초 → **4.7초** |
+| 빈 사진 환각 거절 (`menu_found`) | ✅ 벽·바닥·단색 화면에 메뉴를 지어내던 것을 막는다 — [아래](#설계상-못-박은-것들) |
 | `POST /api/v1/menu/item/explain` | ✅ 상세 조회, 실측 2.3초 |
 | `GET /api/v1/health` | ✅ |
 | `POST /api/v1/chat` | ✅ 자유 텍스트 번역 API. **현재 프론트는 이 경로를 쓰지 않는다**(대화 UI는 음성+빠른응답만) |
@@ -91,6 +97,7 @@
 | Wikimedia Commons 참고 이미지·저작권 표기 | ✅ (썸네일 오프라인 캐시 + 실패 시 이모지 폴백) |
 | PWA(설치·오프라인 앱 셸·세션 복원·최근 식당) | ✅ Phase 5 — 아래 참조 |
 | 배포 (Vercel + Cloud Run 서울) | ✅ https://dip-eat.vercel.app — 동일 출처 리라이트 관통 확인 |
+| 자동 테스트 | ✅ 백엔드 pytest 127개 + 프론트 vitest 43개 — PR 에서 잡이 빨개진다(required check 는 없다) |
 | CI/CD (GitHub Actions 5개) | ✅ main 의 `api/**` → 스모크 통과 후 자동 배포. [아래](#배포--cicd) |
 | 결제·주문 완료 화면 | 결제 ❌ 범위 제외 / 완료 화면(`/done`)은 코드만 있고 현재 흐름에서 빠짐 |
 | 실기기(iOS) 검증 | ⬜ **미완** — PWA 설치·마이크 권한·폰 촬영본 스캔. 헤드리스로는 불가 |
@@ -178,9 +185,10 @@ uv run python scripts/bench_menu.py ../samples --no-media-resolution # 400 이 �
 ### 테스트 / 타입 생성
 
 ```bash
-cd api && uv run pytest              # 91개
+cd api && uv run pytest              # 127개
+cd web && npm test                   # vitest 43개 (watch 는 npm run test:watch)
 cd web && npm run build              # tsc -b + vite build
-cd web && npm run lint
+cd web && npm run lint               # oxlint
 
 # 백엔드 스키마를 바꾼 뒤 프론트 타입 재생성 — 재생성본을 반드시 같이 커밋한다(CI 가 diff 로 막는다)
 cd api && uv run python -c "import json; from app.main import create_app; open('openapi.json','w').write(json.dumps(create_app().openapi(), ensure_ascii=False, indent=2))"
@@ -191,6 +199,17 @@ cd ../web && npm run gen:api
 > `GeminiService.__init__` 이 빈 키를 거부해서, 키 없는 깨끗한 체크아웃에서는 16개가 깨진다.
 > 워크트리·CI 에서는 `GEMINI_API_KEY=ci-dummy uv run pytest -q`. **접두사 없는 이름**으로 줄 것 —
 > `DIPEAT_GEMINI_API_KEY` 로 주면 `test_config` 가 깨진다.
+
+프론트 테스트(vitest)는 러너를 `web/vitest.config.ts` 에서 `environment: 'node'` 로 돌린다 —
+jsdom 없이 node 22 의 `ReadableStream`·`FormData`·`Blob` 을 그대로 쓰고, `localStorage` 만
+`src/test/setup.ts` 가 메모리로 심는다. 지금 덮는 건 **회귀가 조용한 두 지점**이다:
+낡은 스캔 가드(`store/app.test.ts` — 스트리밍 중 새 스캔을 시작했을 때의 경합)와
+NDJSON 파싱(`lib/api.test.ts` — 청크 경계 독립성을 바이트 단위로 스윕, 백엔드
+`test_jsonstream.py` 의 클라이언트 짝). 순수 lib 는 아직 미커버다.
+
+`DIPEAT_LIVE_TESTS=1` 을 주면 실 Gemini 를 부르는 12개가 추가로 돈다(`tests/test_no_menu_live.py`,
+과금됨). 평소엔 skip 이지만 **프롬프트나 모델 ID 를 바꿨으면 돌릴 것** — 가짜 테스트는 전부
+통과하면서 빈 사진 환각만 되돌아올 수 있다.
 
 ---
 
@@ -209,8 +228,18 @@ cd ../web && npm run gen:api
 
 ```
 push main (api/**) → pytest → amd64 빌드 → --no-traffic candidate 배포
-                   → 스모크(/health has_api_key + POST /chat) → 통과하면 트래픽 100% 전환
+                   → 스모크 3종 → 통과하면 트래픽 100% 전환 → :latest 태그 이동
 ```
+
+스모크는 `/health`(시크릿·모델), `POST /chat`(라우팅), 그리고 **14KB 합성 메뉴판을
+`/menu/scan/stream` 에 실제로 업로드**하는 것 세 가지다. 앞의 둘은 전부 텍스트 전용이라
+멀티파트 파싱·업로드 상한·Pillow 디코드·NDJSON 프레이밍을 하나도 안 건드린다 — 그중 하나가
+깨지면 **CI 초록 + 스모크 통과 상태로 모든 사진 업로드가 죽는다.** 그 스트림 응답은 실패해도
+HTTP 200 이라 상태 코드로는 못 거른다. 프런트가 보는 것과 같은 조건(meta 로 시작 · error 줄
+없음 · item 1개 이상 · done 으로 끝)을 `jq` 로 확인한다.
+
+`:latest` 는 **스모크를 통과한 뒤에만** 붙는다 — 수동 복구 절차가 `:latest` 를 가리키므로,
+빌드 시점에 붙이면 떨어진 이미지를 손으로 운영에 올리는 길이 열린다.
 
 ⚠️ **머지 = 배포다.** 스모크에서 떨어지면 candidate 는 트래픽 0 이라 운영은 이전 리비전에 그대로 남는다.
 서비스 계정 사칭은 Workload Identity Federation 이므로 **배포 경로에 GitHub Secret 이 없다**
@@ -218,7 +247,7 @@ push main (api/**) → pytest → amd64 빌드 → --no-traffic candidate 배포
 
 | 워크플로 | 트리거 |
 |---|---|
-| `api-ci` / `web-ci` | PR — `pytest` / `oxlint` + `tsc -b` |
+| `api-ci` / `web-ci` | PR — `pytest` / `oxlint` + `vitest` + `tsc -b` |
 | `api-deploy` | push `main` + `api/**` — 위 파이프라인 |
 | `contract-drift` | PR — `openapi.json`·`api.gen.ts` 재생성 후 diff |
 | `probe-models` | 매일 00:00 UTC — 1차·폴백 모델 생존 확인 |
@@ -262,8 +291,17 @@ gcloud run services update dipeat-api --region asia-northeast3 --min-instances=0
 
 ## 설계상 못 박은 것들
 
+- **항목은 사진에서 읽은 것이어야 한다 — 빈 사진에는 결과를 내지 않는다.** 모델은 흰 화면·벽·
+  풍경에도 `生ビール 550円` 같은 메뉴를 통째로 지어냈다(실측 3회 재현, 전부 `ocr_confidence: high`).
+  이 앱의 안전 고지는 전부 "메뉴는 진짜고 알레르기 추정만 불확실하다"를 전제로 쓰여 있어서,
+  항목이 지어내진 것일 수 있으면 그 전제가 무너진다. 그래서 스키마 최상위에 `menu_found` 를 두고
+  — `items` **보다 앞 필드**여야 모델이 항목을 쓰기 전에 판정을 선언한다 — false 면 항목이 차 있어도
+  통째로 버린다. **항목 0개는 정상적인 답이다.**
 - **서버는 원화를 모른다.** 응답은 현지 통화만. ₩ 환산은 클라이언트가 한다 — 안 그러면 캐시된
   결과가 과거 환율에 박제된다.
+- **`price_amount` 는 소수(`float`)다.** 정수였을 때 `$3.50` → `3` 으로 센트가 잘려 ₩ 환산·예산
+  게이지가 ~14% 틀렸다(주력 통화가 JPY·KRW 라 오래 안 보였다). 화면에 그리는 건 여전히
+  `price_text`(적힌 그대로)고, `price_amount` 는 우리가 계산할 때만 쓴다.
 - **알레르기 정보는 AI 추정이지 메뉴판에서 읽은 사실이 아니다.** 상세 응답의 필드 이름이
   `likely_allergens` 이고 `inferred` / `basis` / `confidence` 를 함께 받는 이유다.
   UI 는 반드시 "AI 추정, 점원에게 확인" 고지를 노출한다. 식품 안전 문제다.
