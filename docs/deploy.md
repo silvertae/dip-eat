@@ -203,6 +203,14 @@ gcloud iam service-accounts add-iam-policy-binding \
   --role=roles/iam.serviceAccountUser
 ```
 
+> ⚠️ **`artifactregistry.writer` 에는 `artifactregistry.tags.delete` 가 없다.** 그래서 배포
+> 워크플로는 `:latest` 를 옮길 때 **`docker buildx imagetools create` 를 쓴다**(레지스트리
+> 프로토콜 = 쓰기 권한이면 충분). `gcloud artifacts docker tags add` 로 바꾸면 그건 Artifact
+> Registry **API** 라, 이미 있는 태그를 옮기려고 옛 digest 에서 떼어내는 데 `tags.delete` 가
+> 필요해 **PERMISSION_DENIED 로 죽는다.** 실제로 2026-07-28 PR #19~#22 배포 4건이 전부
+> 이것 때문에 마지막 스텝에서 빨갛게 끝났다(운영은 정상, `:latest` 만 이틀간 멈춰 있었음).
+> 굳이 그 명령을 써야 한다면 `roles/artifactregistry.repoAdmin` 으로 올려야 한다.
+
 ### 2.6 Workload Identity Federation — JSON 키를 만들지 않는다
 
 서비스 계정 JSON 키를 GitHub Secret 에 넣는 방식은 **유출되면 만료가 없다.** WIF 는 GitHub 이 발급한
@@ -485,6 +493,10 @@ Vercel 의 120초 천장을 넘는다.
 ---
 
 ## 7. CI/CD — 워크플로 5개
+
+> ⚠️ 아래 YAML 은 **설계 근거를 남기려고 붙여둔 사본이라 최신이 아니다.** PR #19 가 배포 잡을
+> 재구성(스모크 확장, `:latest` 부착을 트래픽 전환 뒤로 이동)한 내용이 반영돼 있지 않다.
+> **실제로 도는 것은 언제나 `.github/workflows/*.yml` 이다** — 동작을 확인할 땐 그쪽을 볼 것.
 
 **프론트 배포는 Vercel Git 연동에 맡긴다.** GH Action 으로 `vercel deploy` 를 부르면
 프리뷰 URL 자동 생성·PR 코멘트·원클릭 롤백을 전부 잃는다. 순수한 손해다.
@@ -857,6 +869,17 @@ GitHub 은 그것을 "성공"이 아니라 *"Expected — Waiting for status to 
 ## 8. 로컬에서 손으로 배포할 때
 
 [3장](#3-첫-배포-순서--닭과-달걀은-없다) 5번 단계. 자동화 전에 사람이 한 번 성공시켜야 한다.
+
+> ⚠️ **복구하려고 여기 왔다면, `:latest` 를 믿기 전에 그게 언제 갱신됐는지 먼저 보라.**
+> `:latest` 는 배포 워크플로의 **마지막 스텝**에서 옮겨진다. 그 스텝만 실패한 배포가 있으면
+> 운영은 새 코드인데 `:latest` 는 옛 이미지에 남는다(2026-07-28 에 실제로 이틀간 그랬다 —
+> [2.5](#25-서비스-계정-두-개) 경고 참고). 그 상태에서 `:latest` 로 배포하면
+> **멀쩡한 운영을 조용히 되돌린다.** 확실히 하려면 커밋 SHA 태그를 쓴다:
+>
+> ```bash
+> gcloud artifacts docker images list "$IMG" --include-tags --limit 5 \
+>   --sort-by=~UPDATE_TIME --format='table(version.slice(7:19),tags,updateTime)'
+> ```
 
 **여기가 이미지가 처음 생기는 곳이다.** 저장소가 비어 있는 상태에서 [5장](#5-cloud-run-설정값--왜-이-숫자인가)의
 `--image ...:latest` 를 먼저 치면 `Image ... not found` 로 죽는다. 순서는 **빌드·푸시 → 배포**다.

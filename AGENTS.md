@@ -164,6 +164,11 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
   는 alias 때문에 안 먹는다). `DIPEAT_GEMINI_API_KEY` 로 주면 `test_config` 가 깨진다. 네트워크는 안 탄다.
 - ⚠️ `--set-env-vars` 는 환경변수를 **통째로 교체**한다. 콘솔에서 변수를 추가했으면 `api-deploy.yml` 에도
   같이 넣어야 다음 배포가 날리지 않는다. 콤마는 gcloud 가 먹으므로 `^@^` 구분자 유지.
+- ⚠️⚠️ `:latest` 이동은 **`docker buildx imagetools create`** 로 한다. `gcloud artifacts docker
+  tags add` 로 바꾸지 말 것 — 그건 Artifact Registry **API** 라 기존 태그를 옮기는 데
+  `artifactregistry.tags.delete` 가 필요한데 배포 SA 에는 `artifactregistry.writer` 뿐이라
+  **PERMISSION_DENIED 로 죽는다.** 2026-07-28 PR #19~#22 배포 4건이 전부 이걸로 빨갛게 끝났다.
+  이 스텝은 트래픽 전환 **뒤**라 운영은 멀쩡했지만, `:latest` 가 멈추면 롤백이 옛 이미지를 올린다.
 - ⚠️ `api-deploy.yml` 에 `--min-instances 0` 이 박혀 있다 → **발표 당일 1 로 올려둔 상태에서 배포하면
   콜드스타트가 되돌아온다.** 그날은 배포하지 말 것.
 - 액션 버전: `astral-sh/setup-uv` 는 이동 태그가 `v7` 에서 멈춰 있어 **전체 버전(`@v9.0.0`) 고정**이 필요하다.
