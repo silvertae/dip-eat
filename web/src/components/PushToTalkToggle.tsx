@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   type Recording,
+  VoiceAbortedError,
   VoicePermissionError,
   VoiceUnsupportedError,
   releaseMic,
@@ -29,9 +30,13 @@ export function PushToTalkToggle({ sourceLang }: { sourceLang: string }) {
   const recorder = useRef<Recording | null>(null)
   const starting = useRef(false) // getUserMedia 진행 중(권한 프롬프트 대기 포함)
 
-  // 화면 떠나면 전부 정리한다. releaseMic() 만으로는 부족하다 —
-  // 홀드 타이머가 살아 있으면 언마운트 뒤에 begin() 이 발화해 '다른 화면에서' 권한 프롬프트가 뜨고,
-  // 그 마이크를 반납할 주체가 사라져 세션 내내 켜진 채로 남는다.
+  // 화면 떠나면 전부 정리한다. releaseMic() 만으로는 부족했다 — 언마운트를 놓치는 창이 둘이다.
+  //  1) 홀드 타이머가 살아 있으면 언마운트 뒤에 begin() 이 발화해 '다른 화면에서' 권한 프롬프트가
+  //     뜬다 → clearTimeout 으로 막는다.
+  //  2) getUserMedia 가 아직 응답 전이면 releaseMic() 시점에 sharedStream 이 null 이라 아무것도
+  //     못 끄고, 뒤늦게 도착한 스트림이 주인 없이 남는다 → recorder.ts 의 generation 카운터가
+  //     그 스트림을 스스로 끊는다(Recording.cancel() 은 트랙을 안 건드린다).
+  // 둘 다 결과가 같다: 마이크가 켜진 채로 반납할 주체가 사라진다.
   useEffect(
     () => () => {
       if (holdTimer.current) clearTimeout(holdTimer.current)
@@ -56,6 +61,8 @@ export function PushToTalkToggle({ sourceLang }: { sourceLang: string }) {
       setRecording(dir)
     } catch (err) {
       starting.current = false
+      // 화면을 떠나서 취소된 것 — 알릴 사용자가 없다. 권한 거부와 헷갈리면 안 된다.
+      if (err instanceof VoiceAbortedError) return
       setRecording(null)
       setError(
         err instanceof VoicePermissionError || err instanceof VoiceUnsupportedError
