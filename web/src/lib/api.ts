@@ -146,16 +146,22 @@ export async function scanMenuStream(
     }
   }
 
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    // NDJSON: 마지막 조각은 아직 줄이 안 끝났을 수 있으니 버퍼에 남긴다.
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
-    for (const line of lines) handle(line)
+  // ⚠️ finally 가 없으면 중간에 throw 될 때(서버가 error 줄을 보낸 경우 등) reader 가 잠긴 채
+  //    연결이 살아 있어, Gemini 가 남은 항목의 출력 토큰을 계속 만든다. 취소하는 게 요점이다.
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      // NDJSON: 마지막 조각은 아직 줄이 안 끝났을 수 있으니 버퍼에 남긴다.
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) handle(line)
+    }
+    handle(buffer)
+  } finally {
+    void reader.cancel().catch(() => {}) // 락도 함께 풀린다
   }
-  handle(buffer)
 
   // done 없이 스트림이 끊겼다 — 네트워크가 중간에 죽은 경우.
   if (!tail) throw new ApiError(0, GENERIC)
