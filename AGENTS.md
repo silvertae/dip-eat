@@ -15,6 +15,7 @@ cd api && uv run uvicorn app.main:app --reload --reload-include '*.md' --port 80
 cd web && npm run dev                        # /api 는 127.0.0.1:8000 으로 프록시
 cd web && npm run build                      # tsc -b + vite build
 cd web && npm run lint
+cd web && npm test                           # vitest 43개 (watch 는 npm run test:watch)
 
 # 스키마를 바꿨으면 OpenAPI → TS 타입 재생성 (손으로 타입 쓰지 말 것)
 cd api && uv run python -c "import json;from app.main import create_app;open('openapi.json','w').write(json.dumps(create_app().openapi(),ensure_ascii=False,indent=2))"
@@ -63,6 +64,11 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
   90개짜리에서 누적 1MB+ 를 직렬화해 모바일이 버벅인다. `done` 에서 한 번만 쓴다.
 - ⚠️ 결과 화면의 자동 접기는 **다 받은 뒤에** 적용한다. 최초 렌더 때 판단하면 항목이 1개뿐이라
   영원히 안 접힌다(90개가 전부 펼쳐진 채 뜬다).
+- ⚠️ **결과 화면에 탭바가 있어 스캔이 겹칠 수 있다.** 그래서 `store/app.ts` 는 abort **와**
+  실행번호(`scanRun`) 두 겹으로 낡은 스트림을 막는다 — abort 로는 이미 큐에 들어간 콜백을 못 잡는다.
+  `isStale()` 검사 다섯 군데를 하나라도 지우면 낡은 항목이 새 목록에 섞이거나, 낡은 실패가 멀쩡한
+  새 스캔을 에러 화면으로 보낸다. `src/store/app.test.ts` 가 이걸 지킨다(클라이언트 NDJSON 파싱은
+  `src/lib/api.test.ts` — `test_jsonstream.py` 의 청크 스윕을 바이트 단위로 옮긴 것).
 
 ### 빈 사진 환각 방지 (`menu_found`)
 
@@ -128,6 +134,15 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 - 촬영은 `<input capture>` 하나. 사진 촬영에는 getUserMedia를 쓰지 않고 축소는 워커에서 한다. 음성 대화만 getUserMedia+MediaRecorder를 쓴다.
 - **EXIF 회전 보정 코드를 직접 넣지 말 것** — 현행 브라우저가 `drawImage`에서 이미 적용, 넣으면 두 번 돈다.
 - `.env` 는 `DIPEAT_` 접두사지만 `GEMINI_API_KEY` 도 alias 로 받는다(config.py). 로컬 디버깅은 `DIPEAT_DEBUG_ERRORS=true`(Cloud Run 금지).
+- **유닛테스트가 있다(vitest, `web-ci.yml` 에서 차단).** 러너 설정은 `vitest.config.ts` — `environment: 'node'` 에
+  `src/test/setup.ts` 가 메모리 localStorage 만 심는다(jsdom 없음). **`vite.config.ts` 에 `test:` 블록을 넣지 말 것**:
+  프로덕션 빌드 설정이 dev 전용 `vitest/config` 를 import 하게 된다. 테스트는 소스 옆에 두는데(`src/lib/api.test.ts`),
+  `__tests__/` 로 옮기면 `vi.mock` 상대경로가 어긋나고 **매치 안 되는 `vi.mock` 은 조용히 no-op** 이라 통과하는 가짜 테스트가 된다.
+- ⚠️ 지금 덮고 있는 건 **경합·스트리밍 두 지점뿐**이다: `store/app.test.ts`(낡은 스캔 가드 — 아래 스트리밍 절 참고),
+  `lib/api.test.ts`(NDJSON 청크 경계·in-band error 줄). 나머지 순수 lib(cart·fx·orderPhrases…)는 아직 미커버.
+- ⚠️ `app.test.ts` 의 `beforeEach` 는 `vi.resetModules()` 로 모듈 그래프를 새로 만든다 — `scanRun`/`scanAbort` 가
+  모듈 레벨이라 안 그러면 케이스가 서로 오염된다. 단 **`vi.mock` 팩토리는 resetModules 로 다시 실행되지 않으므로**
+  목 기본 구현은 팩토리가 아니라 `beforeEach` 에 심는다(안 그러면 `mockResolvedValue` 가 다음 케이스로 샌다).
 **PWA · 오프라인 지속성 (Phase 5)**
 - `vite-plugin-pwa` `registerType: 'prompt'` — **`autoUpdate` 금지**(업로드·녹음 중 SW 가 페이지를 리로드하면 작업이 날아간다). 새 버전은 `main.tsx` 에서 사용자에게 물어보고 활성화한다. 개발 모드는 SW 를 끈다(`devOptions.enabled:false`) — PWA 검증은 `npm run build && npm run preview`.
 - **스캔 세션은 zustand persist(localStorage `dipeat:session`)** 로 동기 복원한다(`store/app.ts`). `partialize` 로 `scan`/`cart`/`convo`/`captureMode` 만 저장 — `preview`(objectURL)·`phase`·`error` 는 리로드에 못 살리거나 살리면 안 되는 값이라 제외. 부팅 시 `hydrate()`(main.tsx 에서 1회) 가 `phase='done'` 로 맞추고 `preview` 를 IndexedDB 의 Blob 으로 되살린다.
