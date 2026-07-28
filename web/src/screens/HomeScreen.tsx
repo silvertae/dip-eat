@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router'
+import { BrandLogo } from '../components/BrandLogo'
 import { BudgetGauge } from '../components/BudgetGauge'
 import { RecentScans } from '../components/RecentScans'
 import { CameraIcon, GearIcon } from '../components/icons'
@@ -27,11 +28,10 @@ export function HomeScreen() {
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-4 pt-1">
-      <header className="flex items-center gap-2 py-2">
-        <span className="grid size-9 place-items-center rounded-xl bg-linear-150 from-brand-2 to-brand text-[17px] font-extrabold text-white">
-          찍
-        </span>
-        <b className="text-xl -tracking-[0.3px]">찍먹</b>
+      <header className="flex items-center py-2">
+        {/* 2줄 락업(받침 ㄱ 포함)이라 같은 높이의 1줄 로고보다 작아 보인다 —
+            이전 헤더(36px 타일 + 20px 텍스트)의 시각적 무게를 맞추려면 36px 필요. */}
+        <BrandLogo className="h-9 w-auto" />
         <Link to="/settings" aria-label="설정" className="ml-auto p-1 text-muted">
           <GearIcon size={23} />
         </Link>

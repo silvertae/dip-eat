@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
+import { BrandLogo } from '../components/BrandLogo'
 import {
   AllergyFields,
   BudgetFields,
@@ -40,9 +41,7 @@ export function OnboardingScreen() {
 
       {step === 0 && (
         <div className="flex flex-1 flex-col justify-center">
-          <div className="mb-6 grid size-28 place-items-center rounded-[30px] bg-linear-150 from-brand-2 to-brand text-[52px] font-extrabold text-white shadow-[0_20px_34px_-14px_rgba(234,90,52,.6)]">
-            찍
-          </div>
+          <BrandLogo variant="full" className="mb-8 w-[64%] max-w-[268px]" />
           <h1 className="text-[32px] font-extrabold leading-[1.2] -tracking-[0.6px]">
             해외 식당,
             <br />
