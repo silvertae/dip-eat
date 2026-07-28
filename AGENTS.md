@@ -10,7 +10,8 @@
 ## 명령어
 
 ```bash
-cd api && uv run pytest                      # 91개
+cd api && uv run pytest                      # 127개 (+ 실 API 12개는 아래 LIVE 로만)
+cd api && DIPEAT_LIVE_TESTS=1 uv run pytest tests/test_no_menu_live.py   # 실 Gemini 호출(과금). 프롬프트를 고쳤으면 돌릴 것
 cd api && uv run uvicorn app.main:app --reload --reload-include '*.md' --port 8000
 cd web && npm run dev                        # /api 는 127.0.0.1:8000 으로 프록시
 cd web && npm run build                      # tsc -b + vite build
@@ -54,6 +55,17 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
   가 한 글자씩 먹여서 이걸 지킨다.
 - ⚠️ **스트리밍에는 `response.parsed` 가드가 없다**(`parsed` 자체가 없음). 대체물은
   **항목별 Pydantic 검증 + 0개면 `UnreadableMenu`** 다. 이걸 지우면 "메뉴 0개"가 조용히 나간다.
+- ⚠️ 타임아웃은 **전체가 아니라 청크 간(idle) 예산**이다(`gemini_stream_idle_s`, 기본 20초).
+  전체 예산으로 걸면 89개짜리 정상 스캔(실측 45.3초)이 죽는다. 청크 간격은 ~0.4초라 20초면 넉넉하다.
+  `asyncio.wait_for` 로 제너레이터를 **반환하는 코루틴**을 감싸는 건 무의미하다 — 실제 I/O 는
+  `__anext__` 다. 감싸는 위치를 옮기지 말 것.
+- ⚠️ **`items` 배열이 안 닫힌 채 끝나면 잘린 것이다**(거의 항상 MAX_TOKENS). 비스트리밍은
+  `parsed=None` → 폴백으로 잡지만 여기는 그 가드가 없다. `parser.items_closed` 를 보고 경고를
+  붙인다 — 이 분기가 없으면 61/90 이 '완전한 메뉴' 로 조용히 나간다. 항목은 이미 나갔으므로
+  예외가 아니라 **경고**가 맞다(버리는 게 더 나쁘다).
+- ⚠️ transport 오류(`httpx.ConnectError` 류)는 SDK 의 `APIError` 가 **아니라서** 손대지 않으면
+  재시도·폴백 사다리를 통째로 건너뛴다 — 정작 재시도가 존재하는 이유인 유형이다. 호출부 매핑과
+  `emit()` 의 catch-all 을 지우지 말 것("실패는 error 한 줄로 끝난다"가 예외 없이 지켜져야 한다).
 - ⚠️ **첫 항목 전까지는 아무것도 내보내지 않는다.** 그래야 그 전에 난 실패를 폴백 모델로
   넘길 수 있다. 이미 보낸 뒤 모델을 바꾸면 항목이 중복된다. (관측된 503 은 전부 첫 토큰 전이었다.)
 - ⚠️ **HTTP 상태가 항상 200 이다.** 첫 바이트에 상태가 확정되므로 도중 오류를 4xx/5xx 로 못 바꾼다.
@@ -154,8 +166,20 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 
 **CI/CD (`.github/workflows/`, 근거는 [docs/deploy.md](docs/deploy.md) 7장)**
 - ⚠️⚠️ **`main` 에 `api/**` 가 들어가면 그 자리에서 운영에 배포된다.** 예전 문서의 "머지는 배포가 아니다"는
-  더 이상 사실이 아니다. `--no-traffic` candidate 로 띄워 스모크(`/health` + `POST /chat`)를 통과해야
-  트래픽이 넘어가므로 안전장치는 있지만, **머지 = 배포**로 알고 움직일 것.
+  더 이상 사실이 아니다. `--no-traffic` candidate 로 띄워 스모크를 통과해야 트래픽이 넘어가므로
+  안전장치는 있지만, **머지 = 배포**로 알고 움직일 것.
+- 스모크는 세 개다: `/health` · `POST /chat` · **`POST /menu/scan/stream` 에 14KB 합성 메뉴판 업로드**
+  (`api/tests/fixtures/smoke_menu.jpg`). 앞의 둘은 전부 텍스트 전용이라 멀티파트 파싱·Starlette
+  파트 상한 몽키패치·Pillow 디코드·NDJSON 프레이밍을 하나도 안 건드린다 — 그중 하나가 깨지면
+  **CI 초록 + 스모크 통과 상태로 모든 사진 업로드가 죽는다.**
+- ⚠️ 그 스캔 스모크는 **첫 줄만 보면 안 된다.** 이 라우트는 실패해도 HTTP 200 이라 `curl -f` 가
+  성공으로 끝난다. 프런트가 보는 것과 같은 조건(meta 로 시작 · error 줄 없음 · item 1개 이상 ·
+  done 으로 끝)을 `jq` 로 확인한다. 파이프라인마다 `set -o pipefail` 이 필요하다 — 없으면
+  `curl` 실패가 `tee`/`jq` 뒤에 묻힌다(`probe-models.yml` 도 같은 이유로 붙어 있다).
+- ⚠️ `:latest` 태그는 **스모크를 통과한 뒤에만** 붙는다. 수동 복구 절차(deploy.md 8장)가 `:latest`
+  를 쓰기 때문에, 빌드 시점에 붙이면 "스모크에 떨어진 이미지를 손으로 운영에 올리는" 길이 열린다.
+- ⚠️ 실패 알림이 **트래픽 전환 전/후로 나뉘어 있다.** 전환 뒤 단계가 실패했는데 "운영은 무사" 라고
+  하면 거짓말이다 — 그때 운영은 이미 새 리비전이고 손볼 것은 `:latest` 쪽이다.
 - ⚠️ **required status check 가 없다**(경로 필터 워크플로를 required 로 걸면 그 경로를 건드리지 않은 PR 이
   영구히 머지 불가가 된다 — deploy.md 7.9). 즉 **빨간 PR 도 머지 버튼이 눌린다.** 체크를 눈으로 볼 것.
 - ⚠️ 스키마를 고치면 `openapi.json`·`api.gen.ts` **재생성본을 같이 커밋**해야 한다. `contract-drift.yml`
@@ -173,7 +197,8 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
   콜드스타트가 되돌아온다.** 그날은 배포하지 말 것.
 - 액션 버전: `astral-sh/setup-uv` 는 이동 태그가 `v7` 에서 멈춰 있어 **전체 버전(`@v9.0.0`) 고정**이 필요하다.
   `openapi-typescript` 도 정확히 핀한다(떠다니면 코드를 안 고쳐도 어느 날 무관한 PR 이 막힌다).
-- ruff 는 `uv.lock` 에 없다 → `uv run` 이 아니라 `uvx`. 현재 19건이 남아 **비차단**(`continue-on-error`)이다.
+- ruff 는 `uv.lock` 에 없다 → `uv run` 이 아니라 `uvx`. 현재 18건이 남아 **비차단**(`continue-on-error`)이다.
+- `web-ci` 는 `npm ci` → `oxlint` → **`vitest`** → `tsc -b && vite build` 순이다. 셋 다 차단이다.
 
 ## 제품 불변식 (기능 아님)
 
@@ -204,4 +229,5 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
   - 완료 화면(`/done`)은 라우트·코드만 있고 어느 흐름에서도 진입하지 않는다(디자인 재구성 때 주문 CTA 가 `/chat` 으로 바뀌며 빠짐). 어디에 다시 붙일지는 결정 안 됨.
   - **실기기(iOS Safari) 검증이 남아 있다** — PWA 설치·마이크 권한·폰 촬영본(3024×4032) 스캔. 헤드리스로는 불가.
   - `/api/v1/_probe/stream` 은 임시 진단 장치다. 스트리밍이 Vercel 을 통과함을 확인했으므로 지울 수 있다(deploy.md 부록 A).
-  - ruff 19건 정리 → `api-ci.yml` 의 `continue-on-error` 제거.
+  - ruff 18건 정리 → `api-ci.yml` 의 `continue-on-error` 제거.
+  - 프론트 유닛테스트는 경합·스트리밍 두 지점만 덮는다. 순수 lib(cart·fx·orderPhrases·photoOverlay·allergy) 미커버.
