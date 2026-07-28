@@ -418,7 +418,7 @@ README 는 1Gi 다. Cloud Run 에서 vCPU 단가는 GiB 단가보다 **9.6배** 
 → 커스텀 구분자 `^@^` 를 쓴다(첫 문자가 구분자 선언):
 
 ```bash
---set-env-vars '^@^DIPEAT_GEMINI_MAX_ATTEMPTS=1@DIPEAT_CORS_ORIGINS=["https://dipeat.vercel.app"]@DIPEAT_LOG_LEVEL=INFO'
+--set-env-vars '^@^DIPEAT_GEMINI_MAX_ATTEMPTS=1@DIPEAT_CORS_ORIGINS=["https://dip-eat.vercel.app"]@DIPEAT_LOG_LEVEL=INFO'
 ```
 
 | 변수 | 운영값 | 비고 |

@@ -21,7 +21,11 @@ jobs:
         run: |
           # ⚠️ 이 스크립트는 모델이 죽어 있어도 exit 0 이다(⚠️ 만 출력).
           #    그래서 출력에서 직접 잡아 실패시킨다.
-          uv run python scripts/probe_models.py | tee probe.log
+          # ⚠️ pipefail 이 없으면 파이프라인 종료 코드가 tee 의 0 이라, 스크립트가 exit 1 로
+          #    죽어도(키 없음·SDK import 실패·Client 생성 실패) 잡이 초록이 된다.
+          #    2>&1 도 필요하다 — '❌ GEMINI_API_KEY 가 없습니다' 는 stderr 라 grep 에 안 걸린다.
+          set -o pipefail
+          uv run python scripts/probe_models.py 2>&1 | tee probe.log
           if grep -q '⚠️' probe.log; then
             echo "::error::1차/폴백 모델이 응답하지 않습니다. gemini-3.5-flash 때와 같은 상황입니다."
             exit 1
