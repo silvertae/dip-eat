@@ -97,8 +97,16 @@ const SYMBOL: Record<string, string> = {
   HKD: 'HK$', THB: '฿', VND: '₫', SGD: 'S$', PHP: '₱', MYR: 'RM',
 }
 
+/** 소수 통화($3.50 등)의 합계를 정수로 반올림하면 몇 % 가 날아간다. 그렇다고 엔·원처럼
+ *  소수가 없는 통화에 `¥970.00` 을 붙일 순 없으므로, **값이 실제로 소수일 때만** 두 자리를
+ *  붙인다. 부동소수 누적 오차(3.5+2.8=6.300000000000001)를 소수로 오인하지 않게 여유를 둔다. */
 export function formatLocal(amount: number, currency: string): string {
-  const value = Math.round(amount).toLocaleString('en-US')
+  const fractional = Math.abs(amount - Math.round(amount)) >= 0.005
+  const digits = fractional ? 2 : 0
+  const value = amount.toLocaleString('en-US', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })
   const symbol = SYMBOL[currency]
   return symbol ? `${symbol}${value}` : `${value} ${currency}`
 }
