@@ -57,10 +57,14 @@ jobs:
         run: |
           # 기본 docker 드라이버는 registry 캐시를 못 내보낸다 → container 드라이버.
           docker buildx create --use --driver docker-container --name dipeat || true
+          # ⚠️ 여기서 :latest 를 붙이지 않는다. 아직 스모크를 안 거친 이미지다.
+          #    수동 복구 절차(docs/deploy.md 8장·부록 A)가 :latest 를 쓰기 때문에,
+          #    검증 전에 붙이면 "스모크에 떨어진 이미지를 손으로 운영에 올리는" 길이 열린다.
+          #    스모크 통과 뒤 마지막 스텝에서 붙인다.
           docker buildx build \
             --platform linux/amd64 \
             --file api/Dockerfile \
-            --tag "$IMG:${{ github.sha }}" --tag "$IMG:latest" \
+            --tag "$IMG:${{ github.sha }}" \
             --cache-from type=registry,ref=$IMG:buildcache \
             --cache-to   type=registry,ref=$IMG:buildcache,mode=max \
             --push api
@@ -69,7 +73,10 @@ jobs:
         env:
           IMG: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.SERVICE }}
         # ⚠️ --set-env-vars 는 환경변수 집합을 통째로 교체한다.
-        #    콘솔에서 DIPEAT_CORS_ORIGINS 등을 추가했다면 여기에도 같이 넣어야 다음 배포가 날리지 않는다.
+        #    콘솔에서 변수를 추가했다면 여기에도 같이 넣어야 다음 배포가 날리지 않는다.
+        #    CORS 는 평소엔 안 쓰인다(Vercel rewrite 프록시라 동일 출처). 프록시가 버퍼링해서
+        #    VITE_API_BASE 로 Cloud Run 을 직접 부르는 비상 계획(deploy.md 부록 A)을 위해 넣어둔다 —
+        #    그때 가서 재배포부터 해야 하면 계획이 아니다. 도메인은 하이픈이 있는 dip-eat 이다.
         #    콤마는 gcloud 가 항목 구분자로 먹으므로 커스텀 구분자 ^@^ 를 유지할 것(docs/deploy.md 5.5).
         # ⚠️ --min-instances 0 이 박혀 있다. 발표 당일 1 로 올려둔 상태에서 이 워크플로가 돌면
         #    콜드스타트가 되돌아온다. 발표일에는 배포하지 말 것(docs/deploy.md 9장).
@@ -85,10 +92,12 @@ jobs:
             --timeout 105 \
             --startup-probe httpGet.path=/api/v1/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=3,periodSeconds=3,failureThreshold=10 \
             --set-secrets GEMINI_API_KEY=gemini-key:latest \
-            --set-env-vars '^@^DIPEAT_GEMINI_MAX_ATTEMPTS=1@DIPEAT_MAX_UPLOAD_BYTES=2097152@DIPEAT_LOG_LEVEL=INFO'
+            --set-env-vars '^@^DIPEAT_GEMINI_MAX_ATTEMPTS=1@DIPEAT_MAX_UPLOAD_BYTES=2097152@DIPEAT_LOG_LEVEL=INFO@DIPEAT_CORS_ORIGINS=["https://dip-eat.vercel.app"]'
 
-      - name: 스모크 — 실배포본에서 시크릿·모델·라우팅 확인
+      - name: 스모크 — 실배포본에서 시크릿·모델·라우팅·업로드 확인
         run: |
+          # ⚠️ pipefail 이 없으면 curl 실패가 tee/jq 뒤에 묻힌다.
+          set -o pipefail
           # Cloud Run URL 은 결정적이다. describe 로 파싱할 필요가 없다.
           TAG_URL="https://candidate---${SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app"
 
@@ -102,8 +111,25 @@ jobs:
             -d '{"text":"물 한 잔 주세요","source_lang":"ja","direction":"ko2local"}' \
           | tee /dev/stderr | jq -e '.translated | length > 0'
 
+          # 3) 이 서비스의 주 경로. 위 둘은 전부 텍스트 전용이라 멀티파트 파싱,
+          #    patch_multipart_part_limit(Starlette 몽키패치), BodySizeLimitMiddleware,
+          #    Pillow 디코드, NDJSON 프레이밍 중 아무것도 건드리지 않는다.
+          #    그중 하나가 깨지면 CI 초록 + 스모크 통과 상태로 모든 사진 업로드가 죽는다.
+          #    첫 줄이 meta 로 파싱되면 그 사슬 전체가 살아 있다는 뜻이다. 14KB 합성 메뉴판, 몇 원.
+          #    (curl 을 head 로 바로 물리면 SIGPIPE 로 죽어서 pipefail 에 걸린다 — 파일로 받는다.)
+          curl -fsS --max-time 90 -X POST "$TAG_URL/api/v1/menu/scan/stream" \
+            -F 'image=@api/tests/fixtures/smoke_menu.jpg;type=image/jpeg' \
+            -F 'mode=poster' -o scan.ndjson
+          head -n 1 scan.ndjson | tee /dev/stderr | jq -e '.type == "meta"'
+
       - name: 스모크 통과 → 트래픽 전환
         run: gcloud run services update-traffic "$SERVICE" --region "$REGION" --to-latest
+
+      - name: 트래픽 전환 완료 → :latest 를 '마지막 정상 빌드' 로 옮긴다
+        env:
+          IMG: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.SERVICE }}
+        # 수동 복구 절차(deploy.md 8장·부록 A)가 :latest 를 가리키므로, 여기까지 온 이미지만 붙인다.
+        run: gcloud artifacts docker tags add "$IMG:${{ github.sha }}" "$IMG:latest"
 
       - name: 실패 시 — candidate 는 트래픽 0 이므로 운영은 무사
         if: failure()
