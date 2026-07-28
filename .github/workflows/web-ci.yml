@@ -25,6 +25,10 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run lint
+      # oxlint 도 tsc 도 못 잡는 것: 스캔 경합 가드(store/app.ts 의 scanRun/isStale)와
+      # NDJSON 파서(lib/api.ts). 둘 다 순수 로직이라 리뷰어 눈이 아니라 여기서 잡는다.
+      # 차단이다 — 새 스위트는 초록에서 시작하므로 유예할 백로그가 없다(ruff 와 다른 점).
+      - run: npm test
       # 진짜 게이트는 이것 — oxlint 는 타입을 보지 않는다. tsc -b 가 본다.
       # Vercel 빌드와 중복이 아니다: Vercel 은 실패해도 '배포만' 막고 PR 은 초록으로 남는다.
       # ⚠️ npm run gen:api 를 여기에 넣지 말 것 — ../api/openapi.json 을 읽는다(docs/deploy.md 4장).
