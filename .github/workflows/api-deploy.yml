@@ -115,22 +115,48 @@ jobs:
           #    patch_multipart_part_limit(Starlette 몽키패치), BodySizeLimitMiddleware,
           #    Pillow 디코드, NDJSON 프레이밍 중 아무것도 건드리지 않는다.
           #    그중 하나가 깨지면 CI 초록 + 스모크 통과 상태로 모든 사진 업로드가 죽는다.
-          #    첫 줄이 meta 로 파싱되면 그 사슬 전체가 살아 있다는 뜻이다. 14KB 합성 메뉴판, 몇 원.
+          #    14KB 합성 메뉴판, 몇 원.
           #    (curl 을 head 로 바로 물리면 SIGPIPE 로 죽어서 pipefail 에 걸린다 — 파일로 받는다.)
           curl -fsS --max-time 90 -X POST "$TAG_URL/api/v1/menu/scan/stream" \
             -F 'image=@api/tests/fixtures/smoke_menu.jpg;type=image/jpeg' \
             -F 'mode=poster' -o scan.ndjson
-          head -n 1 scan.ndjson | tee /dev/stderr | jq -e '.type == "meta"'
+
+          jq -rs 'map(.type) | "스트림 \(length)줄: \(group_by(.) | map("\(.[0])×\(length)") | join(", "))"' \
+            scan.ndjson >&2
+
+          # ⚠️ 첫 줄만 보면 안 된다. 이 라우트는 **실패해도 HTTP 200** 이라(첫 바이트에 상태가
+          #    확정된다) curl -f 가 성공으로 끝나고, 오류는 본문의 error 줄이나 done 누락으로만
+          #    드러난다. 첫 항목 이후의 생성 실패·NDJSON 미완결이 그대로 운영에 올라갈 수 있다.
+          #    프런트(lib/api.ts)가 거절하는 조건과 같은 것을 여기서도 본다:
+          #    meta 로 시작 · error 줄 없음 · 항목 1개 이상 · done 으로 끝.
+          jq -se '
+            (.[0].type == "meta")
+            and (any(.[]; .type == "error") | not)
+            and (any(.[]; .type == "item"))
+            and (.[-1].type == "done")
+          ' scan.ndjson > /dev/null
 
       - name: 스모크 통과 → 트래픽 전환
+        id: shift
         run: gcloud run services update-traffic "$SERVICE" --region "$REGION" --to-latest
 
       - name: 트래픽 전환 완료 → :latest 를 '마지막 정상 빌드' 로 옮긴다
         env:
           IMG: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.SERVICE }}
         # 수동 복구 절차(deploy.md 8장·부록 A)가 :latest 를 가리키므로, 여기까지 온 이미지만 붙인다.
-        run: gcloud artifacts docker tags add "$IMG:${{ github.sha }}" "$IMG:latest"
+        # --quiet: 첫 배포 이후로는 :latest 가 이미 존재한다. 비대화형 러너에서 확인 프롬프트가
+        #          뜨면 그대로 실패하는데, 이 시점엔 트래픽이 이미 넘어가 있어 '성공한 배포가
+        #          빨갛게' 되고 :latest 만 옛 이미지에 남는다. 프롬프트가 없더라도 무해하다.
+        run: gcloud artifacts docker tags add "$IMG:${{ github.sha }}" "$IMG:latest" --quiet
 
-      - name: 실패 시 — candidate 는 트래픽 0 이므로 운영은 무사
-        if: failure()
+      # ⚠️ 실패 알림을 둘로 나눈다. 트래픽 전환 '뒤' 단계가 실패했는데 "운영은 무사" 라고 하면
+      #    거짓말이다 — 운영은 이미 새 리비전이고, 손봐야 할 건 :latest 쪽이다.
+      - name: 실패 — 트래픽 전환 전이므로 운영은 무사
+        if: failure() && steps.shift.outcome != 'success'
         run: echo "::warning::candidate 리비전이 스모크에서 떨어졌습니다. 운영 트래픽은 이전 리비전에 그대로 있습니다."
+
+      - name: 실패 — 트래픽은 이미 넘어갔다
+        if: failure() && steps.shift.outcome == 'success'
+        run: |
+          echo "::error::운영 배포 자체는 성공했습니다(트래픽 전환 완료). 그 뒤 단계가 실패했으니 \
+          :latest 가 이전 이미지를 가리킬 수 있습니다 — 수동 복구(deploy.md 8장)를 하기 전에 확인하세요."
