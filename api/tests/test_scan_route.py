@@ -36,6 +36,32 @@ async def test_scan_returns_full_contract(client_factory):
     assert "price_krw" not in item
 
 
+def test_price_amount_keeps_cents():
+    """`price_amount` 가 int 였을 때 '$3.50' 이 3 으로 잘렸다(₩ 환산·예산 게이지가 14% 틀림).
+
+    엔·원 같은 정수 통화만 보면 안 드러나므로 여기서 못을 박는다.
+    """
+    from app.schemas.menu import MenuItemSummary
+
+    fields = {
+        "name_local": "Cheesecake",
+        "name_translated": "치즈케이크",
+        "price_text": "$5.00",
+        "tax_included": None,
+        "category": "dessert",
+        "section": "",
+        "summary": "치즈로 만든 케이크",
+        "image_query": "cheesecake",
+        "tags": [],
+        "allergens": [],
+        "ocr_confidence": "high",
+    }
+
+    assert MenuItemSummary(**fields, price_amount=3.5).price_amount == 3.5
+    # 정수 통화는 정수 그대로여야 한다(스키마 설명·프롬프트가 970.0 을 막는다).
+    assert MenuItemSummary(**fields, price_amount=970).price_amount == 970
+
+
 async def test_mode_is_forwarded_to_gemini(client_factory):
     fake = FakeGemini()
     async with client_factory(fake) as client:

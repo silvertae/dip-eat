@@ -70,8 +70,9 @@ class MenuItemSummary(BaseModel):
     price_text: str = Field(
         description="가격을 적힌 그대로. 예: '970円', '¥970', '時価'. 못 읽었으면 빈 문자열."
     )
-    price_amount: int | None = Field(
-        description="price_text 에서 파싱한 숫자만. 범위·시가·판독 불가면 null."
+    price_amount: float | None = Field(
+        description="price_text 에서 파싱한 숫자만. 범위·시가·판독 불가면 null. "
+        "소수점이 **적혀 있을 때만** 소수로: '$3.50'→3.5, '970円'→970(970.0 이 아니라 970)."
     )
     tax_included: bool | None = Field(
         description="税込이면 true, 税抜/+税면 false, 표기가 없으면 null."

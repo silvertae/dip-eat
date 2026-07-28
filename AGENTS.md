@@ -70,6 +70,8 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 필드를 꼭 추가해야 하면 **추측하지 말고 `scripts/bench_menu.py` 로 전후를 재라.**
 기준선: 짧은 문자열 1개(`section`) 추가 = 출력 토큰 +6~12%, p50 +3%(15.6s→16.0s).
 긴 문자열이나 객체 배열은 이보다 훨씬 비싸다 — `likely_allergens` 하나가 43% 였다.
+반대로 **타입만 바꾸는 건 사실상 공짜**다 — `price_amount` int→float 은 항목당 출력 토큰
+148.7→146.2, p50 20.3s→19.1s(samples/ 10장, 노이즈 범위).
 
 ## 절대 어기면 안 되는 것
 
@@ -131,6 +133,11 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 ## 제품 불변식 (기능 아님)
 
 - **서버는 원화를 모른다.** 현지 통화만 반환, ₩ 환산은 클라이언트(`web/src/lib/fx.ts`)가 볼 때마다 한다 — 캐시된 결과가 과거 환율에 박제되는 걸 막는다. 외부 API(open.er-api.com) + 하드코딩 폴백이라 발표 중 API 가 죽어도 ₩ 는 계속 나온다.
+- **`price_amount` 는 소수다(`float`).** 정수로 두면 `$3.50`→`3` 으로 센트가 잘려 ₩ 환산·예산 게이지가
+  ~14% 틀린다(주력 통화가 JPY·KRW 라 오래 안 보였다). `price_text` 는 여전히 적힌 그대로다 —
+  **개별 항목은 `price_text` 를 그리고, `price_amount` 는 우리가 계산할 때만 쓴다.**
+  정수 통화에 `970.0` 이 나오지 않게 스키마 설명과 프롬프트가 같이 막는다.
+  `tests/test_scan_route.py::test_price_amount_keeps_cents` 가 회귀를 잡는다.
 - **알레르기는 AI 추정이지 메뉴판에서 읽은 사실이 아니다.** `likely_allergens`/`inferred`/`basis`/`confidence`. UI 는 "AI 추정, 점원에게 확인" 상시 고지. 식품 안전 문제.
 - **`name_local`(원문)은 절대 응답에서 빼지 않는다.** 사용자가 점원에게 그 글자를 보여준다.
 - **알레르기 차단은 클라이언트가** 코드 대조로 한다(프로필이 서버로 안 나감).

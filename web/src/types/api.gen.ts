@@ -388,7 +388,7 @@ export interface components {
             price_text: string;
             /**
              * Price Amount
-             * @description price_text 에서 파싱한 숫자만. 범위·시가·판독 불가면 null.
+             * @description price_text 에서 파싱한 숫자만. 범위·시가·판독 불가면 null. 소수점이 **적혀 있을 때만** 소수로: '$3.50'→3.5, '970円'→970(970.0 이 아니라 970).
              */
             price_amount: number | null;
             /**
