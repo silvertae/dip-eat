@@ -185,6 +185,10 @@ export const useApp = create<AppState>()(
               ...meta,
               items: [],
               warnings: [],
+              // meta 줄이 왔다는 건 서버의 '메뉴판 없음' 가드를 이미 통과했다는 뜻이다.
+              // (menu_found=false 면 meta 전에 error 줄로 끝난다 — api/app/services/gemini.py)
+              menu_found: true,
+              no_menu_reason: '',
               // done 이 오기 전까지는 알 수 없다. 화면은 이 값을 쓰지 않는다.
               meta: { model: '', latency_ms: 0, image_px: '' },
             },

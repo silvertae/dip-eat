@@ -1,0 +1,3283 @@
+{
+  "generated_at": "20260728-134712",
+  "mode": "poster",
+  "thinking_level": "minimal",
+  "media_resolution": "MEDIA_RESOLUTION_HIGH",
+  "results": {
+    "gemini-3.1-flash-lite": [
+      {
+        "ok": true,
+        "latency_ms": 16056,
+        "items": 40,
+        "price_parse_rate": 1.0,
+        "low_confidence": 0,
+        "with_allergens": 34,
+        "sent_kb": 256,
+        "tok_in": 2730,
+        "tok_out": 6080,
+        "tok_think": 0,
+        "ms_per_item": 401,
+        "restaurant": "ゆうなんぎい",
+        "warnings": [],
+        "read": [
+          {
+            "local": "もずくの天ぷら",
+            "ko": "큰실말 튀김",
+            "price": "760円",
+            "conf": "high",
+            "summary": "오키나와산 큰실말을 넣은 튀김"
+          },
+          {
+            "local": "島らっきょうの天ぷら",
+            "ko": "섬 염교 튀김",
+            "price": "760円",
+            "conf": "high",
+            "summary": "오키나와산 섬 염교 튀김"
+          },
+          {
+            "local": "アサの天ぷら",
+            "ko": "파래 튀김",
+            "price": "760円",
+            "conf": "high",
+            "summary": "파래와 어묵을 넣은 튀김"
+          },
+          {
+            "local": "フーチバージューシー",
+            "ko": "쑥 쥬시",
+            "price": "800円",
+            "conf": "high",
+            "summary": "쑥을 넣은 오키나와식 영양밥"
+          },
+          {
+            "local": "イカスミジューシー",
+            "ko": "오징어 먹물 쥬시",
+            "price": "1420円",
+            "conf": "high",
+            "summary": "오징어 먹물로 지은 영양밥"
+          },
+          {
+            "local": "じゅーしぃセット",
+            "ko": "쥬시 세트",
+            "price": "1800円",
+            "conf": "high",
+            "summary": "쥬시와 반찬이 포함된 세트"
+          },
+          {
+            "local": "いなむるちセット",
+            "ko": "이나무루치 세트",
+            "price": "1800円",
+            "conf": "high",
+            "summary": "이나무루치 국과 밥 세트"
+          },
+          {
+            "local": "ゆうなんぎいB定食",
+            "ko": "유난기 B정식",
+            "price": "2550円",
+            "conf": "high",
+            "summary": "라후테, 찬푸르 등이 포함된 정식"
+          },
+          {
+            "local": "ゆうなんぎいA定食",
+            "ko": "유난기 A정식",
+            "price": "3600円",
+            "conf": "high",
+            "summary": "다양한 오키나와 요리가 포함된 정식"
+          },
+          {
+            "local": "ラフテー",
+            "ko": "라후테",
+            "price": "970円",
+            "conf": "high",
+            "summary": "오키나와식 돼지고기 조림"
+          },
+          {
+            "local": "ソーキ骨の煮付",
+            "ko": "소키 뼈 조림",
+            "price": "970円",
+            "conf": "high",
+            "summary": "돼지 갈비뼈 조림"
+          },
+          {
+            "local": "てびちの煮付",
+            "ko": "족발 조림",
+            "price": "840円",
+            "conf": "high",
+            "summary": "부드럽게 조린 돼지 족발"
+          },
+          {
+            "local": "グルクン唐揚",
+            "ko": "글루쿤 튀김",
+            "price": "890円",
+            "conf": "high",
+            "summary": "오키나와 대표 생선 튀김"
+          },
+          {
+            "local": "ゴーヤーチャンプルー",
+            "ko": "고야 찬푸르",
+            "price": "850円",
+            "conf": "high",
+            "summary": "여주와 두부 볶음"
+          },
+          {
+            "local": "ナーベーラみそ煮",
+            "ko": "수세미 된장 조림",
+            "price": "850円",
+            "conf": "high",
+            "summary": "수세미를 넣은 된장 조림"
+          },
+          {
+            "local": "フーチャンプルー",
+            "ko": "후 찬푸르",
+            "price": "850円",
+            "conf": "high",
+            "summary": "밀기울과 채소 볶음"
+          },
+          {
+            "local": "トーフチャンプルー",
+            "ko": "두부 찬푸르",
+            "price": "890円",
+            "conf": "high",
+            "summary": "두부와 채소 볶음"
+          },
+          {
+            "local": "中味イリチー",
+            "ko": "나카미 이리치",
+            "price": "890円",
+            "conf": "high",
+            "summary": "돼지 내장 볶음"
+          },
+          {
+            "local": "マミナーチャンプルー",
+            "ko": "숙주 찬푸르",
+            "price": "850円",
+            "conf": "high",
+            "summary": "숙주나물 볶음"
+          },
+          {
+            "local": "ナービーみそ煮",
+            "ko": "가지 된장 조림",
+            "price": "890円",
+            "conf": "high",
+            "summary": "가지를 넣은 된장 조림"
+          },
+          {
+            "local": "野菜炒め",
+            "ko": "야채 볶음",
+            "price": "890円",
+            "conf": "high",
+            "summary": "돼지고기를 넣은 야채 볶음"
+          },
+          {
+            "local": "ソーメンチャンプルー",
+            "ko": "소면 찬푸르",
+            "price": "770円",
+            "conf": "high",
+            "summary": "소면 볶음 요리"
+          },
+          {
+            "local": "沖縄ソバ焼きそば",
+            "ko": "오키나와 소바 야키소바",
+            "price": "820円",
+            "conf": "high",
+            "summary": "오키나와 소바면으로 만든 야키소바"
+          },
+          {
+            "local": "イカスミめんの焼きそば",
+            "ko": "오징어 먹물면 야키소바",
+            "price": "820円",
+            "conf": "high",
+            "summary": "오징어 먹물면으로 만든 야키소바"
+          },
+          {
+            "local": "いなむるち",
+            "ko": "이나무루치",
+            "price": "790円",
+            "conf": "high",
+            "summary": "돼지고기와 채소가 들어간 된장국"
+          },
+          {
+            "local": "中味のお吸い物",
+            "ko": "나카미 국",
+            "price": "820円",
+            "conf": "high",
+            "summary": "돼지 내장 맑은 국"
+          },
+          {
+            "local": "アサ汁",
+            "ko": "파래 국",
+            "price": "740円",
+            "conf": "high",
+            "summary": "파래를 넣은 맑은 국"
+          },
+          {
+            "local": "イカスミ汁",
+            "ko": "오징어 먹물 국",
+            "price": "1250円",
+            "conf": "high",
+            "summary": "오징어 먹물 국"
+          },
+          {
+            "local": "山羊汁",
+            "ko": "염소 국",
+            "price": "1600円",
+            "conf": "high",
+            "summary": "염소 고기 국"
+          },
+          {
+            "local": "イラブ汁",
+            "ko": "바다뱀 국",
+            "price": "2700円",
+            "conf": "high",
+            "summary": "바다뱀을 넣은 보양 국"
+          },
+          {
+            "local": "海ぶどう",
+            "ko": "바다포도",
+            "price": "580円",
+            "conf": "high",
+            "summary": "신선한 바다포도"
+          },
+          {
+            "local": "きびなごの唐揚",
+            "ko": "기비나고 튀김",
+            "price": "720円",
+            "conf": "high",
+            "summary": "작은 생선 튀김"
+          },
+          {
+            "local": "トーフヨー",
+            "ko": "두부요",
+            "price": "680円",
+            "conf": "high",
+            "summary": "두부를 발효시킨 오키나와 요리"
+          },
+          {
+            "local": "クブイリチー",
+            "ko": "다시마 볶음",
+            "price": "590円",
+            "conf": "high",
+            "summary": "다시마 볶음 요리"
+          },
+          {
+            "local": "カラスドーフ",
+            "ko": "소금 두부",
+            "price": "590円",
+            "conf": "high",
+            "summary": "소금에 절인 두부"
+          },
+          {
+            "local": "島らっきょう",
+            "ko": "섬 염교",
+            "price": "620円",
+            "conf": "high",
+            "summary": "섬 염교 절임"
+          },
+          {
+            "local": "ジーマミドーフ",
+            "ko": "땅콩 두부",
+            "price": "620円",
+            "conf": "high",
+            "summary": "땅콩으로 만든 쫀득한 두부"
+          },
+          {
+            "local": "ミミガー",
+            "ko": "미미가",
+            "price": "620円",
+            "conf": "high",
+            "summary": "돼지 귀 무침"
+          },
+          {
+            "local": "スヌイ",
+            "ko": "큰실말 초무침",
+            "price": "590円",
+            "conf": "high",
+            "summary": "큰실말 초무침"
+          },
+          {
+            "local": "ゴーヤーの酢の物",
+            "ko": "여주 초무침",
+            "price": "690円",
+            "conf": "high",
+            "summary": "여주 초무침"
+          }
+        ],
+        "file": "japanese_menu1.png"
+      },
+      {
+        "ok": true,
+        "latency_ms": 12557,
+        "items": 32,
+        "price_parse_rate": 1.0,
+        "low_confidence": 0,
+        "with_allergens": 31,
+        "sent_kb": 77,
+        "tok_in": 2730,
+        "tok_out": 4924,
+        "tok_think": 0,
+        "ms_per_item": 392,
+        "restaurant": "小諸そば",
+        "warnings": [
+          "메뉴판의 일부 글자가 세로쓰기로 되어 있어 순서대로 읽었습니다."
+        ],
+        "read": [
+          {
+            "local": "かけ・もり",
+            "ko": "카케/모리 소바",
+            "price": "二三〇",
+            "conf": "high",
+            "summary": "기본 온소바 또는 냉소바"
+          },
+          {
+            "local": "ざる",
+            "ko": "자루 소바",
+            "price": "二九〇",
+            "conf": "high",
+            "summary": "김가루를 올린 냉소바"
+          },
+          {
+            "local": "たぬき",
+            "ko": "타누키 소바",
+            "price": "二九〇",
+            "conf": "high",
+            "summary": "튀김 부스러기를 올린 소바"
+          },
+          {
+            "local": "冷したぬき",
+            "ko": "냉 타누키 소바",
+            "price": "三三〇",
+            "conf": "high",
+            "summary": "튀김 부스러기를 올린 냉소바"
+          },
+          {
+            "local": "きつね",
+            "ko": "키츠네 소바",
+            "price": "三三〇",
+            "conf": "high",
+            "summary": "유부를 올린 소바"
+          },
+          {
+            "local": "いか天",
+            "ko": "오징어 튀김 소바",
+            "price": "三三〇",
+            "conf": "high",
+            "summary": "오징어 튀김을 올린 소바"
+          },
+          {
+            "local": "いか天セイロ",
+            "ko": "오징어 튀김 세이로 소바",
+            "price": "三三〇",
+            "conf": "high",
+            "summary": "오징어 튀김이 곁들여진 냉소바"
+          },
+          {
+            "local": "かき揚",
+            "ko": "야채 튀김 소바",
+            "price": "三五〇",
+            "conf": "high",
+            "summary": "야채 튀김을 올린 소바"
+          },
+          {
+            "local": "かき揚セイロ",
+            "ko": "야채 튀김 세이로 소바",
+            "price": "三五〇",
+            "conf": "high",
+            "summary": "야채 튀김이 곁들여진 냉소바"
+          },
+          {
+            "local": "鳥から",
+            "ko": "닭튀김 소바",
+            "price": "四三〇",
+            "conf": "high",
+            "summary": "닭튀김을 올린 소바"
+          },
+          {
+            "local": "鳥からセイロ",
+            "ko": "닭튀김 세이로 소바",
+            "price": "四三〇",
+            "conf": "high",
+            "summary": "닭튀김이 곁들여진 냉소바"
+          },
+          {
+            "local": "えび天",
+            "ko": "새우튀김 소바",
+            "price": "四六〇",
+            "conf": "high",
+            "summary": "새우튀김을 올린 소바"
+          },
+          {
+            "local": "えび天セイロ",
+            "ko": "새우튀김 세이로 소바",
+            "price": "四六〇",
+            "conf": "high",
+            "summary": "새우튀김이 곁들여진 냉소바"
+          },
+          {
+            "local": "小諸",
+            "ko": "코모로 소바",
+            "price": "四一〇",
+            "conf": "high",
+            "summary": "가게 이름이 붙은 대표 소바"
+          },
+          {
+            "local": "冷しおろし",
+            "ko": "냉 무즙 소바",
+            "price": "四一〇",
+            "conf": "high",
+            "summary": "갈은 무를 올린 냉소바"
+          },
+          {
+            "local": "カレー南蛮",
+            "ko": "카레 난반 소바",
+            "price": "四五〇",
+            "conf": "high",
+            "summary": "카레 국물의 소바"
+          },
+          {
+            "local": "冷しとろろ",
+            "ko": "냉 마 소바",
+            "price": "四一〇",
+            "conf": "high",
+            "summary": "갈은 마를 올린 냉소바"
+          },
+          {
+            "local": "かき揚玉子",
+            "ko": "야채 튀김 계란 소바",
+            "price": "三八〇",
+            "conf": "high",
+            "summary": "야채 튀김과 계란을 올린 소바"
+          },
+          {
+            "local": "一枚もり",
+            "ko": "추가 면",
+            "price": "二九〇",
+            "conf": "high",
+            "summary": "면 추가"
+          },
+          {
+            "local": "カレー丼",
+            "ko": "카레 덮밥",
+            "price": "四一〇",
+            "conf": "high",
+            "summary": "카레라이스"
+          },
+          {
+            "local": "天丼",
+            "ko": "텐동",
+            "price": "四一〇",
+            "conf": "high",
+            "summary": "튀김 덮밥"
+          },
+          {
+            "local": "親子丼",
+            "ko": "오야코동",
+            "price": "四七〇",
+            "conf": "high",
+            "summary": "닭고기 계란 덮밥"
+          },
+          {
+            "local": "カツ丼",
+            "ko": "카츠동",
+            "price": "四九〇",
+            "conf": "high",
+            "summary": "돈가스 덮밥"
+          },
+          {
+            "local": "ライス",
+            "ko": "공기밥",
+            "price": "一〇〇",
+            "conf": "high",
+            "summary": "흰 쌀밥"
+          },
+          {
+            "local": "ミニかき揚丼セット",
+            "ko": "미니 야채 튀김 덮밥 세트",
+            "price": "五〇〇",
+            "conf": "high",
+            "summary": "미니 야채 튀김 덮밥과 소바 세트"
+          },
+          {
+            "local": "ミニ鳥から丼セット",
+            "ko": "미니 닭튀김 덮밥 세트",
+            "price": "五〇〇",
+            "conf": "high",
+            "summary": "미니 닭튀김 덮밥과 소바 세트"
+          },
+          {
+            "local": "ミニカレー丼セット",
+            "ko": "미니 카레 덮밥 세트",
+            "price": "五〇〇",
+            "conf": "high",
+            "summary": "미니 카레 덮밥과 소바 세트"
+          },
+          {
+            "local": "ミニ山かけ丼セット",
+            "ko": "미니 마 덮밥 세트",
+            "price": "五〇〇",
+            "conf": "high",
+            "summary": "미니 마 덮밥과 소바 세트"
+          },
+          {
+            "local": "ミニ親子丼セット",
+            "ko": "미니 오야코동 세트",
+            "price": "五八〇",
+            "conf": "high",
+            "summary": "미니 오야코동과 소바 세트"
+          },
+          {
+            "local": "ミニカツ丼セット",
+            "ko": "미니 카츠동 세트",
+            "price": "五九〇",
+            "conf": "high",
+            "summary": "미니 카츠동과 소바 세트"
+          },
+          {
+            "local": "カレー丼セット",
+            "ko": "카레 덮밥 세트",
+            "price": "五九〇",
+            "conf": "high",
+            "summary": "카레 덮밥과 소바 세트"
+          },
+          {
+            "local": "天丼セット",
+            "ko": "텐동 세트",
+            "price": "五九〇",
+            "conf": "high",
+            "summary": "텐동과 소바 세트"
+          }
+        ],
+        "file": "japanese_menu10.jpg"
+      },
+      {
+        "ok": true,
+        "latency_ms": 34591,
+        "items": 90,
+        "price_parse_rate": 1.0,
+        "low_confidence": 0,
+        "with_allergens": 87,
+        "sent_kb": 43,
+        "tok_in": 2758,
+        "tok_out": 13410,
+        "tok_think": 0,
+        "ms_per_item": 384,
+        "restaurant": "",
+        "warnings": [],
+        "read": [
+          {
+            "local": "いかげそ",
+            "ko": "오징어 다리",
+            "price": "130円",
+            "conf": "high",
+            "summary": "쫄깃한 오징어 다리 초밥"
+          },
+          {
+            "local": "やりいか姿",
+            "ko": "한치 한 마리",
+            "price": "130円",
+            "conf": "high",
+            "summary": "한치 한 마리를 통째로 올린 초밥"
+          },
+          {
+            "local": "やりいか姿炙り",
+            "ko": "한치 한 마리 아부리",
+            "price": "130円",
+            "conf": "high",
+            "summary": "살짝 구운 한치 한 마리 초밥"
+          },
+          {
+            "local": "たこ",
+            "ko": "문어",
+            "price": "130円",
+            "conf": "high",
+            "summary": "삶은 문어 초밥"
+          },
+          {
+            "local": "いなり",
+            "ko": "유부초밥",
+            "price": "130円",
+            "conf": "high",
+            "summary": "달콤한 유부초밥"
+          },
+          {
+            "local": "玉子焼",
+            "ko": "계란말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "달콤한 일본식 계란말이 초밥"
+          },
+          {
+            "local": "ハンバーグ軍艦",
+            "ko": "함박스테이크 군함말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "함박스테이크를 올린 군함말이"
+          },
+          {
+            "local": "ツナサラダ軍艦",
+            "ko": "참치 샐러드 군함말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "참치 마요 샐러드 군함말이"
+          },
+          {
+            "local": "えびマヨ軍艦",
+            "ko": "새우 마요 군함말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "새우 마요네즈 군함말이"
+          },
+          {
+            "local": "コーンマヨ軍艦",
+            "ko": "콘 마요 군함말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "옥수수 마요네즈 군함말이"
+          },
+          {
+            "local": "磯味軍艦",
+            "ko": "해초 군함말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "해초를 올린 군함말이"
+          },
+          {
+            "local": "いかおくら軍艦",
+            "ko": "오징어 오크라 군함말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "오징어와 오크라를 올린 군함말이"
+          },
+          {
+            "local": "とびっこ軍艦",
+            "ko": "날치알 군함말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "톡톡 터지는 날치알 군함말이"
+          },
+          {
+            "local": "たこ吸盤軍艦",
+            "ko": "문어 빨판 군함말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "문어 빨판을 올린 군함말이"
+          },
+          {
+            "local": "明太子軍艦",
+            "ko": "명란 군함말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "매콤한 명란젓 군함말이"
+          },
+          {
+            "local": "梅しそ巻",
+            "ko": "매실 차조기 말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "매실과 차조기 잎을 넣은 김말이"
+          },
+          {
+            "local": "かんぴょう巻",
+            "ko": "박고지 김말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "달콤하게 졸인 박고지 김말이"
+          },
+          {
+            "local": "納豆巻",
+            "ko": "낫토 김말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "낫토를 넣은 김말이"
+          },
+          {
+            "local": "かっぱ巻",
+            "ko": "오이 김말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "아삭한 오이 김말이"
+          },
+          {
+            "local": "たくあん巻",
+            "ko": "단무지 김말이",
+            "price": "130円",
+            "conf": "high",
+            "summary": "단무지를 넣은 김말이"
+          },
+          {
+            "local": "びんとろ",
+            "ko": "날개다랑어 뱃살",
+            "price": "180円",
+            "conf": "high",
+            "summary": "부드러운 날개다랑어 뱃살 초밥"
+          },
+          {
+            "local": "づけまぐろ",
+            "ko": "참치 간장절임",
+            "price": "180円",
+            "conf": "high",
+            "summary": "간장에 절인 참치 초밥"
+          },
+          {
+            "local": "サーモン",
+            "ko": "연어",
+            "price": "180円",
+            "conf": "high",
+            "summary": "신선한 연어 초밥"
+          },
+          {
+            "local": "はまち",
+            "ko": "방어",
+            "price": "180円",
+            "conf": "high",
+            "summary": "기름진 방어 초밥"
+          },
+          {
+            "local": "あじ",
+            "ko": "전갱이",
+            "price": "180円",
+            "conf": "high",
+            "summary": "신선한 전갱이 초밥"
+          },
+          {
+            "local": "〆さば",
+            "ko": "초절임 고등어",
+            "price": "180円",
+            "conf": "high",
+            "summary": "식초에 절인 고등어 초밥"
+          },
+          {
+            "local": "生たこ",
+            "ko": "생문어",
+            "price": "180円",
+            "conf": "high",
+            "summary": "쫄깃한 생문어 초밥"
+          },
+          {
+            "local": "鉄火巻",
+            "ko": "참치 김말이",
+            "price": "180円",
+            "conf": "high",
+            "summary": "참치를 넣은 김말이"
+          },
+          {
+            "local": "ねぎとろ巻",
+            "ko": "다진 참치 파 김말이",
+            "price": "180円",
+            "conf": "high",
+            "summary": "다진 참치와 파를 넣은 김말이"
+          },
+          {
+            "local": "とろたく巻",
+            "ko": "다진 참치 단무지 김말이",
+            "price": "180円",
+            "conf": "high",
+            "summary": "다진 참치와 단무지를 넣은 김말이"
+          },
+          {
+            "local": "まぐろ赤身",
+            "ko": "참치 살코기",
+            "price": "160円",
+            "conf": "high",
+            "summary": "담백한 참치 살코기 초밥"
+          },
+          {
+            "local": "えび",
+            "ko": "새우",
+            "price": "160円",
+            "conf": "high",
+            "summary": "삶은 새우 초밥"
+          },
+          {
+            "local": "いか",
+            "ko": "오징어",
+            "price": "160円",
+            "conf": "high",
+            "summary": "신선한 오징어 초밥"
+          },
+          {
+            "local": "こはだ",
+            "ko": "전어",
+            "price": "160円",
+            "conf": "high",
+            "summary": "초절임 전어 초밥"
+          },
+          {
+            "local": "いわし",
+            "ko": "정어리",
+            "price": "160円",
+            "conf": "high",
+            "summary": "신선한 정어리 초밥"
+          },
+          {
+            "local": "つぶ貝",
+            "ko": "소라",
+            "price": "160円",
+            "conf": "high",
+            "summary": "쫄깃한 소라 초밥"
+          },
+          {
+            "local": "まぐろ納豆軍艦",
+            "ko": "참치 낫토 군함말이",
+            "price": "160円",
+            "conf": "high",
+            "summary": "참치와 낫토를 올린 군함말이"
+          },
+          {
+            "local": "サーモンマヨ軍艦",
+            "ko": "연어 마요 군함말이",
+            "price": "160円",
+            "conf": "high",
+            "summary": "연어 마요네즈 군함말이"
+          },
+          {
+            "local": "サーモンサラダ",
+            "ko": "연어 샐러드",
+            "price": "220円",
+            "conf": "high",
+            "summary": "연어 샐러드 초밥"
+          },
+          {
+            "local": "とろはまち",
+            "ko": "기름진 방어",
+            "price": "220円",
+            "conf": "high",
+            "summary": "기름진 방어 뱃살 초밥"
+          },
+          {
+            "local": "かれいえんがわ",
+            "ko": "가자미 지느러미",
+            "price": "220円",
+            "conf": "high",
+            "summary": "고소한 가자미 지느러미 초밥"
+          },
+          {
+            "local": "煮穴子",
+            "ko": "붕장어 조림",
+            "price": "220円",
+            "conf": "high",
+            "summary": "부드러운 붕장어 조림 초밥"
+          },
+          {
+            "local": "甘えび",
+            "ko": "단새우",
+            "price": "220円",
+            "conf": "high",
+            "summary": "달콤한 단새우 초밥"
+          },
+          {
+            "local": "炙りサーモン",
+            "ko": "연어 아부리",
+            "price": "220円",
+            "conf": "high",
+            "summary": "살짝 구운 연어 초밥"
+          },
+          {
+            "local": "炙りとろはまち",
+            "ko": "기름진 방어 아부리",
+            "price": "220円",
+            "conf": "high",
+            "summary": "살짝 구운 기름진 방어 초밥"
+          },
+          {
+            "local": "えび天",
+            "ko": "새우튀김",
+            "price": "220円",
+            "conf": "high",
+            "summary": "갓 튀긴 새우튀김 초밥"
+          },
+          {
+            "local": "プルコギ",
+            "ko": "불고기",
+            "price": "220円",
+            "conf": "high",
+            "summary": "불고기 초밥"
+          },
+          {
+            "local": "ねぎとろ軍艦",
+            "ko": "다진 참치 파 군함말이",
+            "price": "220円",
+            "conf": "high",
+            "summary": "다진 참치와 파를 올린 군함말이"
+          },
+          {
+            "local": "お子さま三貫",
+            "ko": "어린이 3종 세트",
+            "price": "200円",
+            "conf": "high",
+            "summary": "어린이용 인기 초밥 3종"
+          },
+          {
+            "local": "光物三貫",
+            "ko": "등푸른생선 3종 세트",
+            "price": "200円",
+            "conf": "high",
+            "summary": "등푸른생선 초밥 3종"
+          },
+          {
+            "local": "天然南まぐろ赤身",
+            "ko": "천연 남방참치 살코기",
+            "price": "200円",
+            "conf": "high",
+            "summary": "천연 남방참치 살코기 초밥"
+          },
+          {
+            "local": "霜降サーモン",
+            "ko": "연어 뱃살",
+            "price": "200円",
+            "conf": "high",
+            "summary": "마블링이 좋은 연어 뱃살 초밥"
+          },
+          {
+            "local": "サーモンネギ塩炙り",
+            "ko": "연어 파 소금 아부리",
+            "price": "350円",
+            "conf": "high",
+            "summary": "파와 소금을 곁들여 구운 연어 초밥"
+          },
+          {
+            "local": "サーモンガーリック炙り",
+            "ko": "연어 마늘 아부리",
+            "price": "350円",
+            "conf": "high",
+            "summary": "마늘 소스를 곁들여 구운 연어 초밥"
+          },
+          {
+            "local": "真鯛",
+            "ko": "참돔",
+            "price": "350円",
+            "conf": "high",
+            "summary": "신선한 참돔 초밥"
+          },
+          {
+            "local": "印籠さば",
+            "ko": "인롱 고등어",
+            "price": "350円",
+            "conf": "high",
+            "summary": "고등어 초밥"
+          },
+          {
+            "local": "とり貝",
+            "ko": "새조개",
+            "price": "350円",
+            "conf": "high",
+            "summary": "신선한 새조개 초밥"
+          },
+          {
+            "local": "炙り真鯛",
+            "ko": "참돔 아부리",
+            "price": "350円",
+            "conf": "high",
+            "summary": "살짝 구운 참돔 초밥"
+          },
+          {
+            "local": "炙りかれいえんがわ",
+            "ko": "가자미 지느러미 아부리",
+            "price": "350円",
+            "conf": "high",
+            "summary": "살짝 구운 가자미 지느러미 초밥"
+          },
+          {
+            "local": "サーモン三貫",
+            "ko": "연어 3종 세트",
+            "price": "350円",
+            "conf": "high",
+            "summary": "연어 초밥 3종"
+          },
+          {
+            "local": "えび三貫",
+            "ko": "새우 3종 세트",
+            "price": "350円",
+            "conf": "high",
+            "summary": "새우 초밥 3종"
+          },
+          {
+            "local": "生さば",
+            "ko": "생고등어",
+            "price": "350円",
+            "conf": "high",
+            "summary": "신선한 생고등어 초밥"
+          },
+          {
+            "local": "ほたて",
+            "ko": "가리비",
+            "price": "350円",
+            "conf": "high",
+            "summary": "신선한 가리비 초밥"
+          },
+          {
+            "local": "炙りほたて",
+            "ko": "가리비 아부리",
+            "price": "350円",
+            "conf": "high",
+            "summary": "살짝 구운 가리비 초밥"
+          },
+          {
+            "local": "いくら軍艦",
+            "ko": "연어알 군함말이",
+            "price": "350円",
+            "conf": "high",
+            "summary": "연어알 군함말이"
+          },
+          {
+            "local": "炙り金目鯛",
+            "ko": "금눈돔 아부리",
+            "price": "400円",
+            "conf": "high",
+            "summary": "살짝 구운 금눈돔 초밥"
+          },
+          {
+            "local": "炙りずわい蟹",
+            "ko": "대게 아부리",
+            "price": "400円",
+            "conf": "high",
+            "summary": "살짝 구운 대게 초밥"
+          },
+          {
+            "local": "白身三貫",
+            "ko": "흰살생선 3종 세트",
+            "price": "400円",
+            "conf": "high",
+            "summary": "흰살생선 초밥 3종"
+          },
+          {
+            "local": "炙り三貫",
+            "ko": "아부리 3종 세트",
+            "price": "400円",
+            "conf": "high",
+            "summary": "살짝 구운 초밥 3종"
+          },
+          {
+            "local": "とろ三貫",
+            "ko": "참치 뱃살 3종 세트",
+            "price": "400円",
+            "conf": "high",
+            "summary": "참치 뱃살 초밥 3종"
+          },
+          {
+            "local": "天然南まぐろ中とろ",
+            "ko": "천연 남방참치 중뱃살",
+            "price": "400円",
+            "conf": "high",
+            "summary": "천연 남방참치 중뱃살 초밥"
+          },
+          {
+            "local": "金目鯛",
+            "ko": "금눈돔",
+            "price": "400円",
+            "conf": "high",
+            "summary": "신선한 금눈돔 초밥"
+          },
+          {
+            "local": "ずわい蟹",
+            "ko": "대게",
+            "price": "400円",
+            "conf": "high",
+            "summary": "신선한 대게 초밥"
+          },
+          {
+            "local": "活真つぶ貝",
+            "ko": "활 참소라",
+            "price": "400円",
+            "conf": "high",
+            "summary": "활 참소라 초밥"
+          },
+          {
+            "local": "活ほっき貝",
+            "ko": "활 북방조개",
+            "price": "400円",
+            "conf": "high",
+            "summary": "활 북방조개 초밥"
+          },
+          {
+            "local": "活みる貝",
+            "ko": "활 개불",
+            "price": "400円",
+            "conf": "high",
+            "summary": "활 개불 초밥"
+          },
+          {
+            "local": "炙りとろ",
+            "ko": "참치 뱃살 아부리",
+            "price": "400円",
+            "conf": "high",
+            "summary": "살짝 구운 참치 뱃살 초밥"
+          },
+          {
+            "local": "炙り和牛",
+            "ko": "와규 아부리",
+            "price": "400円",
+            "conf": "high",
+            "summary": "살짝 구운 와규 초밥"
+          },
+          {
+            "local": "まぐろ三貫",
+            "ko": "참치 3종 세트",
+            "price": "520円",
+            "conf": "high",
+            "summary": "참치 초밥 3종"
+          },
+          {
+            "local": "貝三貫",
+            "ko": "조개 3종 세트",
+            "price": "520円",
+            "conf": "high",
+            "summary": "조개 초밥 3종"
+          },
+          {
+            "local": "天然南まぐろ大とろ",
+            "ko": "천연 남방참치 대뱃살",
+            "price": "520円",
+            "conf": "high",
+            "summary": "천연 남방참치 대뱃살 초밥"
+          },
+          {
+            "local": "活赤貝",
+            "ko": "활 피조개",
+            "price": "520円",
+            "conf": "high",
+            "summary": "활 피조개 초밥"
+          },
+          {
+            "local": "活あわび",
+            "ko": "활 전복",
+            "price": "520円",
+            "conf": "high",
+            "summary": "활 전복 초밥"
+          },
+          {
+            "local": "炙り大とろ",
+            "ko": "대뱃살 아부리",
+            "price": "520円",
+            "conf": "high",
+            "summary": "살짝 구운 대뱃살 초밥"
+          },
+          {
+            "local": "うに軍艦",
+            "ko": "성게알 군함말이",
+            "price": "520円",
+            "conf": "high",
+            "summary": "성게알 군함말이"
+          },
+          {
+            "local": "軍艦三貫",
+            "ko": "군함말이 3종 세트",
+            "price": "520円",
+            "conf": "high",
+            "summary": "군함말이 3종"
+          },
+          {
+            "local": "まぐろづくし",
+            "ko": "참치 모둠",
+            "price": "800円",
+            "conf": "high",
+            "summary": "참치 초밥 모둠 세트"
+          },
+          {
+            "local": "貝づくし",
+            "ko": "조개 모둠",
+            "price": "800円",
+            "conf": "high",
+            "summary": "조개 초밥 모둠 세트"
+          },
+          {
+            "local": "炙りづくし",
+            "ko": "아부리 모둠",
+            "price": "800円",
+            "conf": "high",
+            "summary": "살짝 구운 초밥 모둠 세트"
+          },
+          {
+            "local": "大名穴子一貫",
+            "ko": "대형 붕장어 1피스",
+            "price": "800円",
+            "conf": "high",
+            "summary": "커다란 붕장어 초밥 1피스"
+          }
+        ],
+        "file": "japanese_menu2.jpg"
+      },
+      {
+        "ok": true,
+        "latency_ms": 20150,
+        "items": 55,
+        "price_parse_rate": 1.0,
+        "low_confidence": 0,
+        "with_allergens": 52,
+        "sent_kb": 104,
+        "tok_in": 2758,
+        "tok_out": 7827,
+        "tok_think": 0,
+        "ms_per_item": 366,
+        "restaurant": "",
+        "warnings": [
+          "메뉴판이 세로쓰기로 되어 있어 일부 항목의 가격 매칭에 주의가 필요합니다."
+        ],
+        "read": [
+          {
+            "local": "かんぱち",
+            "ko": "잿방어",
+            "price": "490円",
+            "conf": "high",
+            "summary": "신선한 잿방어 초밥"
+          },
+          {
+            "local": "うなぎ",
+            "ko": "장어",
+            "price": "530円",
+            "conf": "high",
+            "summary": "구운 장어 초밥"
+          },
+          {
+            "local": "たい",
+            "ko": "도미",
+            "price": "530円",
+            "conf": "high",
+            "summary": "담백한 도미 초밥"
+          },
+          {
+            "local": "平目",
+            "ko": "광어",
+            "price": "530円",
+            "conf": "high",
+            "summary": "쫄깃한 광어 초밥"
+          },
+          {
+            "local": "穴子",
+            "ko": "붕장어",
+            "price": "530円",
+            "conf": "high",
+            "summary": "부드러운 붕장어 초밥"
+          },
+          {
+            "local": "えび",
+            "ko": "새우",
+            "price": "430円",
+            "conf": "high",
+            "summary": "탱글한 새우 초밥"
+          },
+          {
+            "local": "とり貝",
+            "ko": "새조개",
+            "price": "530円",
+            "conf": "high",
+            "summary": "달큰한 새조개 초밥"
+          },
+          {
+            "local": "白とり貝",
+            "ko": "흰새조개",
+            "price": "630円",
+            "conf": "high",
+            "summary": "흰새조개 초밥"
+          },
+          {
+            "local": "玉子",
+            "ko": "계란",
+            "price": "430円",
+            "conf": "high",
+            "summary": "달콤한 계란말이 초밥"
+          },
+          {
+            "local": "げそ",
+            "ko": "오징어 다리",
+            "price": "430円",
+            "conf": "high",
+            "summary": "쫄깃한 오징어 다리 초밥"
+          },
+          {
+            "local": "まぐろ",
+            "ko": "참치",
+            "price": "430円",
+            "conf": "high",
+            "summary": "담백한 참치 초밥"
+          },
+          {
+            "local": "明太子",
+            "ko": "명란",
+            "price": "430円",
+            "conf": "high",
+            "summary": "짭조름한 명란 초밥"
+          },
+          {
+            "local": "サーモン",
+            "ko": "연어",
+            "price": "530円",
+            "conf": "high",
+            "summary": "부드러운 연어 초밥"
+          },
+          {
+            "local": "貝柱",
+            "ko": "가리비 관자",
+            "price": "490円",
+            "conf": "high",
+            "summary": "쫄깃한 관자 초밥"
+          },
+          {
+            "local": "こはだ",
+            "ko": "전어",
+            "price": "430円",
+            "conf": "high",
+            "summary": "초절임한 전어 초밥"
+          },
+          {
+            "local": "いか",
+            "ko": "오징어",
+            "price": "430円",
+            "conf": "high",
+            "summary": "신선한 오징어 초밥"
+          },
+          {
+            "local": "剣先",
+            "ko": "한치",
+            "price": "530円",
+            "conf": "high",
+            "summary": "부드러운 한치 초밥"
+          },
+          {
+            "local": "しまあじ",
+            "ko": "줄무늬전갱이",
+            "price": "530円",
+            "conf": "high",
+            "summary": "고소한 줄무늬전갱이 초밥"
+          },
+          {
+            "local": "あぶりサーモン",
+            "ko": "구운 연어",
+            "price": "530円",
+            "conf": "high",
+            "summary": "살짝 구운 연어 초밥"
+          },
+          {
+            "local": "あぶりとろ",
+            "ko": "구운 참치 뱃살",
+            "price": "750円",
+            "conf": "high",
+            "summary": "살짝 구운 참치 뱃살 초밥"
+          },
+          {
+            "local": "白身にぎり",
+            "ko": "흰살생선 초밥",
+            "price": "530円",
+            "conf": "high",
+            "summary": "제철 흰살생선 초밥"
+          },
+          {
+            "local": "うに",
+            "ko": "성게알",
+            "price": "750円",
+            "conf": "high",
+            "summary": "신선한 성게알 초밥"
+          },
+          {
+            "local": "あわび肝焼",
+            "ko": "전복 내장 구이",
+            "price": "530円",
+            "conf": "high",
+            "summary": "고소한 전복 내장 구이"
+          },
+          {
+            "local": "数の子",
+            "ko": "청어알",
+            "price": "530円",
+            "conf": "high",
+            "summary": "톡톡 터지는 청어알 초밥"
+          },
+          {
+            "local": "芽ネギ",
+            "ko": "싹눈파",
+            "price": "450円",
+            "conf": "high",
+            "summary": "향긋한 싹눈파 초밥"
+          },
+          {
+            "local": "とろ",
+            "ko": "참치 뱃살",
+            "price": "750円",
+            "conf": "high",
+            "summary": "기름진 참치 뱃살 초밥"
+          },
+          {
+            "local": "あわび",
+            "ko": "전복",
+            "price": "750円",
+            "conf": "high",
+            "summary": "쫄깃한 전복 초밥"
+          },
+          {
+            "local": "つぶ貝",
+            "ko": "소라",
+            "price": "450円",
+            "conf": "high",
+            "summary": "식감이 좋은 소라 초밥"
+          },
+          {
+            "local": "かに味噌",
+            "ko": "게 내장",
+            "price": "430円",
+            "conf": "high",
+            "summary": "진한 게 내장 초밥"
+          },
+          {
+            "local": "赤持ち",
+            "ko": "붉은 조개",
+            "price": "530円",
+            "conf": "high",
+            "summary": "붉은 조개 초밥"
+          },
+          {
+            "local": "さば",
+            "ko": "고등어",
+            "price": "490円",
+            "conf": "high",
+            "summary": "초절임한 고등어 초밥"
+          },
+          {
+            "local": "ほたるいか",
+            "ko": "꼴뚜기",
+            "price": "490円",
+            "conf": "high",
+            "summary": "제철 꼴뚜기 초밥"
+          },
+          {
+            "local": "生ビール",
+            "ko": "생맥주",
+            "price": "630円",
+            "conf": "high",
+            "summary": "시원한 생맥주"
+          },
+          {
+            "local": "瓶ビール",
+            "ko": "병맥주",
+            "price": "750円",
+            "conf": "high",
+            "summary": "병맥주 (대)"
+          },
+          {
+            "local": "地酒",
+            "ko": "지방 술",
+            "price": "630円",
+            "conf": "high",
+            "summary": "지역 사케"
+          },
+          {
+            "local": "冷酒",
+            "ko": "냉주",
+            "price": "1030円",
+            "conf": "high",
+            "summary": "차갑게 마시는 사케"
+          },
+          {
+            "local": "チューハイ",
+            "ko": "츄하이",
+            "price": "530円",
+            "conf": "high",
+            "summary": "츄하이 (칼피스/매실)"
+          },
+          {
+            "local": "ハイボール",
+            "ko": "하이볼",
+            "price": "530円",
+            "conf": "high",
+            "summary": "위스키 하이볼"
+          },
+          {
+            "local": "ウーロン茶",
+            "ko": "우롱차",
+            "price": "400円",
+            "conf": "high",
+            "summary": "시원한 우롱차"
+          },
+          {
+            "local": "ノンアルコールビール",
+            "ko": "무알콜 맥주",
+            "price": "490円",
+            "conf": "high",
+            "summary": "무알콜 맥주"
+          },
+          {
+            "local": "焼酎・梅酒",
+            "ko": "소주/매실주",
+            "price": "530円",
+            "conf": "high",
+            "summary": "소주 또는 매실주"
+          },
+          {
+            "local": "おどり",
+            "ko": "오도리(생새우)",
+            "price": "630円",
+            "conf": "high",
+            "summary": "살아있는 생새우 초밥"
+          },
+          {
+            "local": "鉄火巻",
+            "ko": "참치 김말이",
+            "price": "490円",
+            "conf": "high",
+            "summary": "참치 김말이 초밥"
+          },
+          {
+            "local": "うなきゅう巻",
+            "ko": "장어 오이 김말이",
+            "price": "750円",
+            "conf": "high",
+            "summary": "장어와 오이가 들어간 김말이"
+          },
+          {
+            "local": "上鉄火巻",
+            "ko": "상급 참치 김말이",
+            "price": "850円",
+            "conf": "high",
+            "summary": "고급 참치 김말이 초밥"
+          },
+          {
+            "local": "大葉梅肉巻",
+            "ko": "깻잎 매실 김말이",
+            "price": "490円",
+            "conf": "high",
+            "summary": "깻잎과 매실이 들어간 김말이"
+          },
+          {
+            "local": "新香巻",
+            "ko": "단무지 김말이",
+            "price": "430円",
+            "conf": "high",
+            "summary": "단무지 김말이 초밥"
+          },
+          {
+            "local": "納豆巻",
+            "ko": "낫또 김말이",
+            "price": "430円",
+            "conf": "high",
+            "summary": "낫또 김말이 초밥"
+          },
+          {
+            "local": "きゅうり巻",
+            "ko": "오이 김말이",
+            "price": "430円",
+            "conf": "high",
+            "summary": "오이 김말이 초밥"
+          },
+          {
+            "local": "ねぎとろ巻",
+            "ko": "참치 파 김말이",
+            "price": "490円",
+            "conf": "high",
+            "summary": "참치와 파가 들어간 김말이"
+          },
+          {
+            "local": "穴きゅう巻",
+            "ko": "붕장어 오이 김말이",
+            "price": "530円",
+            "conf": "high",
+            "summary": "붕장어와 오이가 들어간 김말이"
+          },
+          {
+            "local": "かんぴょう巻",
+            "ko": "박고지 김말이",
+            "price": "430円",
+            "conf": "high",
+            "summary": "박고지 김말이 초밥"
+          },
+          {
+            "local": "えびマヨ巻",
+            "ko": "새우 마요 김말이",
+            "price": "490円",
+            "conf": "high",
+            "summary": "새우와 마요네즈 김말이"
+          },
+          {
+            "local": "サーモンマヨ巻",
+            "ko": "연어 마요 김말이",
+            "price": "630円",
+            "conf": "high",
+            "summary": "연어와 마요네즈 김말이"
+          },
+          {
+            "local": "赤だし",
+            "ko": "붉은 된장국",
+            "price": "490円",
+            "conf": "high",
+            "summary": "진한 붉은 된장국"
+          }
+        ],
+        "file": "japanese_menu3.png"
+      },
+      {
+        "ok": true,
+        "latency_ms": 8906,
+        "items": 19,
+        "price_parse_rate": 1.0,
+        "low_confidence": 1,
+        "with_allergens": 19,
+        "sent_kb": 91,
+        "tok_in": 2730,
+        "tok_out": 2965,
+        "tok_think": 0,
+        "ms_per_item": 469,
+        "restaurant": "",
+        "warnings": [
+          "메뉴판의 오른쪽 일부가 잘려 있습니다.",
+          "일부 메뉴는 가격대별로 분류되어 있어 섹션명을 임의로 지정했습니다."
+        ],
+        "read": [
+          {
+            "local": "ビーフカレー(並)",
+            "ko": "비프 카레 (보통)",
+            "price": "¥390",
+            "conf": "high",
+            "summary": "소고기가 들어간 일본식 카레"
+          },
+          {
+            "local": "ビーフカレー(大盛)",
+            "ko": "비프 카레 (곱빼기)",
+            "price": "¥490",
+            "conf": "high",
+            "summary": "소고기가 들어간 일본식 카레 곱빼기"
+          },
+          {
+            "local": "カツカレー(並)",
+            "ko": "돈가스 카레 (보통)",
+            "price": "¥590",
+            "conf": "high",
+            "summary": "돈가스를 올린 일본식 카레"
+          },
+          {
+            "local": "温たまカレー(並)",
+            "ko": "온천달걀 카레 (보통)",
+            "price": "¥470",
+            "conf": "high",
+            "summary": "온천달걀을 올린 일본식 카레"
+          },
+          {
+            "local": "牛丼(ミニ)",
+            "ko": "규동 (미니)",
+            "price": "¥290",
+            "conf": "high",
+            "summary": "소고기 덮밥 미니 사이즈"
+          },
+          {
+            "local": "牛丼(並)",
+            "ko": "규동 (보통)",
+            "price": "¥390",
+            "conf": "high",
+            "summary": "소고기 덮밥 보통 사이즈"
+          },
+          {
+            "local": "牛丼(大盛)",
+            "ko": "규동 (곱빼기)",
+            "price": "¥490",
+            "conf": "high",
+            "summary": "소고기 덮밥 곱빼기 사이즈"
+          },
+          {
+            "local": "親子丼",
+            "ko": "오야코동",
+            "price": "¥490",
+            "conf": "high",
+            "summary": "닭고기와 달걀 덮밥"
+          },
+          {
+            "local": "ばいからうどん",
+            "ko": "하이카라 우동",
+            "price": "¥280",
+            "conf": "medium",
+            "summary": "튀김 부스러기를 올린 우동"
+          },
+          {
+            "local": "きつねうどん",
+            "ko": "키츠네 우동",
+            "price": "¥380",
+            "conf": "high",
+            "summary": "유부를 올린 우동"
+          },
+          {
+            "local": "天ぷらうどん",
+            "ko": "튀김 우동",
+            "price": "¥380",
+            "conf": "high",
+            "summary": "튀김을 올린 우동"
+          },
+          {
+            "local": "肉うどん",
+            "ko": "고기 우동",
+            "price": "¥380",
+            "conf": "high",
+            "summary": "소고기를 올린 우동"
+          },
+          {
+            "local": "小うどん はいから",
+            "ko": "작은 하이카라 우동",
+            "price": "¥200",
+            "conf": "high",
+            "summary": "작은 사이즈의 하이카라 우동"
+          },
+          {
+            "local": "小うどん きつね",
+            "ko": "작은 키츠네 우동",
+            "price": "¥250",
+            "conf": "high",
+            "summary": "작은 사이즈의 유부 우동"
+          },
+          {
+            "local": "小うどん にく",
+            "ko": "작은 고기 우동",
+            "price": "¥250",
+            "conf": "high",
+            "summary": "작은 사이즈의 고기 우동"
+          },
+          {
+            "local": "冷やし小そば",
+            "ko": "냉 작은 메밀국수",
+            "price": "¥200",
+            "conf": "high",
+            "summary": "작은 사이즈의 차가운 메밀국수"
+          },
+          {
+            "local": "冷やし小はいから",
+            "ko": "냉 작은 하이카라 메밀국수",
+            "price": "¥200",
+            "conf": "high",
+            "summary": "작은 사이즈의 차가운 하이카라 메밀국수"
+          },
+          {
+            "local": "こだわり卵",
+            "ko": "엄선된 달걀",
+            "price": "¥60",
+            "conf": "high",
+            "summary": "추가용 달걀"
+          },
+          {
+            "local": "こだわり温玉",
+            "ko": "엄선된 온천달걀",
+            "price": "¥80",
+            "conf": "high",
+            "summary": "추가용 온천달걀"
+          }
+        ],
+        "file": "japanese_menu4.jpg"
+      },
+      {
+        "ok": true,
+        "latency_ms": 19448,
+        "items": 54,
+        "price_parse_rate": 1.0,
+        "low_confidence": 0,
+        "with_allergens": 44,
+        "sent_kb": 166,
+        "tok_in": 2758,
+        "tok_out": 7813,
+        "tok_think": 0,
+        "ms_per_item": 360,
+        "restaurant": "",
+        "warnings": [
+          "메뉴판의 일부 글자가 손글씨라 판독에 오차가 있을 수 있습니다."
+        ],
+        "read": [
+          {
+            "local": "冷奴",
+            "ko": "연두부",
+            "price": "300",
+            "conf": "high",
+            "summary": "차가운 연두부"
+          },
+          {
+            "local": "枝豆",
+            "ko": "풋콩",
+            "price": "300",
+            "conf": "high",
+            "summary": "삶은 풋콩"
+          },
+          {
+            "local": "塩辛",
+            "ko": "오징어 젓갈",
+            "price": "350",
+            "conf": "high",
+            "summary": "오징어 내장 젓갈"
+          },
+          {
+            "local": "たこわさ",
+            "ko": "타코와사비",
+            "price": "350",
+            "conf": "high",
+            "summary": "문어 와사비 무침"
+          },
+          {
+            "local": "もろQ",
+            "ko": "모로큐",
+            "price": "300",
+            "conf": "high",
+            "summary": "보리된장을 곁들인 오이"
+          },
+          {
+            "local": "うめQ",
+            "ko": "우메큐",
+            "price": "300",
+            "conf": "high",
+            "summary": "매실을 곁들인 오이"
+          },
+          {
+            "local": "冷やしトマト",
+            "ko": "토마토 슬라이스",
+            "price": "380",
+            "conf": "high",
+            "summary": "차가운 토마토"
+          },
+          {
+            "local": "オニオンスライス",
+            "ko": "양파 슬라이스",
+            "price": "300",
+            "conf": "high",
+            "summary": "얇게 썬 양파"
+          },
+          {
+            "local": "しらすおろし",
+            "ko": "시라스 오로시",
+            "price": "330",
+            "conf": "high",
+            "summary": "잔멸치와 무 간 것"
+          },
+          {
+            "local": "キムチ",
+            "ko": "김치",
+            "price": "350",
+            "conf": "high",
+            "summary": "배추 김치"
+          },
+          {
+            "local": "梅水晶",
+            "ko": "우메스이쇼",
+            "price": "480",
+            "conf": "high",
+            "summary": "상어 연골 매실 무침"
+          },
+          {
+            "local": "チャンジャ",
+            "ko": "창란젓",
+            "price": "480",
+            "conf": "high",
+            "summary": "대구 창란젓"
+          },
+          {
+            "local": "きゅうりの浅漬",
+            "ko": "오이 절임",
+            "price": "380",
+            "conf": "high",
+            "summary": "가볍게 절인 오이"
+          },
+          {
+            "local": "あつやき玉子",
+            "ko": "계란말이",
+            "price": "380",
+            "conf": "high",
+            "summary": "일본식 계란말이"
+          },
+          {
+            "local": "ネバネバ3種",
+            "ko": "끈적끈적 3종",
+            "price": "380",
+            "conf": "high",
+            "summary": "낫또, 오크라 등 끈적한 재료"
+          },
+          {
+            "local": "チーズ揚",
+            "ko": "치즈 튀김",
+            "price": "350",
+            "conf": "high",
+            "summary": "치즈 튀김"
+          },
+          {
+            "local": "コロッケ",
+            "ko": "고로케",
+            "price": "280",
+            "conf": "high",
+            "summary": "감자 고로케"
+          },
+          {
+            "local": "カニグラタンコロッケ",
+            "ko": "게살 그라탕 고로케",
+            "price": "280",
+            "conf": "high",
+            "summary": "게살 크림 고로케"
+          },
+          {
+            "local": "フライドポテト",
+            "ko": "감자튀김",
+            "price": "380",
+            "conf": "high",
+            "summary": "감자튀김"
+          },
+          {
+            "local": "ハムカツ",
+            "ko": "햄카츠",
+            "price": "280",
+            "conf": "high",
+            "summary": "햄 튀김"
+          },
+          {
+            "local": "にんにく揚",
+            "ko": "마늘 튀김",
+            "price": "350",
+            "conf": "high",
+            "summary": "통마늘 튀김"
+          },
+          {
+            "local": "ごぼう唐揚",
+            "ko": "우엉 튀김",
+            "price": "350",
+            "conf": "high",
+            "summary": "우엉 가라아게"
+          },
+          {
+            "local": "イカ下足揚",
+            "ko": "오징어 다리 튀김",
+            "price": "420",
+            "conf": "high",
+            "summary": "오징어 다리 가라아게"
+          },
+          {
+            "local": "たこの唐揚",
+            "ko": "문어 튀김",
+            "price": "480",
+            "conf": "high",
+            "summary": "문어 가라아게"
+          },
+          {
+            "local": "なんこつ唐揚",
+            "ko": "닭 연골 튀김",
+            "price": "380",
+            "conf": "high",
+            "summary": "닭 연골 가라아게"
+          },
+          {
+            "local": "あつあげ",
+            "ko": "두부 튀김",
+            "price": "380",
+            "conf": "high",
+            "summary": "두부 튀김"
+          },
+          {
+            "local": "さつま揚",
+            "ko": "사츠마아게",
+            "price": "380",
+            "conf": "high",
+            "summary": "어묵 튀김"
+          },
+          {
+            "local": "川えび揚",
+            "ko": "민물새우 튀김",
+            "price": "380",
+            "conf": "high",
+            "summary": "민물새우 튀김"
+          },
+          {
+            "local": "チョリソー(2本)",
+            "ko": "초리조 (2개)",
+            "price": "450",
+            "conf": "high",
+            "summary": "매콤한 소시지"
+          },
+          {
+            "local": "揚げだし豆腐",
+            "ko": "아게다시 두부",
+            "price": "450",
+            "conf": "high",
+            "summary": "튀긴 두부 조림"
+          },
+          {
+            "local": "鶏の唐揚",
+            "ko": "닭 가라아게",
+            "price": "480",
+            "conf": "high",
+            "summary": "닭고기 튀김"
+          },
+          {
+            "local": "もも",
+            "ko": "닭다리살 꼬치",
+            "price": "320",
+            "conf": "high",
+            "summary": "닭다리살 꼬치 2개"
+          },
+          {
+            "local": "皮",
+            "ko": "닭껍질 꼬치",
+            "price": "300",
+            "conf": "high",
+            "summary": "닭껍질 꼬치 2개"
+          },
+          {
+            "local": "つくね",
+            "ko": "츠쿠네",
+            "price": "300",
+            "conf": "high",
+            "summary": "닭고기 완자 꼬치"
+          },
+          {
+            "local": "ぼんじり",
+            "ko": "닭 엉덩이살 꼬치",
+            "price": "300",
+            "conf": "high",
+            "summary": "닭 엉덩이살 꼬치"
+          },
+          {
+            "local": "せせり",
+            "ko": "닭 목살 꼬치",
+            "price": "300",
+            "conf": "high",
+            "summary": "닭 목살 꼬치"
+          },
+          {
+            "local": "串盛り",
+            "ko": "꼬치 모둠",
+            "price": "680",
+            "conf": "high",
+            "summary": "꼬치 5종 모둠"
+          },
+          {
+            "local": "ししゃも",
+            "ko": "시샤모",
+            "price": "380",
+            "conf": "high",
+            "summary": "열빙어 구이 3마리"
+          },
+          {
+            "local": "えいひれ",
+            "ko": "가오리 지느러미",
+            "price": "480",
+            "conf": "high",
+            "summary": "가오리 지느러미 구이"
+          },
+          {
+            "local": "サバ文化干し",
+            "ko": "고등어 문화건조",
+            "price": "480",
+            "conf": "high",
+            "summary": "고등어 반건조 구이"
+          },
+          {
+            "local": "ホッケ半身焼",
+            "ko": "임연수 구이(반마리)",
+            "price": "480",
+            "conf": "high",
+            "summary": "임연수 반마리 구이"
+          },
+          {
+            "local": "野菜サラダ",
+            "ko": "야채 샐러드",
+            "price": "420",
+            "conf": "high",
+            "summary": "신선한 야채 샐러드"
+          },
+          {
+            "local": "シーザーサラダ",
+            "ko": "시저 샐러드",
+            "price": "530",
+            "conf": "high",
+            "summary": "시저 드레싱 샐러드"
+          },
+          {
+            "local": "塩ごまキャベツ",
+            "ko": "소금 참기름 양배추",
+            "price": "380",
+            "conf": "high",
+            "summary": "소금과 참기름으로 무친 양배추"
+          },
+          {
+            "local": "焼きそば",
+            "ko": "야키소바",
+            "price": "580",
+            "conf": "high",
+            "summary": "일본식 볶음면"
+          },
+          {
+            "local": "豚キムチ炒め",
+            "ko": "돼지고기 김치볶음",
+            "price": "580",
+            "conf": "high",
+            "summary": "돼지고기와 김치 볶음"
+          },
+          {
+            "local": "焼きおにぎり",
+            "ko": "구운 주먹밥",
+            "price": "250",
+            "conf": "high",
+            "summary": "간장을 발라 구운 주먹밥"
+          },
+          {
+            "local": "ごはんSET",
+            "ko": "밥 세트",
+            "price": "300",
+            "conf": "high",
+            "summary": "밥, 미소시루, 절임 세트"
+          },
+          {
+            "local": "ごはん",
+            "ko": "밥",
+            "price": "180",
+            "conf": "high",
+            "summary": "공기밥"
+          },
+          {
+            "local": "納豆",
+            "ko": "낫또",
+            "price": "100",
+            "conf": "high",
+            "summary": "낫또"
+          },
+          {
+            "local": "みそ汁",
+            "ko": "미소시루",
+            "price": "150",
+            "conf": "high",
+            "summary": "된장국"
+          },
+          {
+            "local": "生玉子",
+            "ko": "날계란",
+            "price": "80",
+            "conf": "high",
+            "summary": "날계란"
+          },
+          {
+            "local": "おにぎり",
+            "ko": "주먹밥",
+            "price": "250",
+            "conf": "high",
+            "summary": "매실, 연어, 잔멸치, 명란 중 선택"
+          },
+          {
+            "local": "お茶漬",
+            "ko": "오차즈케",
+            "price": "480",
+            "conf": "high",
+            "summary": "매실, 연어, 잔멸치, 명란 중 선택"
+          }
+        ],
+        "file": "japanese_menu5.jpg"
+      },
+      {
+        "ok": true,
+        "latency_ms": 21180,
+        "items": 50,
+        "price_parse_rate": 0.98,
+        "low_confidence": 0,
+        "with_allergens": 42,
+        "sent_kb": 419,
+        "tok_in": 2755,
+        "tok_out": 7411,
+        "tok_think": 0,
+        "ms_per_item": 424,
+        "restaurant": "",
+        "warnings": [],
+        "read": [
+          {
+            "local": "しらすのめっちゃうまネギ",
+            "ko": "잔멸치와 맛있는 파",
+            "price": "280円",
+            "conf": "high",
+            "summary": "잔멸치와 파를 곁들인 안주"
+          },
+          {
+            "local": "お新香",
+            "ko": "절임 채소",
+            "price": "280円",
+            "conf": "high",
+            "summary": "일본식 채소 절임"
+          },
+          {
+            "local": "じゃがバター",
+            "ko": "감자 버터구이",
+            "price": "280円",
+            "conf": "high",
+            "summary": "버터를 올린 찐 감자"
+          },
+          {
+            "local": "梅水晶",
+            "ko": "매실 상어연골",
+            "price": "280円",
+            "conf": "high",
+            "summary": "상어 연골을 매실에 무친 요리"
+          },
+          {
+            "local": "タコキムチ",
+            "ko": "문어 김치",
+            "price": "380円",
+            "conf": "high",
+            "summary": "문어를 김치 양념에 무친 요리"
+          },
+          {
+            "local": "イカ塩辛",
+            "ko": "오징어 젓갈",
+            "price": "380円",
+            "conf": "high",
+            "summary": "오징어 내장 젓갈"
+          },
+          {
+            "local": "エイヒレ",
+            "ko": "가오리 지느러미 구이",
+            "price": "480円",
+            "conf": "high",
+            "summary": "구운 가오리 지느러미"
+          },
+          {
+            "local": "つぶチャンジャ",
+            "ko": "소라 창란젓",
+            "price": "380円",
+            "conf": "high",
+            "summary": "소라 살을 넣은 창란젓"
+          },
+          {
+            "local": "マグロブツ",
+            "ko": "참치 회",
+            "price": "380円",
+            "conf": "high",
+            "summary": "깍둑썰기한 참치 회"
+          },
+          {
+            "local": "タコブツ",
+            "ko": "문어 회",
+            "price": "380円",
+            "conf": "high",
+            "summary": "깍둑썰기한 문어 회"
+          },
+          {
+            "local": "あさり酒蒸し",
+            "ko": "바지락 술찜",
+            "price": "380円",
+            "conf": "high",
+            "summary": "바지락을 술에 찐 요리"
+          },
+          {
+            "local": "明太出し巻き玉子",
+            "ko": "명란 계란말이",
+            "price": "380円",
+            "conf": "high",
+            "summary": "명란젓을 넣은 계란말이"
+          },
+          {
+            "local": "うずら醤油漬け",
+            "ko": "메추리알 간장절임",
+            "price": "180円",
+            "conf": "high",
+            "summary": "간장에 절인 메추리알"
+          },
+          {
+            "local": "ピリ辛メンマ",
+            "ko": "매콤한 죽순",
+            "price": "180円",
+            "conf": "high",
+            "summary": "매콤하게 양념한 죽순"
+          },
+          {
+            "local": "枝豆",
+            "ko": "풋콩",
+            "price": "180円",
+            "conf": "high",
+            "summary": "삶은 풋콩"
+          },
+          {
+            "local": "冷やしトマト",
+            "ko": "토마토 슬라이스",
+            "price": "180円",
+            "conf": "high",
+            "summary": "차갑게 식힌 토마토"
+          },
+          {
+            "local": "茄子ポン酢",
+            "ko": "가지 폰즈",
+            "price": "180円",
+            "conf": "high",
+            "summary": "폰즈 소스를 곁들인 가지"
+          },
+          {
+            "local": "梅ダレきゅうり",
+            "ko": "매실 오이",
+            "price": "180円",
+            "conf": "high",
+            "summary": "매실 소스를 곁들인 오이"
+          },
+          {
+            "local": "冷やっこ",
+            "ko": "연두부",
+            "price": "180円",
+            "conf": "high",
+            "summary": "차가운 두부 요리"
+          },
+          {
+            "local": "オニオンスライス",
+            "ko": "양파 슬라이스",
+            "price": "180円",
+            "conf": "high",
+            "summary": "얇게 썬 양파"
+          },
+          {
+            "local": "5本盛り合わせ",
+            "ko": "꼬치 5종 모둠",
+            "price": "680円",
+            "conf": "high",
+            "summary": "꼬치 5종 모둠"
+          },
+          {
+            "local": "7本盛り合わせ",
+            "ko": "꼬치 7종 모둠",
+            "price": "980円",
+            "conf": "high",
+            "summary": "꼬치 7종 모둠"
+          },
+          {
+            "local": "トマトベーコン巻",
+            "ko": "토마토 베이컨 말이",
+            "price": "180円",
+            "conf": "high",
+            "summary": "토마토를 베이컨으로 말아 구운 꼬치"
+          },
+          {
+            "local": "ピーマンチーズ巻",
+            "ko": "피망 치즈 말이",
+            "price": "180円",
+            "conf": "high",
+            "summary": "피망과 치즈를 말아 구운 꼬치"
+          },
+          {
+            "local": "エノキ豚巻",
+            "ko": "팽이버섯 돼지고기 말이",
+            "price": "180円",
+            "conf": "high",
+            "summary": "팽이버섯을 돼지고기로 말아 구운 꼬치"
+          },
+          {
+            "local": "博多ねぎ巻",
+            "ko": "하카타 파 말이",
+            "price": "180円",
+            "conf": "high",
+            "summary": "파를 돼지고기로 말아 구운 꼬치"
+          },
+          {
+            "local": "アスパラ豚巻",
+            "ko": "아스파라거스 돼지고기 말이",
+            "price": "180円",
+            "conf": "high",
+            "summary": "아스파라거스를 돼지고기로 말아 구운 꼬치"
+          },
+          {
+            "local": "うずらベーコン巻",
+            "ko": "메추리알 베이컨 말이",
+            "price": "180円",
+            "conf": "high",
+            "summary": "메추리알을 베이컨으로 말아 구운 꼬치"
+          },
+          {
+            "local": "シロモツ",
+            "ko": "돼지 대창",
+            "price": "120円",
+            "conf": "high",
+            "summary": "돼지 대창 꼬치구이"
+          },
+          {
+            "local": "ハラミ",
+            "ko": "돼지 안창살",
+            "price": "150円",
+            "conf": "high",
+            "summary": "돼지 안창살 꼬치구이"
+          },
+          {
+            "local": "豚タン",
+            "ko": "돼지 우설",
+            "price": "150円",
+            "conf": "high",
+            "summary": "돼지 혀 꼬치구이"
+          },
+          {
+            "local": "豚バラ",
+            "ko": "돼지 삼겹살",
+            "price": "150円",
+            "conf": "high",
+            "summary": "돼지 삼겹살 꼬치구이"
+          },
+          {
+            "local": "ネギタン",
+            "ko": "파 우설",
+            "price": "180円",
+            "conf": "high",
+            "summary": "파를 곁들인 돼지 우설 꼬치"
+          },
+          {
+            "local": "ねぎま",
+            "ko": "닭 파 꼬치",
+            "price": "120円",
+            "conf": "high",
+            "summary": "닭고기와 파를 번갈아 꽂은 꼬치"
+          },
+          {
+            "local": "ぼんじり",
+            "ko": "닭 꼬리살",
+            "price": "120円",
+            "conf": "high",
+            "summary": "닭 꼬리 부분 꼬치구이"
+          },
+          {
+            "local": "砂肝",
+            "ko": "닭 근위",
+            "price": "120円",
+            "conf": "high",
+            "summary": "닭 모래집 꼬치구이"
+          },
+          {
+            "local": "つくね",
+            "ko": "닭 완자",
+            "price": "180円",
+            "conf": "high",
+            "summary": "다진 닭고기 완자 꼬치"
+          },
+          {
+            "local": "博多とり皮串",
+            "ko": "하카타 닭껍질 꼬치",
+            "price": "150円",
+            "conf": "high",
+            "summary": "하카타식 닭껍질 꼬치구이"
+          },
+          {
+            "local": "しいたけ",
+            "ko": "표고버섯",
+            "price": "120円",
+            "conf": "high",
+            "summary": "표고버섯 꼬치구이"
+          },
+          {
+            "local": "ししとう",
+            "ko": "꽈리고추",
+            "price": "120円",
+            "conf": "high",
+            "summary": "꽈리고추 꼬치구이"
+          },
+          {
+            "local": "長ネギ",
+            "ko": "대파",
+            "price": "120円",
+            "conf": "high",
+            "summary": "대파 꼬치구이"
+          },
+          {
+            "local": "エリンギ",
+            "ko": "새송이버섯",
+            "price": "150円",
+            "conf": "high",
+            "summary": "새송이버섯 꼬치구이"
+          },
+          {
+            "local": "明太子一本炙り",
+            "ko": "명란 구이",
+            "price": "",
+            "conf": "high",
+            "summary": "통명란 구이"
+          },
+          {
+            "local": "炙り明太子のポテトサラダ",
+            "ko": "구운 명란 감자 샐러드",
+            "price": "380円",
+            "conf": "high",
+            "summary": "구운 명란을 곁들인 감자 샐러드"
+          },
+          {
+            "local": "博多豆腐シーザーサラダ",
+            "ko": "하카타 두부 시저 샐러드",
+            "price": "480円",
+            "conf": "high",
+            "summary": "두부를 올린 시저 샐러드"
+          },
+          {
+            "local": "お茶漬け（鮭/明太子/梅）",
+            "ko": "오차즈케 (연어/명란/매실)",
+            "price": "280円",
+            "conf": "high",
+            "summary": "차를 부어 먹는 밥 요리"
+          },
+          {
+            "local": "バカうまチャーハン",
+            "ko": "맛있는 볶음밥",
+            "price": "480円",
+            "conf": "high",
+            "summary": "특제 볶음밥"
+          },
+          {
+            "local": "博多屋台のとんこつラーメン",
+            "ko": "하카타 포장마차 돈코츠 라멘",
+            "price": "480円",
+            "conf": "high",
+            "summary": "하카타식 돈코츠 라멘"
+          },
+          {
+            "local": "昔なつかしい屋台の焼きそば",
+            "ko": "추억의 포장마차 야키소바",
+            "price": "480円",
+            "conf": "high",
+            "summary": "일본식 볶음면"
+          },
+          {
+            "local": "バニラアイス",
+            "ko": "바닐라 아이스크림",
+            "price": "99円",
+            "conf": "high",
+            "summary": "바닐라 아이스크림"
+          }
+        ],
+        "file": "japanese_menu6.jpeg"
+      },
+      {
+        "ok": true,
+        "latency_ms": 9183,
+        "items": 18,
+        "price_parse_rate": 1.0,
+        "low_confidence": 0,
+        "with_allergens": 16,
+        "sent_kb": 194,
+        "tok_in": 2730,
+        "tok_out": 2945,
+        "tok_think": 0,
+        "ms_per_item": 510,
+        "restaurant": "",
+        "warnings": [
+          "메뉴판의 일부 항목만 추출되었습니다."
+        ],
+        "read": [
+          {
+            "local": "鴨生つくね黄身ダレ",
+            "ko": "오리 생 츠쿠네 노른자 소스",
+            "price": "450円",
+            "conf": "high",
+            "summary": "노른자 소스를 곁들인 오리 완자"
+          },
+          {
+            "local": "鴨ロース",
+            "ko": "오리 로스",
+            "price": "280円",
+            "conf": "high",
+            "summary": "오리 등심 구이"
+          },
+          {
+            "local": "焼き鳥玉木盛り",
+            "ko": "야키토리 타마키 모둠",
+            "price": "1020円",
+            "conf": "high",
+            "summary": "닭 꼬치 모둠 구이"
+          },
+          {
+            "local": "ねぎま",
+            "ko": "네기마",
+            "price": "190円",
+            "conf": "high",
+            "summary": "닭고기와 파 꼬치"
+          },
+          {
+            "local": "もも",
+            "ko": "모모",
+            "price": "190円",
+            "conf": "high",
+            "summary": "닭다리살 꼬치"
+          },
+          {
+            "local": "かわ",
+            "ko": "카와",
+            "price": "190円",
+            "conf": "high",
+            "summary": "닭껍질 꼬치"
+          },
+          {
+            "local": "レバー",
+            "ko": "레버",
+            "price": "190円",
+            "conf": "high",
+            "summary": "닭 간 꼬치"
+          },
+          {
+            "local": "砂肝",
+            "ko": "스나기모",
+            "price": "190円",
+            "conf": "high",
+            "summary": "닭 모래집 꼬치"
+          },
+          {
+            "local": "ぼんじり",
+            "ko": "본지리",
+            "price": "190円",
+            "conf": "high",
+            "summary": "닭 엉덩이살 꼬치"
+          },
+          {
+            "local": "ハツ",
+            "ko": "하츠",
+            "price": "190円",
+            "conf": "high",
+            "summary": "닭 심장 꼬치"
+          },
+          {
+            "local": "フリソデ",
+            "ko": "후리소데",
+            "price": "190円",
+            "conf": "high",
+            "summary": "닭 어깨살 꼬치"
+          },
+          {
+            "local": "ねぎ",
+            "ko": "네기",
+            "price": "190円",
+            "conf": "high",
+            "summary": "대파 꼬치"
+          },
+          {
+            "local": "アボカド",
+            "ko": "아보카도",
+            "price": "190円",
+            "conf": "high",
+            "summary": "아보카도 꼬치"
+          },
+          {
+            "local": "ミニトマト",
+            "ko": "방울토마토",
+            "price": "190円",
+            "conf": "high",
+            "summary": "방울토마토 꼬치"
+          },
+          {
+            "local": "エリンギ",
+            "ko": "새송이버섯",
+            "price": "190円",
+            "conf": "high",
+            "summary": "새송이버섯 꼬치"
+          },
+          {
+            "local": "おばんざい盛り合わせ",
+            "ko": "반찬 모둠",
+            "price": "1480円",
+            "conf": "high",
+            "summary": "5종 반찬 모둠"
+          },
+          {
+            "local": "出汁巻き玉子",
+            "ko": "다시마키 타마고",
+            "price": "550円",
+            "conf": "high",
+            "summary": "일본식 계란말이"
+          },
+          {
+            "local": "濃厚鴨出汁せいろ",
+            "ko": "진한 오리 육수 세이로",
+            "price": "690円",
+            "conf": "high",
+            "summary": "진한 오리 육수에 찍어 먹는 메밀면"
+          }
+        ],
+        "file": "japanese_menu7.jpeg"
+      },
+      {
+        "ok": true,
+        "latency_ms": 20760,
+        "items": 58,
+        "price_parse_rate": 1.0,
+        "low_confidence": 1,
+        "with_allergens": 41,
+        "sent_kb": 188,
+        "tok_in": 2730,
+        "tok_out": 8238,
+        "tok_think": 0,
+        "ms_per_item": 358,
+        "restaurant": "SUMIBIYAKITORI ENYA",
+        "warnings": [],
+        "read": [
+          {
+            "local": "とり皮",
+            "ko": "닭껍질",
+            "price": "90",
+            "conf": "high",
+            "summary": "쫄깃하고 고소한 닭껍질 꼬치"
+          },
+          {
+            "local": "砂ずり",
+            "ko": "닭모래집",
+            "price": "90",
+            "conf": "high",
+            "summary": "아삭한 식감의 닭모래집 꼬치"
+          },
+          {
+            "local": "こころ",
+            "ko": "닭염통",
+            "price": "90",
+            "conf": "high",
+            "summary": "쫄깃한 식감의 닭염통 꼬치"
+          },
+          {
+            "local": "とりきも",
+            "ko": "닭간",
+            "price": "100",
+            "conf": "high",
+            "summary": "부드럽고 진한 맛의 닭간 꼬치"
+          },
+          {
+            "local": "背ぎも",
+            "ko": "닭 등살",
+            "price": "130",
+            "conf": "high",
+            "summary": "닭 등 부위의 꼬치"
+          },
+          {
+            "local": "せせり",
+            "ko": "닭목살",
+            "price": "130",
+            "conf": "high",
+            "summary": "탱글탱글한 식감의 닭목살 꼬치"
+          },
+          {
+            "local": "とりハラミ",
+            "ko": "닭안창살",
+            "price": "130",
+            "conf": "high",
+            "summary": "쫄깃한 닭안창살 꼬치"
+          },
+          {
+            "local": "ひねどり",
+            "ko": "노계",
+            "price": "130",
+            "conf": "high",
+            "summary": "씹는 맛이 좋은 노계 꼬치"
+          },
+          {
+            "local": "ねぎま",
+            "ko": "닭다리살 파 꼬치",
+            "price": "160",
+            "conf": "high",
+            "summary": "닭고기와 파를 번갈아 끼운 꼬치"
+          },
+          {
+            "local": "とりなんこつ",
+            "ko": "닭연골",
+            "price": "160",
+            "conf": "high",
+            "summary": "오독오독한 닭연골 꼬치"
+          },
+          {
+            "local": "ささみ",
+            "ko": "닭안심",
+            "price": "160",
+            "conf": "high",
+            "summary": "담백한 닭안심 꼬치 (와사비/매실)"
+          },
+          {
+            "local": "なんこつつくね",
+            "ko": "연골 닭완자",
+            "price": "180",
+            "conf": "high",
+            "summary": "연골을 다져 넣은 닭완자 꼬치"
+          },
+          {
+            "local": "手羽先",
+            "ko": "닭날개",
+            "price": "160",
+            "conf": "high",
+            "summary": "고소한 닭날개 꼬치"
+          },
+          {
+            "local": "ソリレス",
+            "ko": "소리레스",
+            "price": "200",
+            "conf": "high",
+            "summary": "닭 허벅지 안쪽의 희소 부위"
+          },
+          {
+            "local": "ふりそで",
+            "ko": "후리소데",
+            "price": "200",
+            "conf": "high",
+            "summary": "닭 어깨살 부위"
+          },
+          {
+            "local": "はつもと",
+            "ko": "염통 혈관",
+            "price": "160",
+            "conf": "high",
+            "summary": "염통과 간을 잇는 혈관 부위"
+          },
+          {
+            "local": "ズリえんがわ黒胡椒焼",
+            "ko": "닭모래집 가장자리 후추구이",
+            "price": "160",
+            "conf": "high",
+            "summary": "모래집 가장자리를 후추로 구운 꼬치"
+          },
+          {
+            "local": "牛バラ",
+            "ko": "소갈비살",
+            "price": "250",
+            "conf": "high",
+            "summary": "기름진 소갈비살 꼬치"
+          },
+          {
+            "local": "牛ハラミ",
+            "ko": "소안창살",
+            "price": "250",
+            "conf": "high",
+            "summary": "부드러운 소안창살 꼬치"
+          },
+          {
+            "local": "牛タン",
+            "ko": "우설",
+            "price": "250",
+            "conf": "high",
+            "summary": "쫄깃한 식감의 우설 꼬치"
+          },
+          {
+            "local": "豚バラ",
+            "ko": "돼지 삼겹살",
+            "price": "130",
+            "conf": "high",
+            "summary": "고소한 돼지 삼겹살 꼬치"
+          },
+          {
+            "local": "豚トロ",
+            "ko": "돼지 항정살",
+            "price": "200",
+            "conf": "high",
+            "summary": "아삭하고 기름진 돼지 항정살 꼬치"
+          },
+          {
+            "local": "弁天",
+            "ko": "벤텐",
+            "price": "130",
+            "conf": "medium",
+            "summary": "특수 부위 꼬치"
+          },
+          {
+            "local": "とん足",
+            "ko": "돼지족발",
+            "price": "300",
+            "conf": "high",
+            "summary": "쫄깃한 돼지족발 구이"
+          },
+          {
+            "local": "しそ巻",
+            "ko": "차조기 잎 말이",
+            "price": "220",
+            "conf": "high",
+            "summary": "차조기 잎으로 감싼 꼬치"
+          },
+          {
+            "local": "とまと巻",
+            "ko": "토마토 말이",
+            "price": "220",
+            "conf": "high",
+            "summary": "토마토를 감싼 꼬치"
+          },
+          {
+            "local": "モッツァレラチーズ",
+            "ko": "모짜렐라 치즈",
+            "price": "200",
+            "conf": "high",
+            "summary": "구운 모짜렐라 치즈 꼬치"
+          },
+          {
+            "local": "白ねぎ",
+            "ko": "대파",
+            "price": "130",
+            "conf": "high",
+            "summary": "구운 대파 꼬치"
+          },
+          {
+            "local": "エリンギ",
+            "ko": "새송이버섯",
+            "price": "200",
+            "conf": "high",
+            "summary": "구운 새송이버섯 꼬치"
+          },
+          {
+            "local": "しいたけ",
+            "ko": "표고버섯",
+            "price": "130",
+            "conf": "high",
+            "summary": "구운 표고버섯 꼬치"
+          },
+          {
+            "local": "にんにく",
+            "ko": "마늘",
+            "price": "160",
+            "conf": "high",
+            "summary": "구운 마늘 꼬치"
+          },
+          {
+            "local": "ししとう",
+            "ko": "꽈리고추",
+            "price": "130",
+            "conf": "high",
+            "summary": "구운 꽈리고추 꼬치"
+          },
+          {
+            "local": "鶏もも肉のタタキ",
+            "ko": "닭다리살 타타키",
+            "price": "680",
+            "conf": "high",
+            "summary": "겉만 살짝 익힌 닭다리살 회"
+          },
+          {
+            "local": "鶏むね肉のタタキ",
+            "ko": "닭가슴살 타타키",
+            "price": "680",
+            "conf": "high",
+            "summary": "겉만 살짝 익힌 닭가슴살 회"
+          },
+          {
+            "local": "鶏むね肉のカルパッチョ",
+            "ko": "닭가슴살 카르파초",
+            "price": "780",
+            "conf": "high",
+            "summary": "닭가슴살을 얇게 썬 이탈리아식 회"
+          },
+          {
+            "local": "馬刺",
+            "ko": "말고기 회",
+            "price": "780",
+            "conf": "high",
+            "summary": "신선한 말고기 회"
+          },
+          {
+            "local": "ポテトサラダ",
+            "ko": "감자 샐러드",
+            "price": "400",
+            "conf": "high",
+            "summary": "부드러운 감자 샐러드"
+          },
+          {
+            "local": "えんやの野菜サラダ",
+            "ko": "엔야 야채 샐러드",
+            "price": "550",
+            "conf": "high",
+            "summary": "신선한 야채 샐러드"
+          },
+          {
+            "local": "トマトとモッツァレラチーズのカプレーゼ",
+            "ko": "토마토 모짜렐라 카프레제",
+            "price": "480",
+            "conf": "high",
+            "summary": "토마토와 치즈를 곁들인 샐러드"
+          },
+          {
+            "local": "手羽先の唐揚げ",
+            "ko": "닭날개 튀김",
+            "price": "450",
+            "conf": "high",
+            "summary": "바삭한 닭날개 튀김"
+          },
+          {
+            "local": "なんこつの唐揚げ",
+            "ko": "닭연골 튀김",
+            "price": "500",
+            "conf": "high",
+            "summary": "오독오독한 닭연골 튀김"
+          },
+          {
+            "local": "鶏もも肉の唐揚げ",
+            "ko": "닭다리살 튀김",
+            "price": "600",
+            "conf": "high",
+            "summary": "육즙 가득한 닭다리살 튀김"
+          },
+          {
+            "local": "フライドポテトバター",
+            "ko": "버터 감자튀김",
+            "price": "380",
+            "conf": "high",
+            "summary": "버터 향을 입힌 감자튀김"
+          },
+          {
+            "local": "サツマイモスティック",
+            "ko": "고구마 스틱",
+            "price": "380",
+            "conf": "high",
+            "summary": "달콤한 고구마 스틱 튀김"
+          },
+          {
+            "local": "手作り絹あつあげ",
+            "ko": "수제 두부 튀김",
+            "price": "350",
+            "conf": "high",
+            "summary": "겉은 바삭하고 속은 부드러운 두부 튀김"
+          },
+          {
+            "local": "山いも鉄板",
+            "ko": "산마 철판구이",
+            "price": "400",
+            "conf": "high",
+            "summary": "갈아 만든 산마를 철판에 구운 요리"
+          },
+          {
+            "local": "枝豆",
+            "ko": "풋콩",
+            "price": "280",
+            "conf": "high",
+            "summary": "삶은 풋콩"
+          },
+          {
+            "local": "たたききゅうり",
+            "ko": "오이 무침",
+            "price": "350",
+            "conf": "high",
+            "summary": "두드려 깬 오이 무침"
+          },
+          {
+            "local": "ひね皮ポン酢",
+            "ko": "노계 껍질 폰즈",
+            "price": "400",
+            "conf": "high",
+            "summary": "쫄깃한 노계 껍질을 폰즈 소스에 곁들인 요리"
+          },
+          {
+            "local": "白菜キムチ",
+            "ko": "배추김치",
+            "price": "350",
+            "conf": "high",
+            "summary": "매콤한 배추김치"
+          },
+          {
+            "local": "大根キムチ",
+            "ko": "깍두기",
+            "price": "350",
+            "conf": "high",
+            "summary": "매콤한 깍두기"
+          },
+          {
+            "local": "チャンジャ",
+            "ko": "창란젓",
+            "price": "350",
+            "conf": "high",
+            "summary": "매콤한 대구 창란젓"
+          },
+          {
+            "local": "焼おにぎり",
+            "ko": "구운 주먹밥",
+            "price": "150",
+            "conf": "high",
+            "summary": "간장을 발라 구운 주먹밥"
+          },
+          {
+            "local": "鶏茶漬け",
+            "ko": "닭고기 오차즈케",
+            "price": "420",
+            "conf": "high",
+            "summary": "닭고기를 올린 녹차 밥"
+          },
+          {
+            "local": "とり雑炊",
+            "ko": "닭죽",
+            "price": "580",
+            "conf": "high",
+            "summary": "닭고기를 넣고 끓인 죽"
+          },
+          {
+            "local": "焼とり丼",
+            "ko": "야키토리 덮밥",
+            "price": "480",
+            "conf": "high",
+            "summary": "닭꼬치를 올린 덮밥"
+          },
+          {
+            "local": "鶏ガラスープ",
+            "ko": "닭뼈 국물",
+            "price": "280",
+            "conf": "high",
+            "summary": "진하게 우려낸 닭뼈 국물"
+          },
+          {
+            "local": "漬物盛り合わせ",
+            "ko": "모둠 절임",
+            "price": "400",
+            "conf": "high",
+            "summary": "여러 가지 야채 절임 모둠"
+          }
+        ],
+        "file": "japanese_menu8.jpg"
+      },
+      {
+        "ok": true,
+        "latency_ms": 9888,
+        "items": 24,
+        "price_parse_rate": 1.0,
+        "low_confidence": 0,
+        "with_allergens": 16,
+        "sent_kb": 63,
+        "tok_in": 2730,
+        "tok_out": 3499,
+        "tok_think": 0,
+        "ms_per_item": 412,
+        "restaurant": "",
+        "warnings": [
+          "일부 메뉴의 가격이 겹쳐 보이거나 흐릿하여 정확한 확인이 필요할 수 있습니다."
+        ],
+        "read": [
+          {
+            "local": "もつざんまいコース",
+            "ko": "모츠 삼매경 코스",
+            "price": "2350",
+            "conf": "high",
+            "summary": "곱창 요리를 다양하게 즐기는 코스"
+          },
+          {
+            "local": "もつ鍋満足コース",
+            "ko": "모츠나베 만족 코스",
+            "price": "1950",
+            "conf": "high",
+            "summary": "모츠나베를 중심으로 한 만족스러운 코스"
+          },
+          {
+            "local": "もつ鍋単品コース",
+            "ko": "모츠나베 단품 코스",
+            "price": "950",
+            "conf": "high",
+            "summary": "모츠나베 단품 메뉴"
+          },
+          {
+            "local": "もつ鍋",
+            "ko": "모츠나베",
+            "price": "950",
+            "conf": "high",
+            "summary": "곱창 전골"
+          },
+          {
+            "local": "肉",
+            "ko": "고기",
+            "price": "670",
+            "conf": "high",
+            "summary": "추가용 고기"
+          },
+          {
+            "local": "キャベツニラ",
+            "ko": "양배추 부추",
+            "price": "550",
+            "conf": "high",
+            "summary": "양배추와 부추 야채 추가"
+          },
+          {
+            "local": "キャベツ",
+            "ko": "양배추",
+            "price": "440",
+            "conf": "high",
+            "summary": "양배추 추가"
+          },
+          {
+            "local": "ニラ",
+            "ko": "부추",
+            "price": "440",
+            "conf": "high",
+            "summary": "부추 추가"
+          },
+          {
+            "local": "豆腐",
+            "ko": "두부",
+            "price": "240",
+            "conf": "high",
+            "summary": "두부 추가"
+          },
+          {
+            "local": "チャンポン玉",
+            "ko": "짬뽕면",
+            "price": "240",
+            "conf": "high",
+            "summary": "전골용 짬뽕면 사리"
+          },
+          {
+            "local": "ニンニク",
+            "ko": "마늘",
+            "price": "270",
+            "conf": "high",
+            "summary": "마늘 추가"
+          },
+          {
+            "local": "酢モツ",
+            "ko": "초절임 곱창",
+            "price": "120",
+            "conf": "high",
+            "summary": "곱창 초절임"
+          },
+          {
+            "local": "キムチ",
+            "ko": "김치",
+            "price": "120",
+            "conf": "high",
+            "summary": "김치"
+          },
+          {
+            "local": "飲み放題",
+            "ko": "무제한 음료",
+            "price": "1950",
+            "conf": "high",
+            "summary": "음료 무제한 코스"
+          },
+          {
+            "local": "生ビール",
+            "ko": "생맥주",
+            "price": "530",
+            "conf": "high",
+            "summary": "생맥주"
+          },
+          {
+            "local": "びんビール",
+            "ko": "병맥주",
+            "price": "580",
+            "conf": "high",
+            "summary": "병맥주"
+          },
+          {
+            "local": "ノンアルコールビール",
+            "ko": "무알콜 맥주",
+            "price": "340",
+            "conf": "high",
+            "summary": "무알콜 맥주"
+          },
+          {
+            "local": "日本酒",
+            "ko": "일본주",
+            "price": "340",
+            "conf": "high",
+            "summary": "사케"
+          },
+          {
+            "local": "うめ酒",
+            "ko": "매실주",
+            "price": "520",
+            "conf": "high",
+            "summary": "매실주"
+          },
+          {
+            "local": "ウイスキー",
+            "ko": "위스키",
+            "price": "360",
+            "conf": "high",
+            "summary": "위스키"
+          },
+          {
+            "local": "焼酎",
+            "ko": "소주",
+            "price": "440",
+            "conf": "high",
+            "summary": "일본 소주"
+          },
+          {
+            "local": "酎ハイレモン",
+            "ko": "츄하이 레몬",
+            "price": "340",
+            "conf": "high",
+            "summary": "레몬 츄하이"
+          },
+          {
+            "local": "ウーロン茶",
+            "ko": "우롱차",
+            "price": "270",
+            "conf": "high",
+            "summary": "우롱차"
+          },
+          {
+            "local": "コーラ",
+            "ko": "콜라",
+            "price": "220",
+            "conf": "high",
+            "summary": "콜라"
+          }
+        ],
+        "file": "japanese_menu9.jpg"
+      }
+    ]
+  }
+}

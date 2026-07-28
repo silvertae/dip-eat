@@ -64,6 +64,31 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 - ⚠️ 결과 화면의 자동 접기는 **다 받은 뒤에** 적용한다. 최초 렌더 때 판단하면 항목이 1개뿐이라
   영원히 안 접힌다(90개가 전부 펼쳐진 채 뜬다).
 
+### 빈 사진 환각 방지 (`menu_found`)
+
+모델은 **메뉴판이 없는 사진에 메뉴판을 통째로 지어낸다.** 실측(2026-07-28, 3회 재현):
+흰 600×400 JPEG → `生ビール 550円` 등 8개, 회색 단색 → 8개, 어두운 프레임 → 5개.
+전부 `ocr_confidence: "high"` 에 그럴듯한 가격이 붙었고, 스트림은 meta→item→done 으로
+멀쩡히 끝났다. 사용자가 벽을 찍고 가짜 메뉴를 점원에게 보여주게 되는 **식품 안전 문제**다.
+
+기존 가드는 전부 "항목이 0개일 때"만 돌아서 하나도 안 걸렸다. `ocr_confidence` 는
+항목을 지어낸 그 모델의 자기 신고라 증거가 아니다.
+
+- ⚠️⚠️ **`MenuExtraction.menu_found` / `no_menu_reason` 은 반드시 `items` 보다 앞 필드여야 한다.**
+  Pydantic 필드 순서가 곧 Gemini 의 `property_ordering` 이다. 앞에 둬야 (a) 모델이 항목을
+  쓰기 **전에** 판정을 선언하게 되고(그 선언이 뒤따르는 디코딩을 묶는다) (b) 스트리밍에서
+  첫 항목이 나가기 전에 서버가 값을 읽고 끊을 수 있다. 뒤로 옮기면 둘 다 사라진다.
+  `tests/test_no_menu.py::test_menu_found_is_declared_before_items_in_the_gemini_schema`.
+- ⚠️ **`menu_found=false` 면 `items` 가 차 있어도 통째로 버린다.** 모델은 '없음'을 선언하고도
+  항목을 채워 보낼 수 있다. 항목 수로 판단하는 분기를 다시 넣지 말 것.
+- ⚠️ `NoMenuFound` 가 `UnreadableMenu` 를 **상속하는 것이 의도**다. 재시도·폴백 분기를 그대로
+  타야 어두운 실사 메뉴판 오판을 상위 모델이 구제한다. 상속을 끊으면 어려운 사진을 잃는다.
+- 비용: 최상위 필드 2개라 항목 수로 곱해지지 않는다. 실측(같은 항목 수 파일 5개) 출력 토큰
+  −188 ~ +9, 즉 노이즈 범위. 실사진 10장 총 항목 433 → 440 으로 회귀 없음.
+- ⚠️ 프롬프트·모델 ID 를 바꾸면 `tests/test_no_menu.py`(가짜)는 전부 통과하면서 환각만 되돌아온다.
+  그때 유일한 그물이 **`DIPEAT_LIVE_TESTS=1 uv run pytest tests/test_no_menu_live.py`**(실 API).
+  프롬프트를 손댔으면 이걸 돌릴 것.
+
 **목록 스키마(`MenuItemSummary`)에 필드를 추가하면 응답시간이 항목 수(최대 90개)만큼 곱해진다.**
 `tests/test_explain_route.py::test_scan_list_stays_lean` 이 이걸 막는다.
 
@@ -138,6 +163,7 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
   **개별 항목은 `price_text` 를 그리고, `price_amount` 는 우리가 계산할 때만 쓴다.**
   정수 통화에 `970.0` 이 나오지 않게 스키마 설명과 프롬프트가 같이 막는다.
   `tests/test_scan_route.py::test_price_amount_keeps_cents` 가 회귀를 잡는다.
+- **항목 자체는 '사진에서 읽은 것'이어야 한다.** 이 앱의 안전 고지는 전부 "메뉴는 진짜고 알레르기 추정만 불확실하다"를 전제로 쓰여 있다. 항목이 지어내진 것일 수 있으면 그 전제가 무너진다 — 그래서 빈 사진은 결과를 내는 대신 거절한다(위 `menu_found`). **항목 0개는 정상적인 답이다.**
 - **알레르기는 AI 추정이지 메뉴판에서 읽은 사실이 아니다.** `likely_allergens`/`inferred`/`basis`/`confidence`. UI 는 "AI 추정, 점원에게 확인" 상시 고지. 식품 안전 문제.
 - **`name_local`(원문)은 절대 응답에서 빼지 않는다.** 사용자가 점원에게 그 글자를 보여준다.
 - **알레르기 차단은 클라이언트가** 코드 대조로 한다(프로필이 서버로 안 나감).

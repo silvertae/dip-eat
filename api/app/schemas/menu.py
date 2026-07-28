@@ -109,13 +109,31 @@ class Restaurant(BaseModel):
 
 
 class MenuExtraction(BaseModel):
-    """Gemini 가 채우는 부분. 서버가 만드는 값(scan_id, meta)은 여기 없다."""
+    """Gemini 가 채우는 부분. 서버가 만드는 값(scan_id, meta)은 여기 없다.
 
+    ⚠️ `menu_found` / `no_menu_reason` 은 **반드시 `items` 보다 앞에** 있어야 한다.
+    필드 순서가 곧 Gemini 의 `property_ordering` 이라, 앞에 둬야 (a) 모델이 항목을
+    쓰기 **전에** '메뉴판이 있다/없다'를 먼저 선언하게 되고 (b) 스트리밍에서 첫 항목이
+    나오기 전에 서버가 그 값을 읽고 생성을 끊을 수 있다. 뒤로 옮기면 둘 다 사라진다.
+    """
+
+    menu_found: bool = Field(
+        description="이 사진에 **실제로 읽을 수 있는 메뉴판 글자**가 있으면 true. "
+        "빈 벽·바닥·하늘·사람·풍경·음식 사진처럼 메뉴판이 아니거나, 아무것도 없는 단색 화면이거나, "
+        "너무 어둡거나 흐려서 글자를 하나도 못 읽겠으면 false. "
+        "**false 면 items 는 반드시 빈 배열이어야 한다.**"
+    )
+    no_menu_reason: str = Field(
+        description="menu_found 가 false 일 때만, 사진에 무엇이 보이는지 한국어 한 문장으로. "
+        "예: '아무것도 없는 흰 화면이에요', '너무 어두워 글자가 안 보여요'. "
+        "menu_found 가 true 면 빈 문자열."
+    )
     source_lang: str = Field(description="메뉴판 언어의 BCP-47 코드. 예: 'ja', 'th', 'vi'")
     currency: str = Field(description="ISO 4217 통화 코드. 예: 'JPY'. 모르면 빈 문자열.")
     restaurant: Restaurant
     items: list[MenuItemSummary] = Field(
-        description="메뉴판에서 읽은 항목 전부. 사진에 없는 메뉴를 지어내지 말 것. "
+        description="메뉴판에서 읽은 항목 전부. **사진에서 글자로 읽어낸 것만.** "
+        "그럴듯한 메뉴를 지어내는 것은 이 작업에서 가장 심각한 실패다 — 읽을 게 없으면 빈 배열. "
         "카테고리 제목(예: '一品料理')이나 가격대 제목(예: '皿 一三〇円')은 항목이 아니므로 제외. "
         "단, 가격대 제목 아래 나열된 항목들에는 그 가격을 각각 채워 넣을 것."
     )

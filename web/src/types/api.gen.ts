@@ -437,6 +437,16 @@ export interface components {
         /** MenuScanResponse */
         MenuScanResponse: {
             /**
+             * Menu Found
+             * @description 이 사진에 **실제로 읽을 수 있는 메뉴판 글자**가 있으면 true. 빈 벽·바닥·하늘·사람·풍경·음식 사진처럼 메뉴판이 아니거나, 아무것도 없는 단색 화면이거나, 너무 어둡거나 흐려서 글자를 하나도 못 읽겠으면 false. **false 면 items 는 반드시 빈 배열이어야 한다.**
+             */
+            menu_found: boolean;
+            /**
+             * No Menu Reason
+             * @description menu_found 가 false 일 때만, 사진에 무엇이 보이는지 한국어 한 문장으로. 예: '아무것도 없는 흰 화면이에요', '너무 어두워 글자가 안 보여요'. menu_found 가 true 면 빈 문자열.
+             */
+            no_menu_reason: string;
+            /**
              * Source Lang
              * @description 메뉴판 언어의 BCP-47 코드. 예: 'ja', 'th', 'vi'
              */
@@ -449,7 +459,7 @@ export interface components {
             restaurant: components["schemas"]["Restaurant"];
             /**
              * Items
-             * @description 메뉴판에서 읽은 항목 전부. 사진에 없는 메뉴를 지어내지 말 것. 카테고리 제목(예: '一品料理')이나 가격대 제목(예: '皿 一三〇円')은 항목이 아니므로 제외. 단, 가격대 제목 아래 나열된 항목들에는 그 가격을 각각 채워 넣을 것.
+             * @description 메뉴판에서 읽은 항목 전부. **사진에서 글자로 읽어낸 것만.** 그럴듯한 메뉴를 지어내는 것은 이 작업에서 가장 심각한 실패다 — 읽을 게 없으면 빈 배열. 카테고리 제목(예: '一品料理')이나 가격대 제목(예: '皿 一三〇円')은 항목이 아니므로 제외. 단, 가격대 제목 아래 나열된 항목들에는 그 가격을 각각 채워 넣을 것.
              */
             items: components["schemas"]["MenuItemSummary"][];
             /**
