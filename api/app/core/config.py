@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     # OCR+구조화는 추론보다 '읽기' 과제라 사고 예산이 도움이 안 되는 것으로 보인다.
     gemini_thinking_level: ThinkingLevel = "minimal"
     gemini_timeout_s: float = 45.0
+    # 스트리밍은 '전체' 예산을 걸 수 없다 — 54개 메뉴가 실측 26초, 90개는 더 걸린다.
+    # 대신 '청크가 안 오는 시간' 을 잰다. 정상 간격은 실측 ~0.4초라 20초면 넉넉하고,
+    # 헤더만 보내고 멈춘 스트림은 Cloud Run --timeout 105 보다 훨씬 먼저 폴백으로 넘어간다.
+    gemini_stream_idle_s: float = 20.0
     gemini_max_attempts: int = 2
 
     # --- 위치 찾기(/menu/locate) 전용 ---------------------------------------
@@ -55,6 +59,12 @@ class Settings(BaseSettings):
     # --- 업로드 -------------------------------------------------------------
     # 클라이언트가 2048px/q0.78 로 줄여 보내면 보통 350~700KB. 여유를 둬서 8MB.
     max_upload_bytes: int = 8 * 1024 * 1024
+    # ⚠️ 홀드-투-토크 녹음 상한. BodySizeLimitMiddleware 는 **모든** 라우트에 걸리므로
+    #    이 값이 max_upload_bytes 보다 크면 그 구간에서 미들웨어가 먼저 발동해 음성 화면에
+    #    "사진 용량이 너무 커요" 가 뜬다(AudioTooLarge 가 도달 불가). 운영은 업로드 상한을
+    #    2MiB 로 내려 쓰고 있어서 실제로 그렇게 됐다 — main.py 가 둘 중 큰 값으로 미들웨어를
+    #    마운트하고, 라우트별 검사가 각자의 메시지를 책임진다.
+    max_audio_bytes: int = 4 * 1024 * 1024
     # 서버 재리사이즈 목표 긴 변(px)
     target_long_edge: int = 2048
     jpeg_quality: int = 85

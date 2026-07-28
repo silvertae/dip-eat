@@ -21,6 +21,14 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+# 클라이언트가 보내는 자유 텍스트의 상한. 이 값들은 전부 Gemini 프롬프트에 그대로 이어 붙으므로
+# 상한이 없으면 본문 크기 한도(8MB)까지가 곧 프롬프트 크기 한도가 된다. 무인증 엔드포인트다.
+# 공격은 '무제한' 이므로 수백 자면 어떤 값이든 막힌다. 그러니 정당한 입력을 절대 거절하지 않는
+# 쪽으로 넉넉히 잡는다 — 가장 긴 실제 메뉴명도 60자를 안 넘는다(스캔 스키마엔 상한이 없어서,
+# 여기가 좁으면 스캔은 됐는데 탭하면 422 가 되는 조용한 실패가 난다).
+_FREE_TEXT_MAX = 200  # 메뉴명·분류·가게 성격
+_LANG_MAX = 8  # BCP-47 짧은 태그('ja', 'zh-Hant')
+
 # 한국 식약처 표시대상 알레르기 유발물질 + 국제적으로 흔한 항목.
 # 코드가 안정적이어야 클라이언트가 프로필과 정확히 대조할 수 있다.
 AllergenCode = Literal[
@@ -158,11 +166,16 @@ class LocateTarget(BaseModel):
     """사진에서 위치를 찾을 항목 하나. 클라이언트가 장바구니에서 만들어 보낸다."""
 
     index: int = Field(description="이 항목의 번호(1부터). 응답 박스의 index 와 1:1 로 맞춘다.")
+    # ⚠️ 이 값들은 그대로 프롬프트에 이어 붙는다(gemini.py `_stream`/`locate_items`).
+    #    무인증·무 레이트리밋 엔드포인트라 상한이 없으면 8MB 본문 하나로 멀티메가바이트
+    #    프롬프트를 비싼 모델(gemini_locate_model)에 태울 수 있다. 메뉴명은 100자면 충분하다.
     name_local: str = Field(
-        description="메뉴판에 적힌 원문 그대로(1단계 name_local). 이 글자를 사진에서 찾는다."
+        max_length=_FREE_TEXT_MAX,
+        description="메뉴판에 적힌 원문 그대로(1단계 name_local). 이 글자를 사진에서 찾는다.",
     )
     section: str = Field(
         default="",
+        max_length=_FREE_TEXT_MAX,
         description="이 항목이 속한 분류(있으면). 같은 이름이 여러 번 나올 때 어느 것인지 고르는 힌트.",
     )
 
@@ -227,10 +240,15 @@ class MenuScanResponse(MenuExtraction):
 
 
 class ExplainRequest(BaseModel):
-    name_local: str = Field(description="1단계 응답의 name_local 을 그대로")
-    name_translated: str = ""
-    source_lang: str = Field(default="ja", description="1단계 응답의 source_lang")
-    cuisine_hint: str = Field(default="", description="가게 성격. 있으면 설명이 정확해진다")
+    # 여기도 전부 프롬프트로 직결된다 — LocateTarget 위 주석 참고.
+    name_local: str = Field(max_length=_FREE_TEXT_MAX, description="1단계 응답의 name_local 을 그대로")
+    name_translated: str = Field(default="", max_length=_FREE_TEXT_MAX)
+    source_lang: str = Field(
+        default="ja", max_length=_LANG_MAX, description="1단계 응답의 source_lang"
+    )
+    cuisine_hint: str = Field(
+        default="", max_length=_FREE_TEXT_MAX, description="가게 성격. 있으면 설명이 정확해진다"
+    )
 
 
 class ExplainResponse(ItemExplanation):

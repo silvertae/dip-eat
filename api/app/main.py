@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.routes import chat, health, menu, probe
 from app.core.config import get_settings
-from app.core.errors import DipeatError
+from app.core.errors import AudioTooLarge, DipeatError
 from app.core.limits import BodySizeLimitMiddleware, patch_multipart_part_limit
 
 log = logging.getLogger(__name__)
@@ -43,7 +43,12 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_upload_bytes)
+    app.add_middleware(
+        BodySizeLimitMiddleware,
+        max_bytes=settings.max_upload_bytes,
+        # 음성은 사진과 상한도 문구도 다르다 — limits.py 의 클래스 docstring 참고.
+        overrides={"/api/v1/chat/voice": (settings.max_audio_bytes, AudioTooLarge)},
+    )
     # 프론트를 Vercel rewrites 뒤에 두면 동일 출처라 CORS 가 필요 없다. 이건 폴백이다.
     # allow_methods 기본값이 ("GET",) 이라 POST 프리플라이트가 조용히 깨진다 — 명시 필수.
     app.add_middleware(
@@ -71,6 +76,21 @@ def create_app() -> FastAPI:
                 "code": exc.code,
                 "message": exc.message,
                 "detail": exc.detail if settings.debug_errors else None,
+            },
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_error_handler(_: Request, exc: Exception) -> JSONResponse:
+        # DipeatError 로 매핑되지 않은 예외(transport 오류, SDK 내부 오류 등)는
+        # 여기가 없으면 Starlette 기본 핸들러가 평문 "Internal Server Error" 를 준다.
+        # 클라이언트는 모든 오류에서 {code, message} 를 기대하므로(lib/api.ts) 형태를 맞춘다.
+        log.exception("unhandled error")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "code": "internal_error",
+                "message": "일시적인 오류가 발생했어요. 다시 시도해주세요.",
+                "detail": repr(exc) if settings.debug_errors else None,
             },
         )
 

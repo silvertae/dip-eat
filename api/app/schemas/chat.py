@@ -23,7 +23,9 @@ class Translation(BaseModel):
 
 class ChatRequest(BaseModel):
     text: str = Field(min_length=1, max_length=500, description="번역할 한 문장")
-    source_lang: str = Field(default="ja", description="현지어 BCP-47. 스캔 응답의 source_lang")
+    source_lang: str = Field(
+        default="ja", max_length=8, description="현지어 BCP-47. 스캔 응답의 source_lang"
+    )
     direction: Direction = Field(description="ko2local: 내 한국어→현지어 / local2ko: 점원 현지어→한국어")
 
 

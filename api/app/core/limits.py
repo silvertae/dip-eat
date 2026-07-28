@@ -13,8 +13,12 @@ tests/test_upload_limits.py 가 이 동작을 지킨다 — Starlette 업그레�
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import starlette.requests
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+from app.core.errors import DipeatError, PayloadTooLarge
 
 _patched = False
 
@@ -42,17 +46,38 @@ def patch_multipart_part_limit(max_part_size: int) -> None:
 
 
 class BodySizeLimitMiddleware:
-    """본문 총량을 스트리밍하며 세다가 상한을 넘으면 413 을 돌려주는 순수 ASGI 미들웨어."""
+    """본문 총량을 스트리밍하며 세다가 상한을 넘으면 413 을 돌려주는 순수 ASGI 미들웨어.
 
-    def __init__(self, app: ASGIApp, *, max_bytes: int):
+    ⚠️ 경로마다 상한이 다르다. 하나의 값으로 통일하면 둘 중 하나가 반드시 틀린다:
+    큰 쪽에 맞추면 사진 상한이 조용히 풀리고, 작은 쪽에 맞추면 녹음이 사진 메시지로 거절된다.
+    (실제로 운영 `DIPEAT_MAX_UPLOAD_BYTES=2MiB` 때문에 2~4MiB 녹음이 음성 화면에서
+    "사진 용량이 너무 커요" 를 받고 있었다 — `AudioTooLarge` 가 도달 불가였다.)
+    `overrides` 는 경로 접두사 → (상한, 에러 클래스). 메시지·코드는 errors.py 단일 출처를 쓴다.
+    """
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        max_bytes: int,
+        overrides: Mapping[str, tuple[int, type[DipeatError]]] | None = None,
+    ):
         self.app = app
         self.max_bytes = max_bytes
+        self.overrides = dict(overrides or {})
+
+    def _limit_for(self, path: str) -> tuple[int, type[DipeatError]]:
+        for prefix, limit in self.overrides.items():
+            if path.startswith(prefix):
+                return limit
+        return self.max_bytes, PayloadTooLarge
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
+        max_bytes, error = self._limit_for(scope.get("path", ""))
         received = 0
         exceeded = False
 
@@ -61,7 +86,7 @@ class BodySizeLimitMiddleware:
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
-                if received > self.max_bytes:
+                if received > max_bytes:
                     exceeded = True
                     # 클라이언트가 계속 보내지 않도록 스트림을 끊는다.
                     return {"type": "http.disconnect"}
@@ -81,16 +106,16 @@ class BodySizeLimitMiddleware:
                 raise
 
         if exceeded:
-            await _send_413(send, self.max_bytes)
+            await _send_413(send, max_bytes, error)
 
 
-async def _send_413(send: Send, max_bytes: int) -> None:
+async def _send_413(send: Send, max_bytes: int, error: type[DipeatError]) -> None:
     import json
 
     body = json.dumps(
         {
-            "code": "payload_too_large",
-            "message": "사진 용량이 너무 커요. 조금 더 작게 찍어주세요.",
+            "code": error.code,
+            "message": error.message,
             "detail": f"max_bytes={max_bytes}",
         },
         ensure_ascii=False,

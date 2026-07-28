@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
 
+from app.core.config import get_settings
 from app.core.errors import AudioTooLarge, UnsupportedAudio
 from app.schemas.chat import ChatRequest, ChatResponse, VoiceResponse
 from app.services.gemini import GeminiService
@@ -17,7 +18,6 @@ Direction = Literal["ko2local", "local2ko"]
 # 브라우저 MediaRecorder 가 내는 것들. content_type 이 위조 가능하지만 오디오는
 # 이미지처럼 디코드 검증이 어려워, 최소한 오디오류인지만 본다.
 _AUDIO_PREFIXES = ("audio/", "video/webm", "video/mp4")
-_MAX_AUDIO_BYTES = 4 * 1024 * 1024  # 짧은 발화라 넉넉하다
 
 
 @router.post("/chat", response_model=ChatResponse, summary="점원 대화 — 자유 발화 번역")
@@ -48,7 +48,7 @@ async def chat_voice(
     raw = await audio.read()
     if not raw:
         raise UnsupportedAudio("오디오가 비어 있어요.", detail="empty upload")
-    if len(raw) > _MAX_AUDIO_BYTES:
+    if len(raw) > get_settings().max_audio_bytes:
         raise AudioTooLarge(detail=f"bytes={len(raw)}")
     mime = audio.content_type or "audio/webm"
     if not mime.startswith(_AUDIO_PREFIXES):
