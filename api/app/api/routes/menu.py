@@ -26,6 +26,9 @@ from app.schemas.menu import (
 from app.services.gemini import GeminiService, ScanHead, ScanTail
 from app.services.image import prepare_image
 
+# 장바구니의 몇 개뿐이라 상한이 넉넉하다. 이게 없으면 targets 하나로 프롬프트를
+# 임의 크기까지 부풀릴 수 있다(무인증 엔드포인트 + 비싼 locate 모델).
+_MAX_LOCATE_TARGETS = 30
 _TARGETS_ADAPTER = TypeAdapter(list[LocateTarget])
 
 log = logging.getLogger(__name__)
@@ -39,7 +42,6 @@ async def scan_menu(
     request: Request,
     image: Annotated[UploadFile, File(description="메뉴판 사진 (JPEG/PNG/WEBP)")],
     mode: Annotated[CaptureMode, Form(description="촬영 모드")] = "poster",
-    target_lang: Annotated[str, Form(description="번역 대상 언어")] = "ko",
 ) -> MenuScanResponse:
     """목록에 필요한 것만 반환한다. 긴 설명·알레르기 근거는 `/menu/item/explain` 으로."""
     settings: Settings = get_settings()
@@ -88,7 +90,6 @@ async def scan_menu_stream(
     request: Request,
     image: Annotated[UploadFile, File(description="메뉴판 사진 (JPEG/PNG/WEBP)")],
     mode: Annotated[CaptureMode, Form(description="촬영 모드")] = "poster",
-    target_lang: Annotated[str, Form(description="번역 대상 언어")] = "ko",
 ) -> StreamingResponse:
     """`/menu/scan` 과 같은 결과를 항목이 완성되는 대로 흘려보낸다.
 
@@ -169,6 +170,20 @@ async def scan_menu_stream(
                     "partial": sent_items > 0,
                 }
             )
+        except Exception:
+            # ⚠️ DipeatError 만 잡으면 그 밖의 예외가 제너레이터 밖으로 나가고,
+            #    Starlette 는 이미 시작된 응답을 줄 중간에서 끊어버린다. 그러면 위 docstring 이
+            #    선언한 "실패는 error 한 줄로 끝난다" 가 지켜지지 않고, 클라이언트는 done 도
+            #    error 도 못 본 채 일반 네트워크 오류로 처리한다. 계약은 예외 없이 지킨다.
+            log.exception("menu.scan.stream crashed sent=%d", sent_items)
+            yield _line(
+                {
+                    "type": "error",
+                    "code": "internal_error",
+                    "message": "일시적인 오류가 발생했어요. 다시 시도해주세요.",
+                    "partial": sent_items > 0,
+                }
+            )
 
     return StreamingResponse(
         emit(),
@@ -240,6 +255,8 @@ async def locate_items(
         raise InvalidRequest(detail=f"bad targets: {exc}") from exc
     if not parsed_targets:
         raise InvalidRequest(detail="empty targets")
+    if len(parsed_targets) > _MAX_LOCATE_TARGETS:
+        raise InvalidRequest(detail=f"too many targets: {len(parsed_targets)}")
 
     raw = await image.read()
     prepared = await run_in_threadpool(

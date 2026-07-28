@@ -13,9 +13,19 @@ from app.core.errors import UnsupportedImage
 # (iOS 도 <input type=file> 경로에서는 보통 JPEG 로 변환해 넘긴다)
 ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
 
-# 기본값(약 89.5Mpx)은 우리 용도엔 과하다. 최신 폰이 48Mpx 이므로 60Mpx 로 조인다.
 # None 으로 두면 압축폭탄 방어가 통째로 꺼진다 — 절대 금지.
-Image.MAX_IMAGE_PIXELS = 60_000_000
+#
+# 16Mpx 로 조인 이유: 60Mpx 는 '폰 카메라가 48Mpx 니까' 로 잡은 값인데, 방어 대상은
+# 폰 사진이 아니라 압축폭탄이다. 60Mpx 는 exif_transpose + convert("RGB") 사본까지
+# ~360MB 이고 --concurrency 8 --memory 2Gi 에서 8개가 겹치면 ~2.9GB → OOM →
+# **진행 중이던 정상 스캔 8건이 함께 죽는다**(docs/deploy.md 5.1·12장).
+# 업로드 바이트 상한은 방어가 안 된다 — 작은 파일로 큰 픽셀을 만드는 게 압축폭탄의 정의다.
+#
+# ⚠️ 8Mpx 까지 내리면 안 된다. 폰 원본(4032×3024 = 12.2Mpx)이 거절된다 —
+# 클라이언트가 축소해 보내지만 워커 실패 시 메인스레드 폴백이 있고, 이 API 는 공개다.
+# 16Mpx 면 그 경로는 그대로 살면서 최악 상황 메모리가 ~1.2GB 로 내려간다.
+# (tests/test_image.py 와 test_upload_limits.py 가 12.2Mpx 통과를 지킨다.)
+Image.MAX_IMAGE_PIXELS = 16_000_000
 
 
 class PreparedImage:

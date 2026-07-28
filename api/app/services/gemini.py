@@ -12,12 +12,14 @@ Vision API 를 따로 태우지 않는다. 손글씨 일본어 메뉴판에서 G
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypeVar
 
+import httpx
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types
@@ -49,6 +51,15 @@ log = logging.getLogger(__name__)
 
 # 재시도·폴백이 무의미한 상태 코드(키/권한/요청 자체가 잘못된 경우).
 _NON_RETRYABLE = {400, 401, 403, 404}
+
+# ⚠️ SDK 의 APIError 는 **HTTP 응답이 온 경우**만 감싼다. 응답 전에 죽는 오류
+#    (DNS 실패·TCP 리셋·읽기 타임아웃·SSE 프레임 깨짐)는 httpx 예외 그대로 올라온다.
+#    이걸 taxonomy 로 매핑하지 않으면 `_with_fallback` 이 (UnreadableMenu, UpstreamError)
+#    만 잡으므로 **재시도도 폴백도 안 돈다** — 재시도 사다리가 존재하는 바로 그 유형인데도.
+#    비스트리밍 경로에선 ErrorResponse 계약을 깨고 평문 500 이 나간다.
+#    httpx.TimeoutException 은 TransportError 의 하위라 반드시 먼저 잡아야 한다.
+_TRANSPORT_TIMEOUT = httpx.TimeoutException
+_TRANSPORT_ERROR = (httpx.TransportError, json.JSONDecodeError)
 
 _PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 _MENU_SCAN_PROMPT = (_PROMPT_DIR / "menu_scan.md").read_text(encoding="utf-8")
@@ -261,7 +272,22 @@ class GeminiService:
                 ),
                 timeout=self._settings.gemini_timeout_s,
             )
-            async for chunk in raw_stream:
+            # ⚠️ 위 wait_for 가 지키는 건 '스트림 객체를 만드는' 코루틴뿐이다.
+            #    generate_content_stream 은 async generator 를 **반환하는** 코루틴이라
+            #    여기서 네트워크를 타지 않는다(마이크로초에 끝난다). 실제 I/O 는 전부
+            #    아래 __anext__ 에서 난다 — 감싸지 않으면 Gemini 가 헤더만 보내고 멈췄을 때
+            #    영원히 대기하고, Cloud Run --timeout 105 가 소켓을 자를 때까지
+            #    concurrency 슬롯 하나를 붙잡는다. 그동안 폴백 모델은 시도조차 안 된다.
+            #    ⚠️ 전체 예산이 아니라 '청크 간(idle)' 예산이어야 한다 — 54개 메뉴가 실측 26초라
+            #    전체 예산을 걸면 큰 메뉴판이 정상 동작 중에 죽는다.
+            chunks = raw_stream.__aiter__()
+            while True:
+                try:
+                    chunk = await asyncio.wait_for(
+                        chunks.__anext__(), timeout=self._settings.gemini_stream_idle_s
+                    )
+                except StopAsyncIteration:
+                    break
                 if chunk.usage_metadata:
                     usage = Usage(
                         input_tokens=chunk.usage_metadata.prompt_token_count or 0,
@@ -288,6 +314,10 @@ class GeminiService:
                     yield item
         except TimeoutError as exc:
             raise UpstreamTimeout(detail=f"model={model}") from exc
+        except _TRANSPORT_TIMEOUT as exc:
+            raise UpstreamTimeout(detail=f"model={model}: {exc!r}") from exc
+        except _TRANSPORT_ERROR as exc:
+            raise UpstreamError(detail=f"model={model}: {exc!r}") from exc
         except genai_errors.APIError as exc:
             status = getattr(exc, "code", None) or getattr(exc, "status", None)
             if status == 429:
@@ -308,6 +338,16 @@ class GeminiService:
             warnings = list(MenuExtraction.model_validate_json(parser.buffer).warnings)
         except ValidationError:
             log.warning("stream tail unparseable model=%s — warnings dropped", model)
+
+        # ⚠️ items 배열이 안 닫혔으면 모델이 도중에 끊긴 것이다(거의 항상 MAX_TOKENS —
+        #    58개가 실측 9,243 출력 토큰이라 90개짜리에선 현실적이다).
+        #    비스트리밍 경로는 resp.parsed=None → UnreadableMenu → 폴백으로 잡아내지만
+        #    여기는 그 가드가 없다. 이 분기가 없으면 61/90 이 '완전한 메뉴' 로 조용히 나간다.
+        #    항목은 이미 내보냈으므로 예외가 아니라 경고가 맞다 — 버리는 게 더 나쁘다.
+        if not parser.items_closed:
+            log.warning("stream truncated model=%s items=%d", model, count)
+            warnings.append("메뉴가 많아 일부만 읽었어요. 사진을 나눠 찍으면 더 정확해요.")
+
         yield ScanTail(warnings=warnings, model=model, usage=usage, items=count)
 
     async def locate_items(
@@ -499,6 +539,10 @@ class GeminiService:
             )
         except TimeoutError as exc:
             raise UpstreamTimeout(detail=f"model={model}") from exc
+        except _TRANSPORT_TIMEOUT as exc:
+            raise UpstreamTimeout(detail=f"model={model}: {exc!r}") from exc
+        except _TRANSPORT_ERROR as exc:
+            raise UpstreamError(detail=f"model={model}: {exc!r}") from exc
         except genai_errors.APIError as exc:
             status = getattr(exc, "code", None) or getattr(exc, "status", None)
             if status == 429:

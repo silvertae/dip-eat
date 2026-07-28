@@ -179,12 +179,6 @@ export interface components {
              * @enum {string}
              */
             mode: "poster" | "booklet" | "kiosk";
-            /**
-             * Target Lang
-             * @description 번역 대상 언어
-             * @default ko
-             */
-            target_lang: string;
         };
         /** ChatRequest */
         ChatRequest: {

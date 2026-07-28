@@ -309,12 +309,6 @@
             "title": "Mode",
             "description": "촬영 모드",
             "default": "poster"
-          },
-          "target_lang": {
-            "type": "string",
-            "title": "Target Lang",
-            "description": "번역 대상 언어",
-            "default": "ko"
           }
         },
         "type": "object",
@@ -334,6 +328,7 @@
           },
           "source_lang": {
             "type": "string",
+            "maxLength": 35,
             "title": "Source Lang",
             "description": "현지어 BCP-47. 스캔 응답의 source_lang",
             "default": "ja"
@@ -389,22 +384,26 @@
         "properties": {
           "name_local": {
             "type": "string",
+            "maxLength": 200,
             "title": "Name Local",
             "description": "1단계 응답의 name_local 을 그대로"
           },
           "name_translated": {
             "type": "string",
+            "maxLength": 200,
             "title": "Name Translated",
             "default": ""
           },
           "source_lang": {
             "type": "string",
+            "maxLength": 35,
             "title": "Source Lang",
             "description": "1단계 응답의 source_lang",
             "default": "ja"
           },
           "cuisine_hint": {
             "type": "string",
+            "maxLength": 200,
             "title": "Cuisine Hint",
             "description": "가게 성격. 있으면 설명이 정확해진다",
             "default": ""

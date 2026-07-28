@@ -34,6 +34,38 @@ async def test_local_to_ko_has_no_reading(client_factory):
     assert fake.calls[0]["direction"] == "local2ko"
 
 
+@pytest.mark.parametrize(
+    "source_lang",
+    [
+        "ja",  # 대부분의 경우
+        "zh-Hant",  # 문자 계열
+        "zh-Hant-TW",  # 언어-문자-지역 (10자) — 상한 8 에서 422 였다
+        "sr-Latn-RS",  # 같은 모양의 다른 언어
+        "sl-Latn-IT-nedis",  # 변형(variant)까지 (16자)
+    ],
+)
+async def test_real_world_bcp47_tags_are_accepted(client_factory, source_lang):
+    """⚠️ 스캔이 내려주는 source_lang 에는 길이 제한이 없고 프런트가 그 값을 그대로 넘긴다.
+    여기 상한을 짧게 잡으면 '스캔은 됐는데 대화·상세가 422' 라는 조용한 실패가 난다.
+    /menu/item/explain 도 같은 상수를 쓰므로 함께 지켜진다."""
+    async with client_factory() as client:
+        resp = await client.post(
+            "/api/v1/chat",
+            json={"text": "고수 빼주세요", "source_lang": source_lang, "direction": "ko2local"},
+        )
+    assert resp.status_code == 200, resp.text
+
+
+async def test_absurdly_long_source_lang_is_still_rejected(client_factory):
+    """상한을 늘렸다고 없앤 건 아니다 — 프롬프트 크기는 여전히 묶여 있어야 한다."""
+    async with client_factory() as client:
+        resp = await client.post(
+            "/api/v1/chat",
+            json={"text": "고수 빼주세요", "source_lang": "ja" * 500, "direction": "ko2local"},
+        )
+    assert resp.status_code == 422
+
+
 async def test_empty_text_is_rejected(client_factory):
     async with client_factory() as client:
         resp = await client.post(
