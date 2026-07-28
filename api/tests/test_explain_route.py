@@ -38,6 +38,16 @@ async def test_explain_returns_long_form_content(client_factory):
     assert allergen["confidence"] in {"high", "medium", "low"}
 
 
+async def test_explain_accepts_full_length_bcp47_tag(client_factory):
+    """카드를 탭하는 경로. 스캔이 'zh-Hant-TW' 를 내려주면 그대로 여기로 온다 —
+    상한이 짧으면 목록은 떴는데 카드만 안 열리는 조용한 실패가 된다."""
+    async with client_factory() as client:
+        resp = await client.post(
+            "/api/v1/menu/item/explain", json={**BODY, "source_lang": "sl-Latn-IT-nedis"}
+        )
+    assert resp.status_code == 200, resp.text
+
+
 async def test_explain_requires_name_local(client_factory):
     async with client_factory() as client:
         resp = await client.post("/api/v1/menu/item/explain", json={"source_lang": "ja"})

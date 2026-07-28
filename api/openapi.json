@@ -328,7 +328,7 @@
           },
           "source_lang": {
             "type": "string",
-            "maxLength": 8,
+            "maxLength": 35,
             "title": "Source Lang",
             "description": "현지어 BCP-47. 스캔 응답의 source_lang",
             "default": "ja"
@@ -396,7 +396,7 @@
           },
           "source_lang": {
             "type": "string",
-            "maxLength": 8,
+            "maxLength": 35,
             "title": "Source Lang",
             "description": "1단계 응답의 source_lang",
             "default": "ja"

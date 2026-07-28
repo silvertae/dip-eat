@@ -27,7 +27,14 @@ from pydantic import BaseModel, Field
 # 쪽으로 넉넉히 잡는다 — 가장 긴 실제 메뉴명도 60자를 안 넘는다(스캔 스키마엔 상한이 없어서,
 # 여기가 좁으면 스캔은 됐는데 탭하면 422 가 되는 조용한 실패가 난다).
 _FREE_TEXT_MAX = 200  # 메뉴명·분류·가게 성격
-_LANG_MAX = 8  # BCP-47 짧은 태그('ja', 'zh-Hant')
+# BCP-47 태그. ⚠️ 8 로 잡았다가 되돌렸다 — 'ja' 만 생각한 값이었다.
+# 스캔이 내려주는 source_lang(위 MenuExtraction)에는 길이 제한이 없고 프런트가 그 값을
+# 그대로 여기로 넘기므로, 짧게 잡으면 'zh-Hant-TW'(10) · 'sr-Latn-RS'(10) 같은 흔한 태그에서
+# '스캔은 됐는데 카드를 탭하면 422' 가 된다. 실제 상한이 필요한 건 프롬프트 크기뿐이라
+# 정당한 태그를 절대 못 자르는 쪽으로 넉넉히 잡는다('sl-Latn-IT-nedis' 16 도 여유롭게 통과).
+# 형식(정규식) 검증은 일부러 안 한다 — source_lang 은 모델이 채우는 값이라 규격을 벗어난
+# 문자열('일본어' 등)이 올 수 있고, 그걸 422 로 막으면 지금 고치는 것과 같은 조용한 실패가 난다.
+LANG_MAX = 35
 
 # 한국 식약처 표시대상 알레르기 유발물질 + 국제적으로 흔한 항목.
 # 코드가 안정적이어야 클라이언트가 프로필과 정확히 대조할 수 있다.
@@ -244,7 +251,7 @@ class ExplainRequest(BaseModel):
     name_local: str = Field(max_length=_FREE_TEXT_MAX, description="1단계 응답의 name_local 을 그대로")
     name_translated: str = Field(default="", max_length=_FREE_TEXT_MAX)
     source_lang: str = Field(
-        default="ja", max_length=_LANG_MAX, description="1단계 응답의 source_lang"
+        default="ja", max_length=LANG_MAX, description="1단계 응답의 source_lang"
     )
     cuisine_hint: str = Field(
         default="", max_length=_FREE_TEXT_MAX, description="가게 성격. 있으면 설명이 정확해진다"

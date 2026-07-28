@@ -8,6 +8,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.menu import LANG_MAX
+
 Direction = Literal["ko2local", "local2ko"]
 
 
@@ -23,8 +25,10 @@ class Translation(BaseModel):
 
 class ChatRequest(BaseModel):
     text: str = Field(min_length=1, max_length=500, description="번역할 한 문장")
+    # 상한 근거는 schemas/menu.py 의 LANG_MAX 주석 참고(짧게 잡으면 zh-Hant-TW 에서 422).
+    # 값의 출처가 스캔 응답이라 두 곳이 갈리면 안 된다 — 상수를 공유한다.
     source_lang: str = Field(
-        default="ja", max_length=8, description="현지어 BCP-47. 스캔 응답의 source_lang"
+        default="ja", max_length=LANG_MAX, description="현지어 BCP-47. 스캔 응답의 source_lang"
     )
     direction: Direction = Field(description="ko2local: 내 한국어→현지어 / local2ko: 점원 현지어→한국어")
 
