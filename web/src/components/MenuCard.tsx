@@ -29,14 +29,21 @@ export function MenuCard({
   const addToCart = useApp((s) => s.addToCart)
   const removeFromCart = useApp((s) => s.removeFromCart)
 
+  // detail 은 한 번 받으면 접어도 버리지 않는다 — 다시 펴려고 유료 호출을 반복하지 않기 위해.
+  // 펼침 여부는 open 이 따로 들고 있다.
   const [detail, setDetail] = useState<ExplainResponse | null>(null)
+  const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   // 상세 참고 이미지가 못 뜨면(썸네일과 같은 이유) 이미지 블록 자체를 숨긴다.
   const [detailImgBroken, setDetailImgBroken] = useState(false)
 
   const toggle = useCallback(async () => {
-    if (detail) return setDetail(null)
+    if (open) return setOpen(false)
+    setOpen(true)
+    // 이미 받아뒀거나 받는 중이면 다시 부르지 않는다.
+    // (2.3초 대기 중 더블탭은 모바일에서 흔하다 — 가드가 없으면 동시에 두 건이 나간다.)
+    if (detail || loading) return
     setLoading(true)
     setError('')
     try {
@@ -53,7 +60,7 @@ export function MenuCard({
     } finally {
       setLoading(false)
     }
-  }, [detail, item.name_local, item.name_translated, sourceLang, cuisineHint])
+  }, [open, detail, loading, item.name_local, item.name_translated, sourceLang, cuisineHint])
 
   const krw = toKrw(item.price_amount, rate)
   const image = useDishImage(item)
@@ -166,10 +173,10 @@ export function MenuCard({
         </p>
       )}
 
-      {loading && <p className="mt-2 text-xs text-muted">설명을 불러오는 중…</p>}
-      {error && <p className="mt-2 text-xs text-brand-700">{error}</p>}
+      {open && loading && <p className="mt-2 text-xs text-muted">설명을 불러오는 중…</p>}
+      {open && error && <p className="mt-2 text-xs text-brand-700">{error}</p>}
 
-      {detail && (
+      {open && detail && (
         <div className="mt-3 border-t border-line pt-3">
           {image && !detailImgBroken && (
             <figure className="mb-3">

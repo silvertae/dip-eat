@@ -210,6 +210,9 @@ export const useApp = create<AppState>()(
       // 내가 밀려난 스캔이면 조용히 사라진다. 여기서 상태를 건드리면 abort 된 낡은 요청이
       // 멀쩡히 돌아가는 새 스캔을 에러 화면으로 보낸다.
       if (isStale()) return
+      // ⚠️ abort() 를 먼저 부른다. 그냥 null 로 덮으면 아직 열려 있는 요청을 끊을 손잡이가
+      //    사라져(cancelActiveScan 도 못 잡는다) Gemini 가 남은 항목을 계속 만든다.
+      controller.abort()
       scanAbort = null
 
       const message =

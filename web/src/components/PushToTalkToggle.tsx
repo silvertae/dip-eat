@@ -29,7 +29,19 @@ export function PushToTalkToggle({ sourceLang }: { sourceLang: string }) {
   const recorder = useRef<Recording | null>(null)
   const starting = useRef(false) // getUserMedia 진행 중(권한 프롬프트 대기 포함)
 
-  useEffect(() => () => releaseMic(), []) // 화면 떠나면 마이크 반납
+  // 화면 떠나면 전부 정리한다. releaseMic() 만으로는 부족하다 —
+  // 홀드 타이머가 살아 있으면 언마운트 뒤에 begin() 이 발화해 '다른 화면에서' 권한 프롬프트가 뜨고,
+  // 그 마이크를 반납할 주체가 사라져 세션 내내 켜진 채로 남는다.
+  useEffect(
+    () => () => {
+      if (holdTimer.current) clearTimeout(holdTimer.current)
+      starting.current = false // 진행 중인 begin() 이 스스로 rec.cancel() 하게 만든다
+      recorder.current?.cancel()
+      recorder.current = null
+      releaseMic()
+    },
+    [],
+  )
 
   const begin = useCallback(async (dir: Dir) => {
     starting.current = true
