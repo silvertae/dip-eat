@@ -4,7 +4,7 @@ import io
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFilter
 
 from app.main import create_app
 from app.schemas.chat import Translation, VoiceResult
@@ -45,8 +45,54 @@ def make_jpeg(width: int = 400, height: int = 300, *, noise: bool = False) -> by
     return buf.getvalue()
 
 
+# --- 부정 픽스처: '메뉴판이 아닌 사진' -----------------------------------------
+# 모델이 이런 사진에도 그럴듯한 메뉴판을 통째로 지어냈다(실측: 흰 화면 → 生ビール 550円 …
+# 8개). tests/test_no_menu.py 는 서버 계약을, tests/test_no_menu_live.py 는 실제 모델
+# 거동을 이 이미지들로 확인한다.
+
+
+def _jpeg(img: Image.Image) -> bytes:
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=90)
+    return buf.getvalue()
+
+
+def blank_white_jpeg() -> bytes:
+    """아무것도 안 찍힌 흰 화면. 셔터가 잘못 눌린 전형적인 경우."""
+    return _jpeg(Image.new("RGB", (600, 400), (255, 255, 255)))
+
+
+def solid_grey_jpeg() -> bytes:
+    """민무늬 회색 — 벽이나 테이블을 클로즈업한 경우."""
+    return _jpeg(Image.new("RGB", (800, 600), (128, 128, 128)))
+
+
+def dark_frame_jpeg() -> bytes:
+    """거의 검은 프레임. 어두운 가게에서 흔하다."""
+    return _jpeg(Image.new("RGB", (700, 500), (12, 12, 14)))
+
+
+def blurred_non_menu_jpeg() -> bytes:
+    """메뉴판이 아닌 무언가를 심하게 흔들려 찍은 사진(글자 없음)."""
+    img = Image.new("RGB", (900, 600), (70, 60, 55))
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([100, 80, 800, 520], fill=(120, 100, 85))
+    draw.ellipse([300, 200, 600, 400], fill=(160, 140, 120))
+    return _jpeg(img.filter(ImageFilter.GaussianBlur(18)))
+
+
+NO_MENU_FIXTURES = {
+    "blank_white": blank_white_jpeg,
+    "solid_grey": solid_grey_jpeg,
+    "dark_frame": dark_frame_jpeg,
+    "blurred_non_menu": blurred_non_menu_jpeg,
+}
+
+
 def sample_extraction() -> MenuExtraction:
     return MenuExtraction(
+        menu_found=True,
+        no_menu_reason="",
         source_lang="ja",
         currency="JPY",
         restaurant=Restaurant(

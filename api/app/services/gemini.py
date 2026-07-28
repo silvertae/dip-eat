@@ -27,6 +27,7 @@ from pydantic import BaseModel, ValidationError
 
 from app.core.config import Settings
 from app.core.errors import (
+    NoMenuFound,
     UnclearAudio,
     UnreadableMenu,
     UpstreamConfigError,
@@ -121,6 +122,20 @@ class ScanTail:
 ScanEvent = ScanHead | MenuItemSummary | ScanTail
 
 
+def _raise_if_no_menu(head: dict, *, model: str) -> None:
+    """머리에 실린 `menu_found` 가 false 면 그 자리에서 스트림을 끊는다.
+
+    스키마 필드 순서상 `menu_found` 는 첫 항목보다 **먼저** 확정된다(schemas/menu.py 참고).
+    여기서 끊어야 지어낸 항목이 한 개도 클라이언트로 나가지 않고, 남은 출력 토큰도 안 태운다.
+
+    값이 없거나 형태가 이상하면 그냥 통과시킨다 — 파싱 사고로 멀쩡한 메뉴판을 막는 쪽이
+    더 나쁘다. 그 경우엔 뒤의 `count == 0` 가드가 마지막 그물이 된다.
+    """
+    if head.get("menu_found") is False:
+        reason = str(head.get("no_menu_reason") or "")[:120]
+        raise NoMenuFound(detail=f"model={model} reason={reason!r}")
+
+
 def _restaurant_of(head: dict) -> Restaurant:
     """머리 파싱이 실패했거나 필드가 비어도 화면이 그려져야 한다."""
     raw = head.get("restaurant")
@@ -191,6 +206,13 @@ class GeminiService:
                 schema=MenuExtraction,
                 with_media=True,
             )
+            # 순서 중요: '메뉴판이 없다'가 '못 읽었다'보다 구체적인 진단이다. 그리고 모델은
+            # menu_found=false 를 선언하고도 항목을 채워 보낼 수 있다 — 그때 항목을 믿으면 안 된다.
+            if not parsed.menu_found:
+                raise NoMenuFound(
+                    detail=f"model={model} items={len(parsed.items)} "
+                    f"reason={parsed.no_menu_reason[:120]!r}"
+                )
             if not parsed.items:
                 raise UnreadableMenu(detail=f"empty items model={model}")
             return ScanOutcome(extraction=parsed, model=model, usage=usage)
@@ -256,6 +278,7 @@ class GeminiService:
         """한 모델로 스트리밍한다. 첫 yield 전에 실패하면 호출부가 폴백할 수 있다."""
         parser = MenuStreamParser()
         pending_head: ScanHead | None = None
+        head_checked = False
         count = 0
         usage = Usage()
 
@@ -294,7 +317,13 @@ class GeminiService:
                         output_tokens=chunk.usage_metadata.candidates_token_count or 0,
                         thought_tokens=chunk.usage_metadata.thoughts_token_count or 0,
                     )
-                for raw in parser.feed(chunk.text or ""):
+                produced = parser.feed(chunk.text or "")
+                # 머리가 읽히는 즉시 '메뉴판 있음' 선언을 확인한다. 첫 항목을 기다리면
+                # 이미 지어낸 카드가 화면에 뜬 뒤가 된다.
+                if not head_checked and parser.head is not None:
+                    head_checked = True
+                    _raise_if_no_menu(parser.head, model=model)
+                for raw in produced:
                     try:
                         item = MenuItemSummary.model_validate_json(raw)
                     except ValidationError:
@@ -327,6 +356,8 @@ class GeminiService:
             raise UpstreamError(detail=f"{status}: {exc}") from exc
 
         if count == 0:
+            # 머리를 못 읽어 위 가드를 못 탄 경우까지 여기서 건진다(항목이 없으니 아직 안 늦었다).
+            _raise_if_no_menu(parser.head or {}, model=model)
             # resp.parsed 가드의 대체물. 이게 없으면 '메뉴 0개'가 조용히 나간다.
             raise UnreadableMenu(
                 detail=f"no items model={model} head={parser.buffer[:200]!r}"
@@ -335,7 +366,14 @@ class GeminiService:
         # 전체를 다시 파싱해 warnings 를 얻는다. 실패해도 항목은 이미 나갔으므로 치명적이지 않다.
         warnings: list[str] = []
         try:
-            warnings = list(MenuExtraction.model_validate_json(parser.buffer).warnings)
+            tail = MenuExtraction.model_validate_json(parser.buffer)
+            warnings = list(tail.warnings)
+            if not tail.menu_found:
+                # 항목은 이미 나갔다 — 되돌릴 수 없다. 머리 가드가 왜 안 걸렸는지 남긴다.
+                log.error(
+                    "stream sent %d items but menu_found=false model=%s reason=%r",
+                    count, model, tail.no_menu_reason[:120],
+                )
         except ValidationError:
             log.warning("stream tail unparseable model=%s — warnings dropped", model)
 
