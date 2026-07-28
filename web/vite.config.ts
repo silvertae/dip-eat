@@ -14,7 +14,11 @@ export default defineConfig({
       // 작업이 날아가는 걸 막으려면 사용자에게 물어봐야 한다(main.tsx 에서 처리).
       registerType: 'prompt',
       // 매니페스트에 안 들어가지만 프리캐시하고 싶은 정적 자산.
-      includeAssets: ['favicon.svg', 'apple-touch-icon-180x180.png'],
+      includeAssets: [
+        'favicon-32x32.png',
+        'favicon-96x96.png',
+        'apple-touch-icon-180x180.png',
+      ],
       manifest: {
         name: '찍먹 — 메뉴판 번역',
         short_name: '찍먹',
@@ -27,10 +31,19 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         icons: [
-          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
-          // 안드로이드 적응형 아이콘용. 콘텐츠가 안전영역 안에 있어 'any' 로도 쓴다.
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          // 'any' 는 라운드스퀘어 모양 그대로 노출되므로 모서리가 투명한 파일이다.
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          // ⚠️ maskable 은 **반드시 별도 파일**이어야 한다. 런처가 임의 모양(최악의 경우 지름
+          // 80% 원)으로 잘라내는데 브랜드 아트는 그릇·폰이 가장자리까지 꽉 차 있어서, 'any'
+          // 파일을 그대로 쓰면 그릇 왼쪽과 폰 오른쪽이 잘린다. 이 파일만 아트를 78%로 줄이고
+          // 남는 자리를 아트 배경색(#fdae17)으로 채워 안전영역을 확보했다.
+          {
+            src: 'pwa-maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
         ],
       },
       workbox: {

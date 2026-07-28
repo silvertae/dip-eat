@@ -162,7 +162,12 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 - ⚠️⚠️ **커먼즈 썸네일 `<img>` 에서 `crossOrigin="anonymous"` 를 빼지 말 것**(`DishThumb`/`MenuCard`). 빼면 응답이 **opaque**(status 0)가 되고, 그걸 SW 가 캐시하는 순간 크롬이 크기 유출(storage-size oracle)을 막으려고 **항목마다 무작위 패딩을 quota 에 더한다**. 실측: 24KB 썸네일이 장당 **4.77MB**(181배)로 잡혀 92장 = **441MB**. `expiration` 은 **항목 수만 세므로 이걸 절대 못 잡는다**(maxEntries 200 → 최악 ~950MB). 게다가 `main.tsx` 의 `navigator.storage.persist()` 승격 탓에 자동 회수도 안 된다. 커먼즈는 ACAO 를 주므로 CORS 로 받아도 잘 뜬다. 같은 이유로 `cacheableResponse.statuses` 에 **0 을 다시 넣지 말 것**.
 - 그래서 캐시 이름이 `wikimedia-thumbs-v2` 다(패딩된 옛 캐시와 분리). 옛 `wikimedia-thumbs` 는 `main.tsx` 가 1회 삭제한다 — workbox 의 `cleanupOutdatedCaches` 는 precache 만 건드린다.
 - 썸네일 핸들러는 `StaleWhileRevalidate` + `<img onError>` 이모지 폴백이다. **SWR 을 고른 원래 이유(opaque 라 성공/실패를 구분 못 해 CacheFirst 면 일시 404/429/5xx 가 30일 박제됨)는 CORS 전환으로 사라졌다** — 이제 status 로 걸러내니 CacheFirst 도 안전하다. 바꾸려면 재검증 요청이 줄어드는 이득을 실제로 재고 바꿀 것. `navigateFallback` 은 `/api` 를 denylist 로 제외(백엔드 호출을 셸로 가로채지 않게).
-- 브랜드 아이콘(`public/pwa-*.png`, `apple-touch-icon-180x180.png`)은 홈 로고와 같은 오렌지 '찍' 마크다(favicon.svg 는 옛 템플릿 보라 마크라 아이콘 소스로 쓰지 말 것).
+- 브랜드 자산은 아이콘(그릇+메뉴판 폰 일러스트)과 워드마크(빵스틱 '찍먹') 두 갈래다. 옛 오렌지 '찍' 그라데이션 타일과 보라색 템플릿 `favicon.svg` 는 전부 없앴다.
+  - 아이콘 원본은 **알파가 없고 모서리가 검다**. 파생본은 `public/pwa-*.png`·`apple-touch-icon-180x180.png`·`favicon-*.png` 이고 생성 규칙은 아래 ⚠️ 를 따른다.
+  - ⚠️ **모서리 반지름을 눈대중으로 잡은 라운드렉트 마스크로 배경을 빼지 말 것.** 아트가 정확한 원호가 아니라 스퀘어클이라 512² 기준 검은 프린지가 12,912픽셀 남는다. 행마다 실루엣을 훑어 실제 경계를 떠야 한다(아트가 가로로 볼록해 각 행은 구간 하나면 충분).
+  - ⚠️ **`maskable` 은 반드시 `pwa-maskable-512x512.png` 별도 파일이어야 한다.** 그릇·폰이 가장자리까지 꽉 차 있어서 `any` 파일을 겸용하면 안드로이드 적응형 크롭에 잘린다. 이 파일만 아트를 78%로 줄이고 배경색 `#fdae17` 로 안전영역을 채운다.
+  - 워드마크는 `src/assets/logo-{mark,full}.png`(`components/BrandLogo.tsx`). 원본이 near-black 배경이라 배경을 벗겨 투명 PNG 로 만들었다. ⚠️ 배경 제거는 **테두리 flood fill 이 아니라 전역 색상 키**로 한다 — flood fill 은 '먹'의 ㅁ 안쪽 카운터를 검은 사각형으로 남긴다. 반투명 경계는 언프리멀티플라이해서 크림 배경의 검은 헤일로를 없앨 것.
+  - 빵스틱 레터링은 웹폰트로 대체 불가라 이미지다. **`alt="찍먹"` 을 비우지 말 것** — 로고가 곧 서비스명이다.
 
 **CI/CD (`.github/workflows/`, 근거는 [docs/deploy.md](docs/deploy.md) 7장)**
 - ⚠️⚠️ **`main` 에 `api/**` 가 들어가면 그 자리에서 운영에 배포된다.** 예전 문서의 "머지는 배포가 아니다"는
