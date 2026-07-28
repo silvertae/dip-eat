@@ -143,11 +143,22 @@ jobs:
       - name: 트래픽 전환 완료 → :latest 를 '마지막 정상 빌드' 로 옮긴다
         env:
           IMG: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.SERVICE }}
+          SHA: ${{ github.sha }}
         # 수동 복구 절차(deploy.md 8장·부록 A)가 :latest 를 가리키므로, 여기까지 온 이미지만 붙인다.
-        # --quiet: 첫 배포 이후로는 :latest 가 이미 존재한다. 비대화형 러너에서 확인 프롬프트가
-        #          뜨면 그대로 실패하는데, 이 시점엔 트래픽이 이미 넘어가 있어 '성공한 배포가
-        #          빨갛게' 되고 :latest 만 옛 이미지에 남는다. 프롬프트가 없더라도 무해하다.
-        run: gcloud artifacts docker tags add "$IMG:${{ github.sha }}" "$IMG:latest" --quiet
+        #
+        # ⚠️⚠️ `gcloud artifacts docker tags add` 를 쓰지 말 것. 그건 Artifact Registry **API** 라,
+        #    이미 있는 :latest 를 다른 digest 로 옮기려면 옛 digest 에서 먼저 떼어내야 해서
+        #    `artifactregistry.tags.delete` 를 요구한다. 배포 계정에는 `artifactregistry.writer`
+        #    만 있고(deploy.md 2.5) 거기엔 그 권한이 없다 → PR #19~#22 배포가 **전부** 이 줄에서
+        #    PERMISSION_DENIED 로 빨갛게 끝났다. 운영은 매번 정상이었고(트래픽 전환은 앞 스텝에서
+        #    이미 끝난다) :latest 만 2026-07-26 이미지에 멈춰 있었다 — 그 상태로 8장 롤백을 밟으면
+        #    이틀 치 배포가 조용히 되돌아간다. 빨간 X 보다 이쪽이 훨씬 위험했다.
+        #
+        #    imagetools 는 Docker 레지스트리 프로토콜로 매니페스트만 다시 쓴다. 쓰기 권한이면
+        #    충분하고(#19 이전 `buildx --tag $IMG:latest` 가 정확히 그 경로로 기존 태그를
+        #    덮어썼다 — 2026-07-26 배포 2건이 그 증거), 레이어를 다시 올리지 않으므로 빠르다.
+        #    새 인덱스가 :sha 와 같은 자식 매니페스트를 가리키므로 내용물은 스모크를 통과한 그 이미지다.
+        run: docker buildx imagetools create --tag "$IMG:latest" "$IMG:$SHA"
 
       # ⚠️ 실패 알림을 둘로 나눈다. 트래픽 전환 '뒤' 단계가 실패했는데 "운영은 무사" 라고 하면
       #    거짓말이다 — 운영은 이미 새 리비전이고, 손봐야 할 건 :latest 쪽이다.
