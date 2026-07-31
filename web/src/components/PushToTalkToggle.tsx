@@ -161,8 +161,8 @@ export function PushToTalkToggle({ sourceLang }: { sourceLang: string }) {
           recording={recording === 'me'}
           dimmed={recording === 'them'}
           disabled={busy}
-          chip="한"
-          chipFont=""
+          chip={travelerLang === 'ja' ? '日' : '한'}
+          chipFont={travelerLang === 'ja' ? 'font-local' : ''}
           label={tr(travelerLang, { ko: '나 · 한국어', ja: '自分 · 日本語' })}
           idleHint={tr(travelerLang, { ko: '🎙 꾹 눌러 말하기', ja: '🎙 長押しして話す' })}
           recordingHint={tr(travelerLang, { ko: '듣는 중…', ja: '録音中…' })}
