@@ -77,6 +77,11 @@ _MODE_HINT = {
 
 _TRAVELER_LANGUAGE = {"ko": "한국어", "ja": "일본어"}
 
+_TRUNCATION_WARNING = {
+    "ko": "메뉴가 많아 일부만 읽었어요. 사진을 나눠 찍으면 더 정확해요.",
+    "ja": "メニューが多いため、一部のみ読み取りました。写真を分けて撮ると、より正確に読み取れます。",
+}
+
 
 def _traveler_instruction(traveler_lang: str) -> str:
     language = _TRAVELER_LANGUAGE.get(traveler_lang, "한국어")
@@ -90,6 +95,11 @@ def _traveler_instruction(traveler_lang: str) -> str:
         f"번역명·설명·분류·경고 등 여행자가 읽는 모든 필드는 자연스러운 {language}로 쓰세요. "
         f"{guide}"
     )
+
+
+def _truncation_warning(traveler_lang: str) -> str:
+    """`items` 가 끊겼을 때 여행자가 읽을 언어로 경고한다."""
+    return _TRUNCATION_WARNING.get(traveler_lang, _TRUNCATION_WARNING["ko"])
 
 
 def _direction_name(direction: str) -> str:
@@ -286,7 +296,7 @@ class GeminiService:
             started = asyncio.get_running_loop().time()
             try:
                 # 첫 항목까지는 버퍼에만 쌓는다. 여기서 예외가 나면 다음 모델로 넘어간다.
-                stream = self._stream_items(model, contents, system_instruction)
+                stream = self._stream_items(model, contents, system_instruction, traveler_lang)
                 first = await anext(stream)
             except (UpstreamConfigError, UpstreamRateLimited):
                 raise  # 재시도해도 똑같다 — 폴백 모델로도 넘기지 않는다
@@ -308,7 +318,11 @@ class GeminiService:
         raise last_error or UpstreamError()
 
     async def _stream_items(
-        self, model: str, contents: list[types.Part], system_instruction: str
+        self,
+        model: str,
+        contents: list[types.Part],
+        system_instruction: str,
+        traveler_lang: str,
     ) -> AsyncIterator[ScanEvent]:
         """한 모델로 스트리밍한다. 첫 yield 전에 실패하면 호출부가 폴백할 수 있다."""
         parser = MenuStreamParser()
@@ -419,7 +433,7 @@ class GeminiService:
         #    항목은 이미 내보냈으므로 예외가 아니라 경고가 맞다 — 버리는 게 더 나쁘다.
         if not parser.items_closed:
             log.warning("stream truncated model=%s items=%d", model, count)
-            warnings.append("메뉴가 많아 일부만 읽었어요. 사진을 나눠 찍으면 더 정확해요.")
+            warnings.append(_truncation_warning(traveler_lang))
 
         yield ScanTail(warnings=warnings, model=model, usage=usage, items=count)
 

@@ -96,8 +96,10 @@ def build_streaming_service(scripts: list, **settings_kwargs) -> tuple[GeminiSer
     return service, used_models
 
 
-async def collect(service: GeminiService) -> list:
-    return [ev async for ev in service.stream_menu(IMAGE, mode="poster")]
+async def collect(service: GeminiService, *, traveler_lang: str = "ko") -> list:
+    return [
+        ev async for ev in service.stream_menu(IMAGE, mode="poster", traveler_lang=traveler_lang)
+    ]
 
 
 # --- 정상 경로 ---------------------------------------------------------------
@@ -161,6 +163,19 @@ async def test_truncated_stream_is_reported_as_a_warning_not_as_success():
     assert isinstance(tail, ScanTail)
     assert tail.items >= 1
     assert any("일부만" in w for w in tail.warnings)
+
+
+async def test_truncated_stream_uses_japanese_warning_for_japanese_traveler():
+    truncated = full_json(items=3)
+    truncated = truncated[: truncated.index("품목2") - 20]
+    service, _ = build_streaming_service([slice_every(truncated)])
+
+    tail = (await collect(service, traveler_lang="ja"))[-1]
+
+    assert isinstance(tail, ScanTail)
+    assert tail.warnings == [
+        "メニューが多いため、一部のみ読み取りました。写真を分けて撮ると、より正確に読み取れます。"
+    ]
 
 
 async def test_complete_stream_has_no_truncation_warning():
