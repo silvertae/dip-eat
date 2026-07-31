@@ -1,3 +1,4 @@
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Chip, Toggle } from './Chip'
 import { ALLERGY_CHOICES, DISLIKE_CHOICES } from '../lib/profileOptions'
 import { tr } from '../lib/i18n'
@@ -104,6 +105,10 @@ export function BudgetFields() {
   )
 }
 
+/**
+ * `type="number"` 는 콤마가 든 값을 표시하지 못한다(브라우저가 invalid 로 보고 비운다).
+ * 그래서 text + inputMode="numeric" 으로 두고 숫자만 뽑아 직접 세 자리 구분한다.
+ */
 function BudgetRow({
   label,
   symbol,
@@ -115,23 +120,101 @@ function BudgetRow({
   value: number
   onChange: (value: number) => void
 }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const caretRef = useRef<number | null>(null)
+  // 지움 방향은 beforeinput 에만 있다(change 시점엔 이미 사라진 뒤라 구분이 안 된다).
+  const deleteDirRef = useRef<'back' | 'forward' | null>(null)
+  // 비어 있는 상태("")와 0 을 구분해야 지우자마자 0 이 다시 채워지지 않는다.
+  const [draft, setDraft] = useState<string | null>(null)
+  const display = draft ?? (value ? value.toLocaleString('ko-KR') : '')
+
+  // React 의 onBeforeInput 은 합성 이벤트라 삭제에는 오지 않는다(textInput/조합 입력에서만
+  // 만들어진다). 방향을 알려면 네이티브 beforeinput 을 직접 들어야 한다.
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    const remember = (e: Event) => {
+      const type = (e as InputEvent).inputType
+      deleteDirRef.current =
+        type === 'deleteContentBackward'
+          ? 'back'
+          : type === 'deleteContentForward'
+            ? 'forward'
+            : null
+    }
+    el.addEventListener('beforeinput', remember)
+    return () => el.removeEventListener('beforeinput', remember)
+  }, [])
+
+  // 콤마가 끼면 React 가 되살린 캐럿이 한 칸씩 밀린다 — 숫자 개수 기준으로 다시 잡는다.
+  useLayoutEffect(() => {
+    if (caretRef.current === null || !inputRef.current) return
+    inputRef.current.setSelectionRange(caretRef.current, caretRef.current)
+    caretRef.current = null
+  })
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value
+    const caret = e.target.selectionStart ?? raw.length
+    let digitsBeforeCaret = raw.slice(0, caret).replace(/\D/g, '').length
+    let digits = raw.replace(/\D/g, '')
+
+    // 콤마 위에서 지우면 브라우저는 콤마만 없앤다 — 숫자가 그대로라 다시 포맷하면 아무 일도
+    // 안 한 것처럼 보인다. 구분자는 데이터가 아니므로 건너뛰고 그 너머 숫자를 지운다.
+    // 삭제일 때만 — 삽입에도 걸리면 멀쩡한 숫자를 하나 지운다.
+    const separatorOnlyDelete =
+      deleteDirRef.current !== null &&
+      raw.length === display.length - 1 &&
+      digits.length === onlyDigits(display).length
+    if (separatorOnlyDelete) {
+      const target = deleteDirRef.current === 'forward' ? digitsBeforeCaret : digitsBeforeCaret - 1
+      if (target >= 0 && target < digits.length) {
+        digits = digits.slice(0, target) + digits.slice(target + 1)
+        digitsBeforeCaret = target
+      }
+    }
+    deleteDirRef.current = null
+
+    digits = digits.slice(0, 12).replace(/^0+(?=\d)/, '')
+    const next = digits ? Number(digits) : 0
+    const text = digits ? next.toLocaleString('ko-KR') : ''
+
+    setDraft(text)
+    caretRef.current = caretAfterDigits(text, digitsBeforeCaret)
+    onChange(next)
+  }
+
   return (
     <label className="flex items-center justify-between gap-3">
       <span className="text-sm font-bold">{label}</span>
       <span className="flex items-baseline gap-1">
         <span className="text-muted">{symbol}</span>
         <input
-          type="number"
+          ref={inputRef}
+          type="text"
           inputMode="numeric"
-          min={0}
-          step={10000}
-          value={value}
-          onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
+          autoComplete="off"
+          placeholder="0"
+          value={display}
+          onChange={handleChange}
+          onBlur={() => setDraft(null)}
           className="w-28 rounded-lg border border-line px-2 py-1 text-right text-[15px] font-extrabold"
         />
       </span>
     </label>
   )
+}
+
+const onlyDigits = (s: string) => s.replace(/\D/g, '')
+
+/** 포맷된 문자열에서 숫자 n 개 뒤의 위치. 콤마 삽입으로 밀린 캐럿을 되돌리는 데 쓴다. */
+function caretAfterDigits(text: string, n: number) {
+  if (n <= 0) return 0
+  let seen = 0
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] >= '0' && text[i] <= '9' && ++seen === n) return i + 1
+  }
+  return text.length
 }
 
 export function LanguagePair() {
