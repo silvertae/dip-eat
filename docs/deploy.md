@@ -241,6 +241,8 @@ gcloud iam service-accounts add-iam-policy-binding \
 2. Add New → Project → `silvertae/dip-eat` import
 3. ⚠️ **Root Directory 를 `web/` 로 지정.** Framework Preset 은 Vite 로 자동 감지된다
 4. Node.js Version 드롭다운을 **22.x** 로 ([5.7](#57-node-버전-고정))
+5. Settings → Environment Variables 에서 **Automatically expose System Environment Variables** 를 켠다.
+   PR Preview 빌드가 `VERCEL_GIT_PULL_REQUEST_ID` 로 같은 번호의 Cloud Run review tag를 찾는다.
 
 > ⚠️ **Vercel Hobby 는 Git *조직* 소유 리포에 연결할 수 없다.** `silvertae/dip-eat` 은 개인 리포라 통과한다.
 > 나중에 조직으로 옮기면 Pro($20/월)가 강제된다.
@@ -276,7 +278,7 @@ https://[태그---]SERVICE-PROJECT_NUMBER.REGION.run.app
 | 7 | Vercel import → Root Directory `web/` → 배포 ([2.7](#27-vercel)) | 4번이 이미 커밋돼 있으니 첫 배포부터 정상 동작 |
 | 8 | 운영 도메인에서 **실제 스캔 1회** | 동일 출처 리라이트 관통 확인 |
 | 9 | `DIPEAT_CORS_ORIGINS` 를 확정된 Vercel 도메인으로 갱신 → 재배포 | Vercel 도메인은 프로젝트를 만들기 전엔 모른다 |
-| 10 | 워크플로 5개 커밋 → `api/**` 를 건드려 파이프라인 첫 실전 ([7장](#7-cicd--워크플로-5개)) | 사람이 성공시킨 뒤에 자동화한다 |
+| 10 | 워크플로 6개 커밋 → `api/**` 를 건드려 파이프라인 첫 실전 ([7장](#7-cicd--워크플로-6개)) | 사람이 성공시킨 뒤에 자동화한다 |
 | 11 | 예산 알림 + `--min-instances=0` 확인 ([10장](#10-비용)) | |
 
 **남는 순환은 9번 하나뿐이고 무해하다** — 리라이트로 동일 출처가 되므로 `DIPEAT_CORS_ORIGINS` 가
@@ -319,8 +321,9 @@ https://[태그---]SERVICE-PROJECT_NUMBER.REGION.run.app
   단순 치환이 아니라 형태가 다르다.
 - ⚠️ **`/api/:path*` 가 `/(.*)` SPA 폴백보다 위**에 있어야 한다. 뒤집히면 catch-all 이 API 호출을 삼켜
   `index.html` 을 200으로 돌려주고, 프런트는 JSON 파싱 실패로 "연결에 실패했어요"만 띄운다. 조용히 깨진다.
-- ⚠️ **리라이트 목적지에는 환경변수를 못 쓴다.** 하드코딩이 유일한 길이고, 그래서 PR 프리뷰가
-  운영 백엔드를 공유한다([12장](#12-알면서-남겨둔-것)).
+- ⚠️ **리라이트 목적지에는 환경변수를 못 쓴다.** 그래서 운영과 PR 없는 branch preview는 이
+  하드코딩된 운영 URL을 쓴다. PR Preview는 Vite 빌드가 `VERCEL_GIT_PULL_REQUEST_ID`를 읽어
+  `https://pr-N---dipeat-api-....run.app` 절대 URL을 번들에 넣는다([7.10](#710-pr별-cloud-run-review-api)).
 - ⚠️ `sw.js` 를 길게 캐시하면 사용자가 **낡은 서비스워커에 갇힌다.** 위 헤더를 지우지 말 것.
 - ⚠️ `npm run gen:api` 는 `../api/openapi.json`(= `web/` 바깥)을 읽는다.
   Root Directory 가 `web/` 이면 그 경로가 빌드 샌드박스에 없다 → **빌드 파이프라인에 절대 넣지 마라.**
@@ -443,12 +446,14 @@ README 는 1Gi 다. Cloud Run 에서 vCPU 단가는 GiB 단가보다 **9.6배** 
 리라이트는 서버-대-서버라 `Origin` 헤더가 없다 → CORS 미들웨어를 그냥 통과한다.
 즉 `DIPEAT_CORS_ORIGINS` 가 비어 있어도 앱은 동작한다. 그래도 폴백으로 정확한 도메인 하나를 넣어둔다.
 
-- ⚠️ **`["*"]` 금지.** 인증 없는 공개 API 를 아무 사이트나 브라우저에서 부를 수 있게 된다.
+- ⚠️ 운영 revision에는 **`["*"]` 금지.** 인증 없는 공개 API 를 아무 사이트나 브라우저에서 부를 수 있게 된다.
+  단, PR review revision은 Vercel Preview가 Cloud Run tag URL을 직접 호출하므로 의도적으로 `["*"]`를 쓴다.
+  그 revision은 트래픽 0%·min 0·max 2이며 PR이 닫히면 tag를 제거한다([7.10](#710-pr별-cloud-run-review-api)).
 - ⚠️ **`https://*.vercel.app` 같은 글롭은 조용히 아무것도 안 한다.** Starlette `allow_origins` 는
   정확히 일치하는 문자열만 본다(글롭은 `allow_origin_regex` 인데 이 앱은 안 쓴다).
   게다가 통했다면 **아무나 자기 Vercel 프로젝트에서 우리 API 를 부를 수 있다.**
-- ⚠️ **프리뷰 URL 을 넣지 마라.** PR 프리뷰는 자기 배포본의 `vercel.json` 리라이트를 그대로 갖고 있어
-  **자기도 동일 출처**다. CORS 항목이 필요 없다.
+- ⚠️ 운영 `DIPEAT_CORS_ORIGINS`에 프리뷰 URL을 열거하지 마라. 커밋별 URL은 계속 바뀐다.
+  PR Preview의 cross-origin 허용은 review revision 설정만 책임진다.
 
 ### 5.7 Node 버전 고정
 
@@ -492,7 +497,7 @@ Vercel 의 120초 천장을 넘는다.
 
 ---
 
-## 7. CI/CD — 워크플로 5개
+## 7. CI/CD — 워크플로 6개
 
 > ⚠️ 아래 YAML 은 **설계 근거를 남기려고 붙여둔 사본이라 최신이 아니다.** PR #19 가 배포 잡을
 > 재구성(스모크 확장, `:latest` 부착을 트래픽 전환 뒤로 이동)한 내용이 반영돼 있지 않다.
@@ -506,6 +511,7 @@ GitHub Actions 는 **품질 게이트와 백엔드 배포만** 담당한다.
 |---|---|---|---|
 | `web-ci.yml` | `pull_request` | `web/**` | oxlint + **`npm run build`** |
 | `api-ci.yml` | `pull_request` | `api/**` | `pytest` (+ ruff, [7.2](#72-ruff-는-uv-run-이-아니라-uvx--그리고-지금-켜면-13건이-터진다)) |
+| `api-preview.yml` | 내부 `pull_request` | 없음 | PR head API → `pr-N` 무트래픽 revision → 일본어/CORS/스트림 스모크 → PR 종료 시 tag 제거 |
 | `api-deploy.yml` | `push: main` | `api/**` | 테스트 → amd64 빌드 → `--no-traffic` 배포 → **스모크** → 트래픽 전환 |
 | `contract-drift.yml` | `pull_request` | 스키마·라우트·산출물 | `openapi.json` + `api.gen.ts` 재생성 후 diff |
 | `probe-models.yml` | 매일 크론 + 수동 | — | 모델 생존 확인 |
@@ -864,6 +870,39 @@ GitHub 은 그것을 "성공"이 아니라 *"Expected — Waiting for status to 
 **협업자가 늘거나 main 직push 를 막아야 하면 3안으로 올린다** — 그때도 1·2안으로는 가지 말 것.
 경로 필터를 지우는 건 게이트를 느리게 만들고, required 를 그냥 켜는 건 위의 무한 대기를 부른다.
 
+### 7.10 PR별 Cloud Run review API
+
+Vercel Preview만 새 코드이고 API는 운영인 혼합 상태에서는 API 계약을 바꾼 PR을 검증할 수 없다.
+실제로 일본어 UI는 떴지만 운영 API가 `traveler_lang`을 몰라 메뉴 번역·설명을 전부 한국어로 만든 사례가 있었다.
+
+현재 흐름은 다음과 같다.
+
+```text
+내부 PR #30 push
+  ├─ Vercel: VITE_API_ORIGIN=https://pr-30---dipeat-api-....run.app
+  └─ api-preview.yml
+       ├─ PR head SHA 테스트·이미지 빌드
+       ├─ Cloud Run tag pr-30, traffic 0%, min 0
+       └─ CORS preflight + traveler_lang=ja 스캔 + NDJSON 스모크
+```
+
+- `web/build/api-origin.ts`가 Vercel의 `VERCEL_GIT_PULL_REQUEST_ID`를 숫자로 검증한 뒤 tag URL을 만든다.
+  운영은 빈 origin을 반환하므로 기존 동일 출처 `/api` rewrite가 그대로다.
+- `.github/workflows/api-preview.yml`은 **모든 내부 PR**에서 돈다. `paths: api/**`를 걸면 web-only PR도
+  `pr-N` URL을 보는데 backend tag는 없는 상태가 되므로 경로 필터를 넣지 않는다.
+- 포크 PR에는 GCP OIDC 권한을 주지 않는다. 프런트도 source repo owner가 다르면 review URL을 선택하지 않는다.
+- review와 운영 candidate는 같은 Cloud Run 서비스를 갱신한다. 두 deploy job의 `api-cloud-run` concurrency를
+  지우면 tag/traffic 설정이 겹칠 수 있다.
+- review revision은 운영 트래픽을 받지 않고 유휴 시 인스턴스가 0이라 실행 비용은 없다. 다만 이미지 빌드와
+  스모크의 실 Gemini 호출, 사람이 Preview에서 수행한 스캔은 과금된다.
+- PR이 닫히면 `pr-N` tag를 제거한다. 무트래픽 revision 자체는 수동 삭제하지 않아도 과금되지 않고,
+  Cloud Run이 서비스당 revision 1,000개 한도에서 오래된 것을 자동 정리한다.
+- Vercel의 **Automatically expose System Environment Variables**가 꺼져 있으면 PR 번호가 번들에 들어오지 않아
+  운영 API로 폴백한다. 새 Vercel 프로젝트를 연결할 때 [2.7](#27-vercel)의 설정을 반드시 켠다.
+
+Vercel과 Cloud Run 배포는 동시에 시작하므로 Preview가 먼저 READY가 될 수 있다. 그때 review API 호출은 잠시
+실패한다. GitHub의 `api-preview / deploy`가 초록이 된 뒤 새 스캔으로 확인한다. 기존 PWA 저장 스캔은 재번역되지 않는다.
+
 ---
 
 ## 8. 로컬에서 손으로 배포할 때
@@ -1063,9 +1102,8 @@ MVP 전체 Gemini 비용의 20배다. **캘린더에 알림을 걸어라.**
   아무도 요청하지 않은 공급망 표면이 사라진다. ⚠️ 단 `python-multipart` 는 현재 이 extra 로만 들어오므로
   **명시적으로 남겨야 한다** — 파일 업로드가 핵심 기능이다.
 - **`tenacity` 가 선언만 되고 import 되지 않는다**(재시도는 `gemini.py` 에 직접 구현돼 있다).
-- **PR 프리뷰가 운영 백엔드를 공유한다.** `vercel.json` 리라이트 목적지에 환경변수를 못 쓰기 때문이다.
-  → 프리뷰에서 실제 스캔을 하면 **운영 Gemini 비용이 나간다.**
-  분리하려면 프런트에 `VITE_API_BASE` 탈출구(절대 URL + CORS 경로)를 만들고 스테이징 Cloud Run 서비스를 띄워야 한다.
+- **PR review API도 운영과 같은 Gemini Secret을 사용한다.** 데이터 저장소는 없지만, 스모크와 수동 스캔 비용은
+  같은 GCP 프로젝트에 청구된다. `max-instances=2`가 폭주 상한일 뿐 인증·rate limit은 없다.
 - **테스트가 `GEMINI_API_KEY` 환경변수에 우발적으로 의존한다**([7.1](#71-57개-테스트에는-더미-키가-필요하다)).
   `Settings(gemini_api_key=...)` 가 alias 때문에 안 먹는 것을 고치면 더미 키도 필요 없어진다.
 

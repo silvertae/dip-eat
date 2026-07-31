@@ -1,0 +1,166 @@
+name: api-preview
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+# 같은 PR의 오래된 revision도 순서대로 끝낸 뒤 최신 tag가 마지막에 남게 한다.
+# 실행 중 gcloud deploy를 강제 취소하면 서비스 operation만 백그라운드에서 남을 수 있다.
+concurrency:
+  group: api-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_ID: dip-eat
+  PROJECT_NUMBER: '178327258666'
+  REGION: asia-northeast3
+  SERVICE: dipeat-api
+  AR_REPO: dipeat
+  HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+  PR_NUMBER: ${{ github.event.pull_request.number }}
+
+jobs:
+  test:
+    if: >-
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: api } }
+    env:
+      GEMINI_API_KEY: ci-dummy-not-a-real-key
+    steps:
+      # pull_request의 가상 merge SHA가 아니라 Vercel이 빌드하는 실제 head와 맞춘다.
+      - uses: actions/checkout@v7
+        with: { ref: '${{ env.HEAD_SHA }}' }
+      - uses: astral-sh/setup-uv@v9.0.0
+        with: { enable-cache: true, cache-dependency-glob: api/uv.lock }
+      - run: uv sync --locked
+      - run: uv run pytest -q
+
+  deploy:
+    needs: test
+    if: >-
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    # 운영 candidate 배포와 PR tag 배포가 같은 서비스 설정을 동시에 쓰지 못하게 한다.
+    concurrency:
+      group: api-cloud-run
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with: { ref: '${{ env.HEAD_SHA }}' }
+
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/dip-eat
+          service_account: gh-deployer@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v3
+      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: PR head 이미지 빌드 & 푸시
+        env:
+          IMG: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.SERVICE }}
+        run: |
+          docker buildx create --use --driver docker-container --name dipeat || true
+          docker buildx build \
+            --platform linux/amd64 \
+            --file api/Dockerfile \
+            --tag "$IMG:pr-${PR_NUMBER}-${HEAD_SHA}" \
+            --cache-from type=registry,ref=$IMG:buildcache \
+            --cache-to   type=registry,ref=$IMG:buildcache,mode=max \
+            --push api
+
+      - name: 운영 트래픽 없이 PR tag revision 배포
+        env:
+          IMG: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.SERVICE }}
+        run: |
+          TAG="pr-${PR_NUMBER}"
+          gcloud run deploy "$SERVICE" \
+            --image "$IMG:pr-${PR_NUMBER}-${HEAD_SHA}" \
+            --region "$REGION" \
+            --no-traffic --tag "$TAG" \
+            --allow-unauthenticated \
+            --service-account "dipeat-api-run@${PROJECT_ID}.iam.gserviceaccount.com" \
+            --cpu 1 --memory 2Gi --cpu-boost \
+            --concurrency 8 --max-instances 2 --min-instances 0 \
+            --timeout 105 \
+            --startup-probe httpGet.path=/api/v1/health,httpGet.port=8080,initialDelaySeconds=0,timeoutSeconds=3,periodSeconds=3,failureThreshold=10 \
+            --set-secrets GEMINI_API_KEY=gemini-key:latest \
+            --set-env-vars '^@^DIPEAT_GEMINI_MAX_ATTEMPTS=1@DIPEAT_MAX_UPLOAD_BYTES=2097152@DIPEAT_LOG_LEVEL=INFO@DIPEAT_CORS_ORIGINS=["*"]'
+
+      - name: Review API 스모크 — CORS·일본어 스캔·스트리밍 계약
+        run: |
+          set -o pipefail
+          TAG_URL="https://pr-${PR_NUMBER}---${SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app"
+          PREVIEW_ORIGIN="https://dip-eat-git-pr-${PR_NUMBER}-silvertaes-projects.vercel.app"
+
+          curl -fsS --max-time 30 "$TAG_URL/api/v1/health" \
+            | tee /dev/stderr | jq -e '.has_api_key == true'
+
+          curl -fsS --max-time 30 -X OPTIONS "$TAG_URL/api/v1/chat" \
+            -H "Origin: $PREVIEW_ORIGIN" \
+            -H 'Access-Control-Request-Method: POST' \
+            -H 'Access-Control-Request-Headers: content-type' \
+            -D cors.headers -o /dev/null
+          grep -qi '^access-control-allow-origin: \*' cors.headers
+
+          curl -fsS --max-time 90 -X POST "$TAG_URL/api/v1/menu/scan/stream" \
+            -H "Origin: $PREVIEW_ORIGIN" \
+            -F 'image=@api/tests/fixtures/smoke_menu.jpg;type=image/jpeg' \
+            -F 'mode=poster' \
+            -F 'traveler_lang=ja' \
+            -D scan.headers -o scan.ndjson
+          grep -qi '^access-control-allow-origin: \*' scan.headers
+
+          jq -se '
+            (.[0].type == "meta")
+            and (.[0].traveler_lang == "ja")
+            and (any(.[]; .type == "error") | not)
+            and (any(.[];
+              .type == "item"
+              and ((.item.name_translated // "") | test("[ぁ-んァ-ヶ一-龠]"))))
+            and (.[-1].type == "done")
+          ' scan.ndjson > /dev/null
+
+          {
+            echo "## Cloud Run review backend"
+            echo
+            echo "- URL: $TAG_URL"
+            echo "- PR head: $HEAD_SHA"
+            echo "- Traffic: 0% (tag URL only)"
+            echo "- Japanese scan smoke: passed"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  cleanup:
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    concurrency:
+      group: api-cloud-run
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          workload_identity_provider: projects/${{ env.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/dip-eat
+          service_account: gh-deployer@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: 닫힌 PR의 review tag 제거
+        run: >-
+          gcloud run services update-traffic "$SERVICE"
+          --region "$REGION"
+          --remove-tags "pr-${PR_NUMBER}"
+          --quiet

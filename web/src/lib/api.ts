@@ -10,6 +10,9 @@ import type {
 } from '../types/api'
 import type { TravelerLang } from '../types/locale'
 
+const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN ?? '').replace(/\/+$/, '')
+const apiUrl = (path: `/api/${string}`) => `${API_ORIGIN}${path}`
+
 /** '사진에서 확인' 이 보내는 대상 항목. index 는 1부터, 응답 박스와 1:1 로 맞춘다. */
 export interface LocateTarget {
   index: number
@@ -62,7 +65,7 @@ export async function scanMenu(
 
   let resp: Response
   try {
-    resp = await fetch('/api/v1/menu/scan', { method: 'POST', body: form, signal })
+    resp = await fetch(apiUrl('/api/v1/menu/scan'), { method: 'POST', body: form, signal })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') throw err
     throw new ApiError(0, GENERIC)
@@ -114,7 +117,7 @@ export async function scanMenuStream(
 
   let resp: Response
   try {
-    resp = await fetch('/api/v1/menu/scan/stream', { method: 'POST', body: form, signal })
+    resp = await fetch(apiUrl('/api/v1/menu/scan/stream'), { method: 'POST', body: form, signal })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') throw err
     throw new ApiError(0, GENERIC)
@@ -187,7 +190,7 @@ export async function explainItem(
 ): Promise<ExplainResponse> {
   let resp: Response
   try {
-    resp = await fetch('/api/v1/menu/item/explain', {
+    resp = await fetch(apiUrl('/api/v1/menu/item/explain'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -217,7 +220,7 @@ export async function locateItems(
 
   let resp: Response
   try {
-    resp = await fetch('/api/v1/menu/locate', { method: 'POST', body: form, signal })
+    resp = await fetch(apiUrl('/api/v1/menu/locate'), { method: 'POST', body: form, signal })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') throw err
     throw new ApiError(0, GENERIC)
@@ -239,7 +242,7 @@ export async function chatTranslate(
 ): Promise<{ translated: string; reading: string }> {
   let resp: Response
   try {
-    resp = await fetch('/api/v1/chat', {
+    resp = await fetch(apiUrl('/api/v1/chat'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -271,7 +274,7 @@ export async function chatVoice(
 
   let resp: Response
   try {
-    resp = await fetch('/api/v1/chat/voice', { method: 'POST', body: form, signal })
+    resp = await fetch(apiUrl('/api/v1/chat/voice'), { method: 'POST', body: form, signal })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') throw err
     throw new ApiError(0, GENERIC)
@@ -283,7 +286,7 @@ export async function chatVoice(
 /** 발표 직전 Cloud Run 인스턴스를 깨워두기 위한 호출. 실패해도 무시한다. */
 export async function warmUp(): Promise<void> {
   try {
-    await fetch('/api/v1/health', { cache: 'no-store' })
+    await fetch(apiUrl('/api/v1/health'), { cache: 'no-store' })
   } catch {
     /* 워밍업 실패는 사용자에게 알릴 일이 아니다 */
   }

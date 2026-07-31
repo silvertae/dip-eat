@@ -200,6 +200,14 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
   이 스텝은 트래픽 전환 **뒤**라 운영은 멀쩡했지만, `:latest` 가 멈추면 롤백이 옛 이미지를 올린다.
 - ⚠️ `api-deploy.yml` 에 `--min-instances 0` 이 박혀 있다 → **발표 당일 1 로 올려둔 상태에서 배포하면
   콜드스타트가 되돌아온다.** 그날은 배포하지 말 것.
+- **PR review API**: `api-preview.yml`이 내부 PR마다 `pr-<번호>` Cloud Run tag를 트래픽 0%·min 0으로 만든다.
+  Vercel 빌드는 `VERCEL_GIT_PULL_REQUEST_ID`로 그 URL을 선택하고, 운영은 기존 `/api` rewrite를 유지한다.
+  - ⚠️ 이 워크플로에 `paths:`를 넣지 말 것. web-only PR도 프런트가 `pr-N` API를 보므로 tag가 반드시 필요하다.
+  - ⚠️ `api-deploy`와 `api-preview` deploy job의 `api-cloud-run` concurrency를 지우지 말 것. 같은 서비스의
+    tag/traffic mutation이 겹치면 review revision이 운영 후보의 `latest`를 덮을 수 있다.
+  - review revision의 `DIPEAT_CORS_ORIGINS=["*"]`는 직접 호출용이며 운영 설정으로 복사하면 안 된다.
+    PR 종료 시 tag를 제거하고, 포크 PR은 GCP OIDC 배포를 건너뛴다.
+  - Vercel 프로젝트에서 **Automatically expose System Environment Variables**가 켜져 있어야 한다.
 - 액션 버전: `astral-sh/setup-uv` 는 이동 태그가 `v7` 에서 멈춰 있어 **전체 버전(`@v9.0.0`) 고정**이 필요하다.
   `openapi-typescript` 도 정확히 핀한다(떠다니면 코드를 안 고쳐도 어느 날 무관한 PR 이 막힌다).
 - ruff 는 `uv.lock` 에 없다 → `uv run` 이 아니라 `uvx`. 현재 18건이 남아 **비차단**(`continue-on-error`)이다.
@@ -229,7 +237,7 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 
 - **결제 화면은 범위 제외.** 현재 구현 화면은 온보딩·홈·촬영·결과·주문서·대화·설정·완료다. 목업 정본: `찍먹 목업.dc.html`(Claude Design).
 - **Phase 5(설치형 PWA·오프라인 앱 셸·세션 복원·최근 식당)까지 구현됐다.** 디자인 토큰은 `web/src/styles/theme.css`(목업 CSS 변수 그대로).
-- **그 뒤로 스캔 스트리밍(위 절)과 배포·CI/CD 가 들어갔다.** 운영 배포 완료, GitHub Actions 워크플로 5개 동작 중.
+- **그 뒤로 스캔 스트리밍(위 절)과 배포·CI/CD 가 들어갔다.** 운영 배포 완료, GitHub Actions 워크플로 6개 동작 중.
 - **미결:**
   - 완료 화면(`/done`)은 라우트·코드만 있고 어느 흐름에서도 진입하지 않는다(디자인 재구성 때 주문 CTA 가 `/chat` 으로 바뀌며 빠짐). 어디에 다시 붙일지는 결정 안 됨.
   - **실기기(iOS Safari) 검증이 남아 있다** — PWA 설치·마이크 권한·폰 촬영본(3024×4032) 스캔. 헤드리스로는 불가.
