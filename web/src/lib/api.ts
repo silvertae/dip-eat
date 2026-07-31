@@ -8,6 +8,7 @@ import type {
   MenuScanResponse,
   Restaurant,
 } from '../types/api'
+import type { TravelerLang } from '../types/locale'
 
 /** '사진에서 확인' 이 보내는 대상 항목. index 는 1부터, 응답 박스와 1:1 로 맞춘다. */
 export interface LocateTarget {
@@ -48,11 +49,16 @@ async function toApiError(resp: Response): Promise<ApiError> {
 
 export async function scanMenu(
   image: Blob,
-  { mode = 'poster', signal }: { mode?: CaptureMode; signal?: AbortSignal } = {},
+  {
+    mode = 'poster',
+    travelerLang = 'ko',
+    signal,
+  }: { mode?: CaptureMode; travelerLang?: TravelerLang; signal?: AbortSignal } = {},
 ): Promise<MenuScanResponse> {
   const form = new FormData()
   form.append('image', image, 'menu.jpg')
   form.append('mode', mode)
+  form.append('traveler_lang', travelerLang)
 
   let resp: Response
   try {
@@ -71,6 +77,7 @@ export interface ScanStreamHandlers {
   /** 첫 항목보다 먼저 온다 — 가게 이름·통화를 바로 그릴 수 있다. */
   onMeta: (meta: {
     scan_id: string
+    traveler_lang?: TravelerLang
     source_lang: string
     currency: string
     restaurant: Restaurant
@@ -94,14 +101,16 @@ export async function scanMenuStream(
   image: Blob,
   {
     mode = 'poster',
+    travelerLang = 'ko',
     signal,
     onMeta,
     onItem,
-  }: { mode?: CaptureMode; signal?: AbortSignal } & ScanStreamHandlers,
+  }: { mode?: CaptureMode; travelerLang?: TravelerLang; signal?: AbortSignal } & ScanStreamHandlers,
 ): Promise<{ warnings: string[]; meta: MenuScanResponse['meta'] }> {
   const form = new FormData()
   form.append('image', image, 'menu.jpg')
   form.append('mode', mode)
+  form.append('traveler_lang', travelerLang)
 
   let resp: Response
   try {
@@ -220,7 +229,12 @@ export async function locateItems(
 
 /** 점원 대화 — 자유 발화 번역. 주문 카드는 이걸 부르지 않는다(오프라인 조립). */
 export async function chatTranslate(
-  body: { text: string; source_lang: string; direction: 'ko2local' | 'local2ko' },
+  body: {
+    text: string
+    source_lang: string
+    traveler_lang: TravelerLang
+    direction: 'traveler2local' | 'local2traveler'
+  },
   { signal }: { signal?: AbortSignal } = {},
 ): Promise<{ translated: string; reading: string }> {
   let resp: Response
@@ -242,13 +256,18 @@ export async function chatTranslate(
 /** 점원 대화 — 음성 받아쓰기 + 번역(홀드-투-토크). */
 export async function chatVoice(
   audio: Blob,
-  body: { source_lang: string; direction: 'ko2local' | 'local2ko' },
+  body: {
+    source_lang: string
+    traveler_lang: TravelerLang
+    direction: 'traveler2local' | 'local2traveler'
+  },
   { signal }: { signal?: AbortSignal } = {},
 ): Promise<{ source_text: string; translated: string; reading: string }> {
   const form = new FormData()
   form.append('audio', audio, 'clip.webm')
   form.append('direction', body.direction)
   form.append('source_lang', body.source_lang)
+  form.append('traveler_lang', body.traveler_lang)
 
   let resp: Response
   try {

@@ -3,11 +3,13 @@ import { BackIcon, CameraIcon, ImageIcon } from '../components/icons'
 import { CaptureButton } from '../features/capture/CaptureButton'
 import { useApp } from '../store/app'
 import type { CaptureMode } from '../types/api'
+import { tr, type LocalizedText } from '../lib/i18n'
+import { useProfile } from '../store/profile'
 
-const MODES: { key: CaptureMode; label: string }[] = [
-  { key: 'poster', label: '벽보' },
-  { key: 'booklet', label: '책자' },
-  { key: 'kiosk', label: '키오스크' },
+const MODES: { key: CaptureMode; label: LocalizedText }[] = [
+  { key: 'poster', label: { ko: '벽보', ja: 'ポスター' } },
+  { key: 'booklet', label: { ko: '책자', ja: '冊子' } },
+  { key: 'kiosk', label: { ko: '키오스크', ja: 'キオスク' } },
 ]
 
 /** 목업의 카메라 화면을 '촬영 안내'로 재해석했다.
@@ -16,6 +18,7 @@ const MODES: { key: CaptureMode; label: string }[] = [
 export function CameraScreen() {
   const navigate = useNavigate()
   const { captureMode, setCaptureMode, startScan } = useApp()
+  const travelerLang = useProfile((s) => s.travelerLang)
 
   function handlePick(file: File) {
     void startScan(file)
@@ -27,7 +30,7 @@ export function CameraScreen() {
       <button
         type="button"
         onClick={() => navigate('/')}
-        aria-label="뒤로"
+        aria-label={tr(travelerLang, { ko: '뒤로', ja: '戻る' })}
         className="absolute left-4 top-4 z-10 grid size-9 place-items-center rounded-xl bg-black/35 backdrop-blur-sm"
       >
         <BackIcon />
@@ -43,7 +46,7 @@ export function CameraScreen() {
               captureMode === key ? 'bg-brand text-white' : 'bg-white/20 text-white backdrop-blur-sm'
             }`}
           >
-            {label}
+            {tr(travelerLang, label)}
           </button>
         ))}
       </div>
@@ -56,9 +59,11 @@ export function CameraScreen() {
         <span className="absolute bottom-0 right-0 size-[34px] rounded-br-md border-b-[5px] border-r-[5px] border-brand-2" />
 
         <div className="flex flex-col gap-2 px-6 text-center">
-          <p className="text-[15px] font-bold">메뉴판 전체가 프레임 안에 들어오게</p>
+          <p className="text-[15px] font-bold">
+            {tr(travelerLang, { ko: '메뉴판 전체가 프레임 안에 들어오게', ja: 'メニュー全体が枠に入るように' })}
+          </p>
           <p className="text-[13px] text-white/70">
-            글자가 작으면 반씩 나눠 찍는 편이 더 정확해요
+            {tr(travelerLang, { ko: '글자가 작으면 반씩 나눠 찍는 편이 더 정확해요', ja: '文字が小さい場合は分けて撮ると正確です' })}
           </p>
         </div>
       </div>
@@ -69,7 +74,7 @@ export function CameraScreen() {
           className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-white p-4 text-[15px] font-extrabold text-ink"
         >
           <CameraIcon size={20} />
-          카메라
+          {tr(travelerLang, { ko: '카메라', ja: 'カメラ' })}
         </CaptureButton>
         <CaptureButton
           onPick={handlePick}
@@ -77,7 +82,7 @@ export function CameraScreen() {
           className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-white/20 p-4 text-[15px] font-extrabold text-white backdrop-blur-sm"
         >
           <ImageIcon size={20} />
-          앨범
+          {tr(travelerLang, { ko: '앨범', ja: '写真' })}
         </CaptureButton>
       </div>
     </div>

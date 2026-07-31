@@ -34,6 +34,22 @@ async def test_local_to_ko_has_no_reading(client_factory):
     assert fake.calls[0]["direction"] == "local2ko"
 
 
+async def test_japanese_traveler_direction_is_forwarded(client_factory):
+    fake = FakeGemini()
+    async with client_factory(fake) as client:
+        resp = await client.post(
+            "/api/v1/chat",
+            json={
+                "text": "お水をください",
+                "source_lang": "ko",
+                "traveler_lang": "ja",
+                "direction": "traveler2local",
+            },
+        )
+    assert resp.status_code == 200
+    assert fake.calls[0]["direction"] == "traveler2local"
+
+
 @pytest.mark.parametrize(
     "source_lang",
     [
@@ -123,6 +139,22 @@ async def test_voice_ko_to_local_has_reading(client_factory):
     body = resp.json()
     assert body["translated"] == "お水を一杯ください"
     assert body["reading"] == "오미즈오 잇빠이 쿠다사이"
+
+
+async def test_voice_accepts_japanese_traveler(client_factory):
+    fake = FakeGemini()
+    async with client_factory(fake) as client:
+        resp = await client.post(
+            "/api/v1/chat/voice",
+            files={"audio": ("clip.webm", b"fake-audio-bytes", "audio/webm")},
+            data={
+                "direction": "local2traveler",
+                "source_lang": "ko",
+                "traveler_lang": "ja",
+            },
+        )
+    assert resp.status_code == 200
+    assert fake.calls[0]["traveler_lang"] == "ja"
 
 
 async def test_voice_rejects_non_audio(client_factory):

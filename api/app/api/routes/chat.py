@@ -2,19 +2,19 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
 
 from app.core.config import get_settings
 from app.core.errors import AudioTooLarge, UnsupportedAudio
-from app.schemas.chat import ChatRequest, ChatResponse, VoiceResponse
+from app.schemas.chat import ChatRequest, ChatResponse, Direction, VoiceResponse
+from app.schemas.menu import TravelerLang
 from app.services.gemini import GeminiService
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["chat"])
 
-Direction = Literal["ko2local", "local2ko"]
 # 브라우저 MediaRecorder 가 내는 것들. content_type 이 위조 가능하지만 오디오는
 # 이미지처럼 디코드 검증이 어려워, 최소한 오디오류인지만 본다.
 _AUDIO_PREFIXES = ("audio/", "video/webm", "video/mp4")
@@ -43,6 +43,7 @@ async def chat_voice(
     audio: Annotated[UploadFile, File(description="짧은 발화 오디오 (webm/mp4/m4a 등)")],
     direction: Annotated[Direction, Form()],
     source_lang: Annotated[str, Form()] = "ja",
+    traveler_lang: Annotated[TravelerLang, Form()] = "ko",
 ) -> VoiceResponse:
     """홀드-투-토크 녹음을 받아 Gemini 오디오로 전사+번역한다."""
     raw = await audio.read()
@@ -57,7 +58,11 @@ async def chat_voice(
     started = time.perf_counter()
     gemini: GeminiService = request.app.state.gemini
     outcome = await gemini.transcribe_and_translate(
-        raw, mime, direction=direction, source_lang=source_lang
+        raw,
+        mime,
+        direction=direction,
+        source_lang=source_lang,
+        traveler_lang=traveler_lang,
     )
 
     latency_ms = int((time.perf_counter() - started) * 1000)

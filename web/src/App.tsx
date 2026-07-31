@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router'
+import { useEffect } from 'react'
 import { TabBar } from './components/TabBar'
 import { CameraScreen } from './screens/CameraScreen'
 import { ChatScreen } from './screens/ChatScreen'
@@ -30,6 +31,12 @@ function RequireOnboarding({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const travelerLang = useProfile((s) => s.travelerLang)
+  useEffect(() => {
+    document.documentElement.lang = travelerLang
+    document.body.dataset.travelerLang = travelerLang
+  }, [travelerLang])
+
   return (
     <BrowserRouter>
       {/* 뷰포트에 고정한다(min-h 아님) — 그래야 목록이 안에서 스크롤되고 탭바가 하단에 붙는다. */}

@@ -1,8 +1,9 @@
 import type { MenuItem, MenuTag } from '../types/api'
+import type { LocalizedText } from './i18n'
 
 /** 배지 스타일은 목업(찍먹 목업.dc.html)의 BADGE 맵을 그대로 옮겼다. */
 interface Badge {
-  label: string
+  label: LocalizedText
   className: string
   dot?: string
 }
@@ -10,25 +11,25 @@ interface Badge {
 const NEUTRAL = 'bg-[#F1E7D9] text-[#8A7266]'
 
 export const TAG_BADGE: Record<MenuTag, Badge> = {
-  signature: { label: '시그니처', className: 'bg-amber-100 text-amber-700', dot: 'bg-amber' },
-  local: { label: '향토', className: 'bg-sage-100 text-sage-700', dot: 'bg-sage' },
-  caution: { label: '주의', className: 'bg-[#FBEBD0] text-[#9A6B18]', dot: 'bg-amber' },
-  spicy: { label: '매움', className: 'bg-brand-100 text-brand-700' },
-  raw: { label: '생식', className: 'bg-[#FBEBD0] text-[#9A6B18]', dot: 'bg-amber' },
-  vegetarian: { label: '채식', className: 'bg-sage-100 text-sage-700' },
-  vegan: { label: '비건', className: 'bg-sage-100 text-sage-700' },
-  alcohol: { label: '주류', className: 'bg-[#EFE0D3] text-[#96613A]' },
-  share: { label: '나눠먹기', className: NEUTRAL },
-  single_portion: { label: '1인분', className: NEUTRAL },
-  pork: { label: '돼지', className: NEUTRAL },
-  beef: { label: '소고기', className: NEUTRAL },
-  chicken: { label: '닭', className: NEUTRAL },
-  seafood: { label: '해산물', className: NEUTRAL },
-  noodle: { label: '면', className: NEUTRAL },
-  rice: { label: '밥', className: NEUTRAL },
-  soup: { label: '국물', className: NEUTRAL },
-  fried: { label: '튀김', className: NEUTRAL },
-  dessert: { label: '디저트', className: NEUTRAL },
+  signature: { label: { ko: '시그니처', ja: '看板料理' }, className: 'bg-amber-100 text-amber-700', dot: 'bg-amber' },
+  local: { label: { ko: '향토', ja: '郷土料理' }, className: 'bg-sage-100 text-sage-700', dot: 'bg-sage' },
+  caution: { label: { ko: '주의', ja: '注意' }, className: 'bg-[#FBEBD0] text-[#9A6B18]', dot: 'bg-amber' },
+  spicy: { label: { ko: '매움', ja: '辛い' }, className: 'bg-brand-100 text-brand-700' },
+  raw: { label: { ko: '생식', ja: '生もの' }, className: 'bg-[#FBEBD0] text-[#9A6B18]', dot: 'bg-amber' },
+  vegetarian: { label: { ko: '채식', ja: 'ベジタリアン' }, className: 'bg-sage-100 text-sage-700' },
+  vegan: { label: { ko: '비건', ja: 'ヴィーガン' }, className: 'bg-sage-100 text-sage-700' },
+  alcohol: { label: { ko: '주류', ja: 'お酒' }, className: 'bg-[#EFE0D3] text-[#96613A]' },
+  share: { label: { ko: '나눠먹기', ja: 'シェア向き' }, className: NEUTRAL },
+  single_portion: { label: { ko: '1인분', ja: '1人前' }, className: NEUTRAL },
+  pork: { label: { ko: '돼지', ja: '豚肉' }, className: NEUTRAL },
+  beef: { label: { ko: '소고기', ja: '牛肉' }, className: NEUTRAL },
+  chicken: { label: { ko: '닭', ja: '鶏肉' }, className: NEUTRAL },
+  seafood: { label: { ko: '해산물', ja: '魚介' }, className: NEUTRAL },
+  noodle: { label: { ko: '면', ja: '麺' }, className: NEUTRAL },
+  rice: { label: { ko: '밥', ja: 'ご飯' }, className: NEUTRAL },
+  soup: { label: { ko: '국물', ja: 'スープ' }, className: NEUTRAL },
+  fried: { label: { ko: '튀김', ja: '揚げ物' }, className: NEUTRAL },
+  dessert: { label: { ko: '디저트', ja: 'デザート' }, className: NEUTRAL },
 }
 
 /** 배지를 다 붙이면 카드가 지저분해진다. 주문 판단에 실제로 쓰이는 것부터 보여주고 자른다. */

@@ -121,7 +121,7 @@ def sample_extraction() -> MenuExtraction:
 def sample_explanation() -> ItemExplanation:
     return ItemExplanation(
         romanization="Rafutē",
-        pronunciation_ko="라후테-",
+        pronunciation_guide="라후테-",
         description="아와모리·간장·흑설탕에 뭉근히 조린 오키나와식 삼겹살이에요. 달큰하고 부드러워요.",
         tip="밥과 함께 나눠 드시길 추천해요.",
         allergens=[
@@ -161,8 +161,11 @@ class FakeGemini:
         self.error = error
         self.calls: list[dict] = []
 
-    async def extract_menu(self, image, *, mode: str, models=None):
-        self.calls.append({"mode": mode, "bytes": len(image.data), "px": image.px})
+    async def extract_menu(self, image, *, mode: str, traveler_lang="ko", models=None):
+        self.calls.append({
+            "mode": mode, "traveler_lang": traveler_lang,
+            "bytes": len(image.data), "px": image.px,
+        })
         if self.error:
             raise self.error
         return ScanOutcome(
@@ -171,13 +174,16 @@ class FakeGemini:
             usage=Usage(input_tokens=1120, output_tokens=4200, thought_tokens=100),
         )
 
-    async def stream_menu(self, image, *, mode: str, models=None):
+    async def stream_menu(self, image, *, mode: str, traveler_lang="ko", models=None):
         """실물과 같은 순서로 낸다: 머리 1개 → 항목 N개 → 꼬리 1개.
 
         `error` 를 준 경우, `stream_error_after` 만큼 항목을 내보낸 **뒤에** 터뜨린다.
         0이면 첫 항목 전에 터진다(= 폴백이 가능한 지점).
         """
-        self.calls.append({"stream": mode, "bytes": len(image.data), "px": image.px})
+        self.calls.append({
+            "stream": mode, "traveler_lang": traveler_lang,
+            "bytes": len(image.data), "px": image.px,
+        })
         after = getattr(self, "stream_error_after", 0)
         if self.error and after == 0:
             raise self.error
@@ -202,7 +208,7 @@ class FakeGemini:
         )
 
     async def explain_item(self, req, *, models=None):
-        self.calls.append({"explain": req.name_local})
+        self.calls.append({"explain": req.name_local, "traveler_lang": req.traveler_lang})
         if self.error:
             raise self.error
         return ExplainOutcome(
@@ -225,7 +231,7 @@ class FakeGemini:
         self.calls.append({"translate": req.text, "direction": req.direction})
         if self.error:
             raise self.error
-        localized = req.direction == "ko2local"
+        localized = req.direction in {"ko2local", "traveler2local"}
         return TranslateOutcome(
             translation=Translation(
                 translated="パクチー抜きでお願いします" if localized else "고수 빼주세요",
@@ -236,12 +242,15 @@ class FakeGemini:
         )
 
     async def transcribe_and_translate(
-        self, audio, mime_type, *, direction, source_lang, models=None
+        self, audio, mime_type, *, direction, source_lang, traveler_lang="ko", models=None
     ):
-        self.calls.append({"voice_bytes": len(audio), "mime": mime_type, "direction": direction})
+        self.calls.append({
+            "voice_bytes": len(audio), "mime": mime_type,
+            "direction": direction, "traveler_lang": traveler_lang,
+        })
         if self.error:
             raise self.error
-        localized = direction == "ko2local"
+        localized = direction in {"ko2local", "traveler2local"}
         return VoiceOutcome(
             result=VoiceResult(
                 source_text="물 한 잔 주세요" if localized else "ご注文は以上でしょうか？",

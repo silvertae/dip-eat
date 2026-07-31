@@ -143,12 +143,18 @@ export interface components {
              * Direction
              * @enum {string}
              */
-            direction: "ko2local" | "local2ko";
+            direction: "traveler2local" | "local2traveler" | "ko2local" | "local2ko";
             /**
              * Source Lang
              * @default ja
              */
             source_lang: string;
+            /**
+             * Traveler Lang
+             * @default ko
+             * @enum {string}
+             */
+            traveler_lang: "ko" | "ja";
         };
         /** Body_locate_items_api_v1_menu_locate_post */
         Body_locate_items_api_v1_menu_locate_post: {
@@ -179,6 +185,13 @@ export interface components {
              * @enum {string}
              */
             mode: "poster" | "booklet" | "kiosk";
+            /**
+             * Traveler Lang
+             * @description 여행자 UI 언어
+             * @default ko
+             * @enum {string}
+             */
+            traveler_lang: "ko" | "ja";
         };
         /** ChatRequest */
         ChatRequest: {
@@ -194,22 +207,29 @@ export interface components {
              */
             source_lang: string;
             /**
-             * Direction
-             * @description ko2local: 내 한국어→현지어 / local2ko: 점원 현지어→한국어
+             * Traveler Lang
+             * @description 여행자 UI 언어
+             * @default ko
              * @enum {string}
              */
-            direction: "ko2local" | "local2ko";
+            traveler_lang: "ko" | "ja";
+            /**
+             * Direction
+             * @description traveler2local: 여행자→현지어 / local2traveler: 현지어→여행자. 기존 ko2local/local2ko 도 호환 입력으로 허용.
+             * @enum {string}
+             */
+            direction: "traveler2local" | "local2traveler" | "ko2local" | "local2ko";
         };
         /** ChatResponse */
         ChatResponse: {
             /**
              * Translated
-             * @description 번역문. 방향에 따라 현지어 또는 한국어.
+             * @description 번역문. 방향에 따라 현지어 또는 여행자 언어.
              */
             translated: string;
             /**
              * Reading
-             * @description ko2local 이면 번역한 현지어의 한국어 독음(소리내어 말할 때). 예: 'パクチー抜きで' → '파쿠치- 누키데'. local2ko 이면 빈 문자열.
+             * @description traveler2local 이면 번역한 현지어의 여행자 언어 발음 안내. local2traveler 이면 빈 문자열.
              */
             reading: string;
             /** Model */
@@ -236,6 +256,13 @@ export interface components {
              */
             source_lang: string;
             /**
+             * Traveler Lang
+             * @description 여행자 UI 언어
+             * @default ko
+             * @enum {string}
+             */
+            traveler_lang: "ko" | "ja";
+            /**
              * Cuisine Hint
              * @description 가게 성격. 있으면 설명이 정확해진다
              * @default
@@ -250,10 +277,10 @@ export interface components {
              */
             romanization: string;
             /**
-             * Pronunciation Ko
-             * @description 한국어 독음. 점원에게 소리내어 말할 때 쓴다. 예: '라후테-'
+             * Pronunciation Guide
+             * @description 여행자 언어 문자로 적은 현지어 발음 안내. 한국어면 한글, 일본어면 가나.
              */
-            pronunciation_ko: string;
+            pronunciation_guide: string;
             /**
              * Description
              * @description 어떤 음식인지 2~3문장. 맛·식감·조리법·먹는 방법 중심. 호불호가 갈릴 요소(쓴맛, 강한 향신료, 높은 도수, 생식)는 반드시 언급.
@@ -261,7 +288,7 @@ export interface components {
             description: string;
             /**
              * Tip
-             * @description 한국인 여행자에게 도움이 될 조언 한두 문장. 주문 요령, 양, 곁들임 등. 해당 사항이 없으면 빈 문자열.
+             * @description 여행자에게 도움이 될 조언 한두 문장. 주문 요령, 양, 곁들임 등. 해당 사항이 없으면 빈 문자열.
              */
             tip: string;
             /**
@@ -271,6 +298,12 @@ export interface components {
             allergens: components["schemas"]["LikelyAllergen"][];
             /** Name Local */
             name_local: string;
+            /**
+             * Pronunciation Ko
+             * @deprecated
+             * @description 구버전 클라이언트 호환 필드. pronunciation_guide 와 같은 값.
+             */
+            pronunciation_ko: string;
             /** Model */
             model: string;
             /** Latency Ms */
@@ -337,7 +370,7 @@ export interface components {
             code: "egg" | "milk" | "buckwheat" | "peanut" | "soy" | "wheat" | "gluten" | "mackerel" | "fish" | "crab" | "shrimp" | "crustacean" | "squid" | "shellfish" | "mollusk" | "pork" | "beef" | "chicken" | "peach" | "tomato" | "sulfite" | "walnut" | "pine_nut" | "tree_nut" | "sesame" | "celery" | "mustard" | "alcohol" | "other";
             /**
              * Label
-             * @description 한국어 표시명. 예: '새우'
+             * @description 여행자 언어 표시명
              */
             label: string;
             /**
@@ -347,7 +380,7 @@ export interface components {
             inferred: boolean;
             /**
              * Basis
-             * @description 그렇게 판단한 근거를 한국어 한 문장으로. 예: "메뉴명에 'エビ'(새우)가 있음"
+             * @description 그렇게 판단한 근거를 여행자 언어 한 문장으로.
              */
             basis: string;
             /**
@@ -378,7 +411,7 @@ export interface components {
             name_local: string;
             /**
              * Name Translated
-             * @description 한국어 번역명. 음차가 자연스러우면 음차.
+             * @description 요청에서 지정한 여행자 언어의 번역명. 음차가 자연스러우면 음차.
              */
             name_translated: string;
             /**
@@ -404,7 +437,7 @@ export interface components {
             category: "food" | "drink" | "dessert" | "set" | "unknown";
             /**
              * Section
-             * @description 이 항목이 메뉴판에서 어느 분류 아래 적혀 있는지, 그 분류 제목을 한국어로. 예: '튀김', '찬푸르', '국물', '130엔 접시'. **메뉴판에 실제로 적힌 분류만 쓸 것** — 분류 제목이 없는 메뉴판이면 빈 문자열. 직접 분류를 만들어내지 말 것.
+             * @description 이 항목이 메뉴판에서 어느 분류 아래 적혀 있는지, 그 분류 제목을 여행자 언어로. 예: '튀김', '찬푸르', '국물', '130엔 접시'. **메뉴판에 실제로 적힌 분류만 쓸 것** — 분류 제목이 없는 메뉴판이면 빈 문자열. 직접 분류를 만들어내지 말 것.
              */
             section: string;
             /**
@@ -443,7 +476,7 @@ export interface components {
             menu_found: boolean;
             /**
              * No Menu Reason
-             * @description menu_found 가 false 일 때만, 사진에 무엇이 보이는지 한국어 한 문장으로. 예: '아무것도 없는 흰 화면이에요', '너무 어두워 글자가 안 보여요'. menu_found 가 true 면 빈 문자열.
+             * @description menu_found 가 false 일 때만, 사진에 무엇이 보이는지 여행자 언어 한 문장으로. 예: '아무것도 없는 흰 화면이에요', '너무 어두워 글자가 안 보여요'. menu_found 가 true 면 빈 문자열.
              */
             no_menu_reason: string;
             /**
@@ -464,11 +497,17 @@ export interface components {
             items: components["schemas"]["MenuItemSummary"][];
             /**
              * Warnings
-             * @description 사용자에게 알려야 할 문제를 한국어로. 예: '메뉴판 오른쪽이 잘려 일부를 읽지 못했어요'. 문제가 없으면 빈 배열.
+             * @description 사용자에게 알려야 할 문제를 여행자 언어로. 문제가 없으면 빈 배열.
              */
             warnings: string[];
             /** Scan Id */
             scan_id: string;
+            /**
+             * Traveler Lang
+             * @default ko
+             * @enum {string}
+             */
+            traveler_lang: "ko" | "ja";
             meta: components["schemas"]["ScanMeta"];
         };
         /** Restaurant */
@@ -480,12 +519,12 @@ export interface components {
             name_local: string;
             /**
              * Name Translated
-             * @description 한국어 표기. 없으면 빈 문자열.
+             * @description 여행자 언어 표기. 없으면 빈 문자열.
              */
             name_translated: string;
             /**
              * Cuisine Hint
-             * @description 음식 종류 한 마디. 예: '오키나와 가정식'. 모르면 빈 문자열.
+             * @description 음식 종류를 여행자 언어로 한 마디. 모르면 빈 문자열.
              */
             cuisine_hint: string;
         };
@@ -516,12 +555,12 @@ export interface components {
             source_text: string;
             /**
              * Translated
-             * @description 번역문. 방향에 따라 현지어 또는 한국어.
+             * @description 번역문. 방향에 따라 현지어 또는 여행자 언어.
              */
             translated: string;
             /**
              * Reading
-             * @description ko2local 이면 번역한 현지어의 한국어 독음. local2ko 이면 빈 문자열.
+             * @description traveler2local 이면 현지어의 여행자 언어 발음 안내. 반대 방향이면 빈 문자열.
              */
             reading: string;
             /** Model */

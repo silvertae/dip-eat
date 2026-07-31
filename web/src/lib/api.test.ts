@@ -118,6 +118,13 @@ describe('scanMenuStream', () => {
     expect(tail.meta).toEqual(DONE.meta)
   })
 
+  it('sends the selected traveler language with the scan', async () => {
+    bodyOf(NDJSON)
+    await scanMenuStream(blob(), { ...collector().handlers, travelerLang: 'ja' })
+    const init = fetchMock.mock.calls[0][1] as RequestInit
+    expect((init.body as FormData).get('traveler_lang')).toBe('ja')
+  })
+
   // 마지막 줄에 개행이 없어도 버퍼에 남은 조각을 흘리면 안 된다(`handle(buffer)`).
   it('handles a final line that has no trailing newline', async () => {
     bodyOf(LINES.join('\n'), 9)

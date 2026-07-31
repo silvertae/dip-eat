@@ -36,6 +36,19 @@ async def test_scan_returns_full_contract(client_factory):
     assert "price_krw" not in item
 
 
+async def test_scan_echoes_japanese_traveler_language(client_factory):
+    fake = FakeGemini()
+    async with client_factory(fake) as client:
+        resp = await client.post(
+            "/api/v1/menu/scan",
+            files={"image": ("m.jpg", make_jpeg(), "image/jpeg")},
+            data={"traveler_lang": "ja"},
+        )
+    assert resp.status_code == 200
+    assert resp.json()["traveler_lang"] == "ja"
+    assert fake.calls[0]["traveler_lang"] == "ja"
+
+
 def test_price_amount_keeps_cents():
     """`price_amount` 가 int 였을 때 '$3.50' 이 3 으로 잘렸다(₩ 환산·예산 게이지가 14% 틀림).
 
