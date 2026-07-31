@@ -2,10 +2,18 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { resolveApiOrigin } from './build/api-origin.js'
+
+const apiOrigin = resolveApiOrigin(process.env)
 
 // 개발 서버의 /api 프록시는 프로덕션의 Vercel rewrites 와 같은 모양이다.
 // 덕분에 개발·프로덕션 모두 동일 출처가 되어 CORS 를 아예 만나지 않는다.
 export default defineConfig({
+  // Vercel PR Preview는 같은 번호의 Cloud Run tagged revision을 직접 호출한다.
+  // 운영은 빈 문자열이라 기존 `/api` rewrite를 그대로 탄다.
+  define: {
+    'import.meta.env.VITE_API_ORIGIN': JSON.stringify(apiOrigin),
+  },
   plugins: [
     react(),
     tailwindcss(),

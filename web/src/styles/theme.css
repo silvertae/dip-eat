@@ -49,6 +49,10 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+body[data-traveler-lang='ja'] {
+  font-family: var(--font-local);
+}
+
 /* 목업의 애니메이션 (찍먹 목업.dc.html). push-to-talk 소나/이퀄라이저·말풍선 등장. */
 @keyframes jm-bubble {
   from {

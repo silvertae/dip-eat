@@ -1,14 +1,17 @@
-import { formatKrw } from '../lib/fx'
+import { formatHome } from '../lib/fx'
+import type { HomeCurrency } from '../types/locale'
 
 /** 목업의 예산 게이지. 색은 목업 SPEC 그대로: <70% sage · <95% amber · ≥95% brand. */
 export function BudgetGauge({
   spentKrw,
   budgetKrw,
   label = '이번 식당 예산',
+  currency = 'KRW',
 }: {
   spentKrw: number
   budgetKrw: number
   label?: string
+  currency?: HomeCurrency
 }) {
   // 예산 0 은 '설정 안 함'이다 — 0으로 나누지 않고 아예 그리지 않는다.
   if (budgetKrw <= 0) return null
@@ -22,8 +25,8 @@ export function BudgetGauge({
       <div className="mb-2 flex items-baseline justify-between gap-2 text-[13px]">
         <span className="text-muted">{label}</span>
         <span>
-          <b>{formatKrw(spentKrw)}</b>
-          <span className="text-muted"> / {formatKrw(budgetKrw)}</span>
+          <b>{formatHome(spentKrw, currency)}</b>
+          <span className="text-muted"> / {formatHome(budgetKrw, currency)}</span>
         </span>
       </div>
       <div className="h-[9px] overflow-hidden rounded-md bg-[#EFE4DA]">

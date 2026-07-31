@@ -4,8 +4,10 @@ import { PushToTalkToggle } from '../components/PushToTalkToggle'
 import { OrderIcon } from '../components/icons'
 import { cartLines, cartTotals } from '../lib/cart'
 import { formatLocal } from '../lib/fx'
-import { QUICK_PHRASES } from '../lib/orderPhrases'
+import { quickPhrases } from '../lib/orderPhrases'
+import { tr } from '../lib/i18n'
 import { useApp } from '../store/app'
+import { useProfile } from '../store/profile'
 import type { MenuScanResponse } from '../types/api'
 
 export function ChatScreen() {
@@ -17,19 +19,24 @@ function Chat({ scan }: { scan: MenuScanResponse }) {
   const cart = useApp((s) => s.cart)
   const convo = useApp((s) => s.convo)
   const pushBubble = useApp((s) => s.pushBubble)
+  const travelerLang = useProfile((s) => s.travelerLang)
 
   const { count, localTotal } = useMemo(
     () => cartTotals(cartLines(scan.items, cart)),
     [scan.items, cart],
   )
-  const quick = QUICK_PHRASES.filter((q) => q.byLang[scan.source_lang])
+  const quick = quickPhrases(travelerLang, scan.source_lang)
 
   return (
     <div className="flex min-h-full flex-col">
       <div className="flex-1 p-4">
         <header className="mb-3">
-          <h1 className="text-[20px] font-extrabold -tracking-[0.3px]">점원과 대화</h1>
-          <p className="mt-[3px] text-xs text-muted">메뉴·장바구니를 아는 실시간 통역</p>
+          <h1 className="text-[20px] font-extrabold -tracking-[0.3px]">
+            {tr(travelerLang, { ko: '점원과 대화', ja: '店員と会話' })}
+          </h1>
+          <p className="mt-[3px] text-xs text-muted">
+            {tr(travelerLang, { ko: '메뉴·장바구니를 아는 실시간 통역', ja: 'メニューと注文内容を踏まえた通訳' })}
+          </p>
         </header>
 
         {/* 주문서 요약 → /order */}
@@ -41,9 +48,12 @@ function Chat({ scan }: { scan: MenuScanResponse }) {
             <OrderIcon size={18} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-extrabold">주문서 보기</span>
+            <span className="block text-[13px] font-extrabold">
+              {tr(travelerLang, { ko: '주문서 보기', ja: '注文カードを見る' })}
+            </span>
             <span className="block text-[11.5px] text-muted">
-              {count}개 · {formatLocal(localTotal, scan.currency)}
+              {tr(travelerLang, { ko: `${count}개`, ja: `${count}点` })} ·{' '}
+              {formatLocal(localTotal, scan.currency)}
             </span>
           </span>
           <span className="text-lg text-muted">›</span>
@@ -80,7 +90,7 @@ function Chat({ scan }: { scan: MenuScanResponse }) {
               <button
                 key={q.ko}
                 type="button"
-                onClick={() => pushBubble({ from: 'me', ko: q.ko, ...q.byLang[scan.source_lang] })}
+                onClick={() => pushBubble({ from: 'me', ko: q.ko, local: q.local, reading: q.reading })}
                 className="rounded-full border border-line bg-white px-[13px] py-2 text-[12.5px] font-bold text-[#6a564a]"
               >
                 {q.ko}

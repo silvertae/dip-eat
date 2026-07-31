@@ -44,6 +44,7 @@ interface FakeScan {
   handlers: ScanStreamHandlers
   signal: AbortSignal | undefined
   mode: string | undefined
+  travelerLang: string | undefined
   d: Deferred<Tail>
 }
 
@@ -104,7 +105,13 @@ beforeEach(async () => {
   const api = await import('../lib/api')
   vi.mocked(api.scanMenuStream).mockImplementation((_blob, opts) => {
     const d = deferred<Tail>()
-    calls.push({ handlers: opts, signal: opts.signal, mode: opts.mode, d })
+    calls.push({
+      handlers: opts,
+      signal: opts.signal,
+      mode: opts.mode,
+      travelerLang: opts.travelerLang,
+      d,
+    })
     return d.promise
   })
 
@@ -142,6 +149,14 @@ const session = () =>
   >
 
 describe('startScan', () => {
+  it('uses the selected traveler language for a new scan', async () => {
+    const { useProfile } = await import('./profile')
+    useProfile.getState().setTravelerLang('ja')
+    void startScan('ko-menu.jpg')
+    await awaitCall(1)
+    expect(calls[0].travelerLang).toBe('ja')
+  })
+
   // 스트리밍의 존재 이유 — 첫 항목이 오는 즉시 결과 화면으로 넘어간다.
   it('emits items into the store as they stream in', async () => {
     void startScan('a.jpg')

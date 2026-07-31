@@ -2,8 +2,11 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { resizeForUpload } from '../features/capture/resizeImage'
 import { ApiError, chatTranslate, chatVoice, scanMenuStream } from '../lib/api'
+import { apiErrorText, tr } from '../lib/i18n'
 import { getRecent, putRecent } from '../lib/db'
+import { useProfile } from './profile'
 import type { CaptureMode, MenuItem, MenuScanResponse } from '../types/api'
+import type { TravelerLang } from '../types/locale'
 
 /** 'scanning' = 첫 항목을 기다리는 중(화면은 로딩), 'streaming' = 항목이 들어오는 중(화면은 결과).
  *  둘을 나눠야 로딩 화면이 언제 결과 화면으로 넘어갈지 알 수 있다. */
@@ -63,12 +66,18 @@ interface AppState {
   /** 미리 번역된 말풍선을 그대로 넣는다(빠른 응답 칩 — 오프라인 가능). */
   pushBubble: (bubble: ChatBubble) => void
   /** 자유 발화를 /chat 으로 번역해 넣는다. 실패하면 에러 메시지를 던진다. */
-  sendChat: (text: string, direction: 'ko2local' | 'local2ko', sourceLang: string) => Promise<void>
+  sendChat: (
+    text: string,
+    direction: 'traveler2local' | 'local2traveler',
+    sourceLang: string,
+    travelerLang: TravelerLang,
+  ) => Promise<void>
   /** 녹음 blob 을 /chat/voice 로 전사+번역해 넣는다. push-to-talk 가 부른다. */
   sendVoice: (
     audio: Blob,
-    direction: 'ko2local' | 'local2ko',
+    direction: 'traveler2local' | 'local2traveler',
     sourceLang: string,
+    travelerLang: TravelerLang,
   ) => Promise<void>
 
   /** 촬영 → 축소 → 스캔. 화면 이동은 호출부(로딩 화면)가 phase 를 보고 한다. */
@@ -111,27 +120,29 @@ export const useApp = create<AppState>()(
 
   convo: [],
   pushBubble: (bubble) => set((s) => ({ convo: [...s.convo, bubble] })),
-  async sendChat(text, direction, sourceLang) {
+  async sendChat(text, direction, sourceLang, travelerLang) {
     const { translated, reading } = await chatTranslate({
       text,
       source_lang: sourceLang,
+      traveler_lang: travelerLang,
       direction,
     })
-    // ko2local: 내가 한 말(한국어=text, 현지어=번역). local2ko: 점원 말(현지어=text, 한국어=번역).
+    // traveler2local: 내 말→현지어. local2traveler: 점원 말→내 언어.
     const bubble: ChatBubble =
-      direction === 'ko2local'
+      direction === 'traveler2local'
         ? { from: 'me', ko: text, local: translated, reading }
         : { from: 'them', local: text, ko: translated }
     set((s) => ({ convo: [...s.convo, bubble] }))
   },
-  async sendVoice(audio, direction, sourceLang) {
+  async sendVoice(audio, direction, sourceLang, travelerLang) {
     const { source_text, translated, reading } = await chatVoice(audio, {
       source_lang: sourceLang,
+      traveler_lang: travelerLang,
       direction,
     })
-    // ko2local: 내 발화(한국어=source_text, 현지어=번역). local2ko: 점원 발화(현지어=source_text).
+    // traveler2local: 내 발화가 source_text. local2traveler: 점원 발화가 source_text.
     const bubble: ChatBubble =
-      direction === 'ko2local'
+      direction === 'traveler2local'
         ? { from: 'me', ko: source_text, local: translated, reading }
         : { from: 'them', local: source_text, ko: translated }
     set((s) => ({ convo: [...s.convo, bubble] }))
@@ -166,7 +177,12 @@ export const useApp = create<AppState>()(
       } catch {
         // 브라우저가 못 디코드하는 형식(HEIC 변환 실패 등). 원문 영문 메시지를
         // 그대로 보여주면 안 된다 — 서버 에러와 같은 기준으로 한국어로 매핑한다.
-        throw new Error('이 사진은 열 수 없는 형식이에요. 다른 사진으로 시도해주세요.')
+        throw new Error(
+          tr(useProfile.getState().travelerLang, {
+            ko: '이 사진은 열 수 없는 형식이에요. 다른 사진으로 시도해주세요.',
+            ja: 'この写真は開けない形式です。別の写真をお試しください。',
+          }),
+        )
       }
 
       if (isStale()) return
@@ -176,6 +192,7 @@ export const useApp = create<AppState>()(
       // meta 가 항상 먼저 오기 때문에 onItem 시점에 scan 은 반드시 존재한다.
       const tail = await scanMenuStream(resized.blob, {
         mode: get().captureMode,
+        travelerLang: useProfile.getState().travelerLang,
         signal: controller.signal,
         onMeta: (meta) => {
           if (isStale()) return
@@ -183,6 +200,7 @@ export const useApp = create<AppState>()(
             phase: 'streaming',
             scan: {
               ...meta,
+              traveler_lang: meta.traveler_lang ?? useProfile.getState().travelerLang,
               items: [],
               warnings: [],
               // meta 줄이 왔다는 건 서버의 '메뉴판 없음' 가드를 이미 통과했다는 뜻이다.
@@ -219,10 +237,16 @@ export const useApp = create<AppState>()(
       controller.abort()
       scanAbort = null
 
+      const travelerLang = useProfile.getState().travelerLang
       const message =
-        err instanceof ApiError || err instanceof Error
-          ? err.message
-          : '알 수 없는 오류가 발생했어요.'
+        err instanceof ApiError
+          ? apiErrorText(travelerLang, err.code, err.message)
+          : err instanceof Error
+            ? err.message
+            : tr(travelerLang, {
+                ko: '알 수 없는 오류가 발생했어요.',
+                ja: '不明なエラーが発生しました。',
+              })
 
       // 중간에 끊겼어도 이미 받은 항목은 유효하다(서버가 partial 로 알려준다).
       // 30개를 받아놓고 전부 버리는 건 사용자에게 최악이다 — 경고를 달고 살린다.
@@ -230,7 +254,13 @@ export const useApp = create<AppState>()(
       if (partial && partial.items.length > 0) {
         set({
           phase: 'done',
-          scan: { ...partial, warnings: [...partial.warnings, `${message} 일부만 표시해요.`] },
+          scan: {
+            ...partial,
+            warnings: [
+              ...partial.warnings,
+              `${message} ${tr(travelerLang, { ko: '일부만 표시해요.', ja: '一部のみ表示します。' })}`,
+            ],
+          },
         })
         return
       }

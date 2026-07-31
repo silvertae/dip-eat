@@ -30,9 +30,13 @@ interface Cached {
   at: number
 }
 
-function read(currency: string): Cached | null {
+function cacheKey(source: string, target: string) {
+  return `${CACHE_PREFIX}${source}:${target}`
+}
+
+function read(source: string, target: string): Cached | null {
   try {
-    const raw = localStorage.getItem(CACHE_PREFIX + currency)
+    const raw = localStorage.getItem(cacheKey(source, target))
     if (!raw) return null
     const parsed = JSON.parse(raw) as Cached
     return typeof parsed.rate === 'number' ? parsed : null
@@ -41,9 +45,9 @@ function read(currency: string): Cached | null {
   }
 }
 
-function write(currency: string, rate: number) {
+function write(source: string, target: string, rate: number) {
   try {
-    localStorage.setItem(CACHE_PREFIX + currency, JSON.stringify({ rate, at: Date.now() }))
+    localStorage.setItem(cacheKey(source, target), JSON.stringify({ rate, at: Date.now() }))
   } catch {
     /* 저장 실패는 무시 — 다음에 다시 받아오면 된다 */
   }
@@ -51,12 +55,12 @@ function write(currency: string, rate: number) {
 
 const inflight = new Map<string, Promise<number | null>>()
 
-async function fetchRate(currency: string): Promise<number | null> {
+async function fetchRate(source: string, target: string): Promise<number | null> {
   try {
-    const resp = await fetch(`https://open.er-api.com/v6/latest/${currency}`)
+    const resp = await fetch(`https://open.er-api.com/v6/latest/${source}`)
     if (!resp.ok) return null
     const body = (await resp.json()) as { rates?: Record<string, number> }
-    const rate = body.rates?.KRW
+    const rate = body.rates?.[target]
     return typeof rate === 'number' && rate > 0 ? rate : null
   } catch {
     return null
@@ -64,30 +68,47 @@ async function fetchRate(currency: string): Promise<number | null> {
 }
 
 /** 즉시 쓸 수 있는 환율(캐시 또는 폴백). 모르는 통화면 null → UI 는 ₩ 를 숨긴다. */
-export function rateNow(currency: string): number | null {
-  if (!currency) return null
-  return read(currency)?.rate ?? FALLBACK[currency] ?? null
+function fallbackRate(source: string, target: string): number | null {
+  if (source === target) return 1
+  const sourceToKrw = source === 'KRW' ? 1 : FALLBACK[source]
+  const targetToKrw = target === 'KRW' ? 1 : FALLBACK[target]
+  return sourceToKrw && targetToKrw ? sourceToKrw / targetToKrw : null
+}
+
+export function rateNow(currency: string, target = 'KRW'): number | null {
+  if (!currency || !target) return null
+  return read(currency, target)?.rate ?? fallbackRate(currency, target)
 }
 
 /** 캐시가 없거나 하루가 지났으면 갱신한다. 실패해도 조용히 넘어간다. */
-export async function refreshRate(currency: string): Promise<number | null> {
-  if (!currency) return null
-  const cached = read(currency)
+export async function refreshRate(currency: string, target = 'KRW'): Promise<number | null> {
+  if (!currency || !target) return null
+  if (currency === target) return 1
+  const cached = read(currency, target)
   if (cached && Date.now() - cached.at < TTL_MS) return cached.rate
 
-  let pending = inflight.get(currency)
+  const key = `${currency}:${target}`
+  let pending = inflight.get(key)
   if (!pending) {
-    pending = fetchRate(currency).finally(() => inflight.delete(currency))
-    inflight.set(currency, pending)
+    pending = fetchRate(currency, target).finally(() => inflight.delete(key))
+    inflight.set(key, pending)
   }
 
   const rate = await pending
-  if (rate !== null) write(currency, rate)
-  return rate ?? rateNow(currency)
+  if (rate !== null) write(currency, target, rate)
+  return rate ?? rateNow(currency, target)
 }
 
 export function formatKrw(amount: number): string {
   return `₩${Math.round(amount).toLocaleString('ko-KR')}`
+}
+
+export function formatHome(amount: number, currency: 'KRW' | 'JPY'): string {
+  return new Intl.NumberFormat(currency === 'JPY' ? 'ja-JP' : 'ko-KR', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(Math.round(amount))
 }
 
 /** 개별 항목은 메뉴판에 적힌 문자열(`price_text`)을 그대로 쓴다. 이건 합계처럼
@@ -142,4 +163,13 @@ export function formatLocal(amount: number, currency: string): string {
 export function toKrw(amount: number | null | undefined, rate: number | null): string | null {
   if (amount == null || rate == null) return null
   return formatKrw(amount * rate)
+}
+
+export function toHome(
+  amount: number | null | undefined,
+  rate: number | null,
+  currency: 'KRW' | 'JPY',
+): string | null {
+  if (amount == null || rate == null) return null
+  return formatHome(amount * rate, currency)
 }

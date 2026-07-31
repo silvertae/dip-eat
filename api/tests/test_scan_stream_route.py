@@ -51,6 +51,18 @@ async def test_meta_carries_what_the_screen_needs_before_any_item(client_factory
     assert len(meta["scan_id"]) == 32  # uuid4().hex
 
 
+async def test_meta_echoes_japanese_traveler_language(client_factory):
+    fake = FakeGemini()
+    async with client_factory(fake) as client:
+        resp = await client.post(
+            "/api/v1/menu/scan/stream",
+            files={"image": ("m.jpg", make_jpeg(), "image/jpeg")},
+            data={"traveler_lang": "ja"},
+        )
+    assert events(resp.text)[0]["traveler_lang"] == "ja"
+    assert fake.calls[0]["traveler_lang"] == "ja"
+
+
 async def test_items_match_the_non_streaming_endpoint(client_factory):
     """두 엔드포인트가 같은 결과를 줘야 한다 — 스트리밍은 전달 방식만 다르다."""
     async with client_factory() as client:

@@ -5,6 +5,8 @@ import { getLocates, getRecent, mergeLocates } from '../lib/db'
 import { boxToRect, clampPct } from '../lib/photoOverlay'
 import { itemKey } from '../store/app'
 import { useApp } from '../store/app'
+import { useProfile } from '../store/profile'
+import { tr } from '../lib/i18n'
 import type { ItemBox, MenuItem, MenuScanResponse } from '../types/api'
 
 /** 사진 컨테이너의 종횡비(aspect-[3/4] = width/height). boxToRect 에 그대로 넘긴다. */
@@ -28,6 +30,7 @@ export function MenuPhotoHighlight({
   scan: MenuScanResponse
 }) {
   const storePreview = useApp((s) => s.preview)
+  const travelerLang = useProfile((s) => s.travelerLang)
   const [bgUrl, setBgUrl] = useState<string | null>(null)
   const [imageAspect, setImageAspect] = useState<number | null>(null)
   const [boxes, setBoxes] = useState<Record<string, ItemBox>>({})
@@ -123,7 +126,10 @@ export function MenuPhotoHighlight({
   if (lines.length === 0) {
     return (
       <p className="py-4 text-center text-[13px] text-muted">
-        담은 메뉴가 없어요. 결과 화면에서 담아보세요.
+        {tr(travelerLang, {
+          ko: '담은 메뉴가 없어요. 결과 화면에서 담아보세요.',
+          ja: '選んだ料理がありません。結果画面から追加してください。',
+        })}
       </p>
     )
   }
@@ -135,15 +141,17 @@ export function MenuPhotoHighlight({
   return (
     <div>
       <p className="mx-0.5 mb-[11px] text-[12.5px] leading-[1.55] text-muted">
-        촬영한 메뉴판에서 <b className="font-bold text-ink">주문한 메뉴</b>를 강조했어요. 화면을
-        보여주며 손가락으로 가리켜 보세요.
+        {tr(travelerLang, {
+          ko: '촬영한 메뉴판에서 주문한 메뉴를 강조했어요. 화면을 보여주며 손가락으로 가리켜 보세요.',
+          ja: '撮影したメニューで注文する料理を強調しました。画面を見せながら指で示してください。',
+        })}
       </p>
 
       {bgUrl ? (
         <div className="relative aspect-[3/4] overflow-hidden rounded-[20px] border border-line bg-ink shadow-[0_10px_24px_-12px_rgba(60,25,10,.32)]">
           <img
             src={bgUrl}
-            alt="촬영한 메뉴판"
+            alt={tr(travelerLang, { ko: '촬영한 메뉴판', ja: '撮影したメニュー' })}
             onLoad={(e) => setImageAspect(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight)}
             onError={() => {
               setBgUrl(null)
@@ -175,41 +183,49 @@ export function MenuPhotoHighlight({
             <div className="absolute inset-0 grid place-items-center bg-black/25">
               <div className="flex items-center gap-2 rounded-full bg-black/65 px-3.5 py-2 text-[12.5px] font-bold text-white backdrop-blur-sm">
                 <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                메뉴 위치를 찾는 중…
+                {tr(travelerLang, { ko: '메뉴 위치를 찾는 중…', ja: '料理の位置を検索中…' })}
               </div>
             </div>
           )}
         </div>
       ) : (
         <div className="grid aspect-[3/4] place-items-center rounded-[20px] border border-line bg-appbg px-6 text-center text-[13px] leading-[1.6] text-muted">
-          메뉴판 사진을 불러올 수 없어요.
+          {tr(travelerLang, { ko: '메뉴판 사진을 불러올 수 없어요.', ja: 'メニュー写真を読み込めません。' })}
           <br />
-          아래 목록으로 확인해 주세요.
+          {tr(travelerLang, { ko: '아래 목록으로 확인해 주세요.', ja: '下の一覧で確認してください。' })}
         </div>
       )}
 
       {status === 'error' && (
         <div className="mt-3 flex items-center justify-between rounded-[13px] border border-line bg-white px-[13px] py-[11px]">
-          <span className="text-[12.5px] text-muted">메뉴 위치를 불러오지 못했어요</span>
+          <span className="text-[12.5px] text-muted">
+            {tr(travelerLang, { ko: '메뉴 위치를 불러오지 못했어요', ja: '料理の位置を読み込めませんでした' })}
+          </span>
           <button
             type="button"
             onClick={() => setRetry((n) => n + 1)}
             className="rounded-full bg-brand px-3 py-1.5 text-[12px] font-bold text-white"
           >
-            다시 시도
+            {tr(travelerLang, { ko: '다시 시도', ja: '再試行' })}
           </button>
         </div>
       )}
 
       {status === 'no-image' && bgUrl && (
         <p className="mt-2 text-center text-[11.5px] text-muted">
-          이 사진은 위치 표시를 지원하지 않아요. 아래 번호 목록으로 확인하세요.
+          {tr(travelerLang, {
+            ko: '이 사진은 위치 표시를 지원하지 않아요. 아래 번호 목록으로 확인하세요.',
+            ja: 'この写真では位置を表示できません。下の番号一覧で確認してください。',
+          })}
         </p>
       )}
 
       {someUnlocated && (
         <p className="mt-2 text-center text-[11.5px] text-muted">
-          위치를 못 찾은 메뉴는 아래 번호 목록에서 확인하세요.
+          {tr(travelerLang, {
+            ko: '위치를 못 찾은 메뉴는 아래 번호 목록에서 확인하세요.',
+            ja: '位置を特定できない料理は下の番号一覧で確認してください。',
+          })}
         </p>
       )}
 
@@ -269,7 +285,7 @@ function HighlightMarker({
         {index}
       </div>
       {/* 라벨 pill — 상자 위(또는 아래)에 떠서 작은 상자에도 이름이 안 잘린다.
-          박스는 이미 현지어 원문 위에 얹혀 있으니, 라벨은 한국인 사용자가 알아볼 한국어명으로
+          박스는 이미 현지어 원문 위에 얹혀 있으니, 라벨은 스캔 당시 여행자 언어의 번역명으로
           보여준다(번역명이 비면 원문 폴백). */}
       <div
         className="absolute flex max-w-[72%] items-center gap-1 rounded-[7px] bg-ink/85 px-1.5 py-0.5"

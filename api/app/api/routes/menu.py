@@ -22,6 +22,7 @@ from app.schemas.menu import (
     LocateTarget,
     MenuScanResponse,
     ScanMeta,
+    TravelerLang,
 )
 from app.services.gemini import GeminiService, ScanHead, ScanTail
 from app.services.image import prepare_image
@@ -42,6 +43,7 @@ async def scan_menu(
     request: Request,
     image: Annotated[UploadFile, File(description="메뉴판 사진 (JPEG/PNG/WEBP)")],
     mode: Annotated[CaptureMode, Form(description="촬영 모드")] = "poster",
+    traveler_lang: Annotated[TravelerLang, Form(description="여행자 UI 언어")] = "ko",
 ) -> MenuScanResponse:
     """목록에 필요한 것만 반환한다. 긴 설명·알레르기 근거는 `/menu/item/explain` 으로."""
     settings: Settings = get_settings()
@@ -59,7 +61,7 @@ async def scan_menu(
     )
 
     gemini: GeminiService = request.app.state.gemini
-    outcome = await gemini.extract_menu(prepared, mode=mode)
+    outcome = await gemini.extract_menu(prepared, mode=mode, traveler_lang=traveler_lang)
 
     latency_ms = int((time.perf_counter() - started) * 1000)
     # 출력 토큰이 이 엔드포인트 지연의 지배적 요인이라 반드시 같이 남긴다.
@@ -74,6 +76,7 @@ async def scan_menu(
     return MenuScanResponse(
         **outcome.extraction.model_dump(),
         scan_id=uuid.uuid4().hex,
+        traveler_lang=traveler_lang,
         meta=ScanMeta(model=outcome.model, latency_ms=latency_ms, image_px=prepared.px),
     )
 
@@ -90,12 +93,13 @@ async def scan_menu_stream(
     request: Request,
     image: Annotated[UploadFile, File(description="메뉴판 사진 (JPEG/PNG/WEBP)")],
     mode: Annotated[CaptureMode, Form(description="촬영 모드")] = "poster",
+    traveler_lang: Annotated[TravelerLang, Form(description="여행자 UI 언어")] = "ko",
 ) -> StreamingResponse:
     """`/menu/scan` 과 같은 결과를 항목이 완성되는 대로 흘려보낸다.
 
     한 줄 = 한 이벤트(NDJSON). 순서는 항상 `meta` → `item`* → `done`:
 
-        {"type":"meta","scan_id":"...","source_lang":"ja","currency":"JPY","restaurant":{...}}
+        {"type":"meta","scan_id":"...","traveler_lang":"ko","source_lang":"ja","currency":"JPY","restaurant":{...}}
         {"type":"item","item":{...MenuItemSummary...}}
         {"type":"done","warnings":[],"meta":{"model":"...","latency_ms":123,"image_px":"..."}}
 
@@ -123,12 +127,15 @@ async def scan_menu_stream(
     async def emit() -> AsyncIterator[bytes]:
         sent_items = 0
         try:
-            async for event in gemini.stream_menu(prepared, mode=mode):
+            async for event in gemini.stream_menu(
+                prepared, mode=mode, traveler_lang=traveler_lang
+            ):
                 if isinstance(event, ScanHead):
                     yield _line(
                         {
                             "type": "meta",
                             "scan_id": scan_id,
+                            "traveler_lang": traveler_lang,
                             "source_lang": event.source_lang,
                             "currency": event.currency,
                             "restaurant": event.restaurant.model_dump(),
@@ -224,6 +231,7 @@ async def explain_item(request: Request, body: ExplainRequest) -> ExplainRespons
     return ExplainResponse(
         **outcome.explanation.model_dump(),
         name_local=body.name_local,
+        pronunciation_ko=outcome.explanation.pronunciation_guide,
         model=outcome.model,
         latency_ms=latency_ms,
     )

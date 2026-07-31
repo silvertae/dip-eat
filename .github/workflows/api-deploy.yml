@@ -35,6 +35,11 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
+    # PR review revision도 같은 Cloud Run 서비스를 갱신한다. 두 서비스 변경이 겹치면
+    # tag/traffic 설정이 서로 덮일 수 있으므로 실제 Cloud Run mutation만 전역 직렬화한다.
+    concurrency:
+      group: api-cloud-run
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write        # ⚠️ 없으면 WIF 가 조용히 실패한다

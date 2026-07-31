@@ -5,9 +5,11 @@ import { MenuCard } from '../components/MenuCard'
 import { cartLines } from '../lib/cart'
 import { NO_FILTERS, type Filters, applyFilters, sortForVegetarian } from '../lib/filters'
 import { rateNow, refreshRate } from '../lib/fx'
+import { languageName, tr } from '../lib/i18n'
 import { useApp } from '../store/app'
 import { useProfile } from '../store/profile'
 import type { MenuItem, MenuScanResponse } from '../types/api'
+import { homeCurrencyFor } from '../types/locale'
 
 /** 분류가 이 개수를 넘으면 접힌 채로 시작한다. 90개짜리 회전초밥 메뉴판을 다 펼쳐두면
  *  훑어보기가 불가능하고, 반대로 6개짜리를 접어두면 클릭만 늘어난다. */
@@ -35,7 +37,9 @@ function Result({ scan }: { scan: MenuScanResponse }) {
   const cart = useApp((s) => s.cart)
   // 아직 항목이 들어오는 중인가. 스트리밍 덕에 이 화면은 첫 항목(~2초)에 이미 떠 있다.
   const streaming = useApp((s) => s.phase === 'streaming')
-  const { allergies, vegetarian } = useProfile()
+  const { allergies, vegetarian, travelerLang } = useProfile()
+  const homeCurrency = homeCurrencyFor(travelerLang)
+  const resultLang = scan.traveler_lang ?? 'ko'
   const [filters, setFilters] = useState<Filters>(NO_FILTERS)
 
   const visible = useMemo(
@@ -58,16 +62,16 @@ function Result({ scan }: { scan: MenuScanResponse }) {
   const hasSections = groups.length > 1
 
   // 캐시/폴백 값으로 즉시 그리고, 하루 지났으면 조용히 갱신한다.
-  const [rate, setRate] = useState<number | null>(() => rateNow(scan.currency))
+  const [rate, setRate] = useState<number | null>(() => rateNow(scan.currency, homeCurrency))
   useEffect(() => {
     let alive = true
-    refreshRate(scan.currency).then((r) => {
+    refreshRate(scan.currency, homeCurrency).then((r) => {
       if (alive) setRate(r)
     })
     return () => {
       alive = false
     }
-  }, [scan.currency])
+  }, [scan.currency, homeCurrency])
 
   // ⚠️ 스트리밍이라 최초 렌더 시점엔 항목이 1개뿐이다. 그때 자동 접기를 판단하면 영원히
   //    안 접힌다(90개짜리가 전부 펼쳐진 채 뜬다). 그래서 '다 받은 뒤'에 한 번 적용한다.
@@ -95,17 +99,29 @@ function Result({ scan }: { scan: MenuScanResponse }) {
       <div className="flex flex-col gap-3 p-4">
         <div>
           <h2 className="font-local text-lg font-extrabold">
-            {scan.restaurant.name_local || '가게 이름 미인식'}
+            {scan.restaurant.name_local ||
+              tr(travelerLang, { ko: '가게 이름 미인식', ja: '店名を認識できません' })}
           </h2>
           <p className="text-xs text-muted">
-            {[scan.restaurant.cuisine_hint, `${scan.items.length}개 인식`]
+            {[scan.restaurant.cuisine_hint, tr(travelerLang, {
+              ko: `${scan.items.length}개 인식`,
+              ja: `${scan.items.length}点を認識`,
+            })]
               .filter(Boolean)
               .join(' · ')}
           </p>
+          {resultLang !== travelerLang && (
+            <p className="mt-1 text-[11px] font-bold text-amber-700">
+              {tr(travelerLang, {
+                ko: `${languageName(resultLang)}로 저장된 결과예요.`,
+                ja: `${languageName(resultLang)}で保存された結果です。`,
+              })}
+            </p>
+          )}
           {streaming && (
             <p className="mt-1 flex items-center gap-1.5 text-xs text-brand">
               <span className="size-2.5 animate-spin rounded-full border-2 border-brand-100 border-t-brand" />
-              계속 읽고 있어요…
+              {tr(travelerLang, { ko: '계속 읽고 있어요…', ja: '引き続き読み取り中…' })}
             </p>
           )}
         </div>
@@ -118,18 +134,18 @@ function Result({ scan }: { scan: MenuScanResponse }) {
 
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
           <FilterChip
-            label="알레르기 숨기기"
+            label={tr(travelerLang, { ko: '알레르기 숨기기', ja: 'アレルギーを除外' })}
             on={filters.hideAllergens}
             disabled={allergies.length === 0}
             onClick={() => setFilters((f) => ({ ...f, hideAllergens: !f.hideAllergens }))}
           />
           <FilterChip
-            label="향토음식만"
+            label={tr(travelerLang, { ko: '향토음식만', ja: '郷土料理のみ' })}
             on={filters.localOnly}
             onClick={() => setFilters((f) => ({ ...f, localOnly: !f.localOnly }))}
           />
           <FilterChip
-            label="주류 제외"
+            label={tr(travelerLang, { ko: '주류 제외', ja: 'お酒を除外' })}
             on={filters.noAlcohol}
             onClick={() => setFilters((f) => ({ ...f, noAlcohol: !f.noAlcohol }))}
           />
@@ -138,13 +154,16 @@ function Result({ scan }: { scan: MenuScanResponse }) {
         {/* 필터로 사라진 항목은 반드시 알린다 — 조용히 없어지면 메뉴가 누락된 것처럼 보인다. */}
         {hidden > 0 && (
           <p className="text-[11px] text-muted">
-            필터로 {hidden}개를 숨겼어요.{' '}
+            {tr(travelerLang, {
+              ko: `필터로 ${hidden}개를 숨겼어요. `,
+              ja: `フィルターで${hidden}点を非表示にしました。`,
+            })}{' '}
             <button
               type="button"
               onClick={() => setFilters(NO_FILTERS)}
               className="font-bold text-brand-700 underline"
             >
-              전체 보기
+              {tr(travelerLang, { ko: '전체 보기', ja: 'すべて表示' })}
             </button>
           </p>
         )}
@@ -156,14 +175,14 @@ function Result({ scan }: { scan: MenuScanResponse }) {
               onClick={() => setCollapsed(new Set())}
               className="rounded-full border border-line bg-white px-3 py-1.5 text-[11px] font-bold text-[#6a564a]"
             >
-              모두 펼치기
+              {tr(travelerLang, { ko: '모두 펼치기', ja: 'すべて開く' })}
             </button>
             <button
               type="button"
               onClick={() => setCollapsed(new Set(groups.map((g) => g.section)))}
               className="rounded-full border border-line bg-white px-3 py-1.5 text-[11px] font-bold text-[#6a564a]"
             >
-              모두 접기
+              {tr(travelerLang, { ko: '모두 접기', ja: 'すべて閉じる' })}
             </button>
           </div>
         )}
@@ -180,7 +199,7 @@ function Result({ scan }: { scan: MenuScanResponse }) {
                   className="flex items-center gap-2 pt-1 text-left"
                 >
                   <span className="text-[12.5px] font-extrabold text-brand-700">
-                    {group.section || '기타'}
+                    {group.section || tr(travelerLang, { ko: '기타', ja: 'その他' })}
                   </span>
                   <span className="text-[11px] text-muted">{group.items.length}</span>
                   <span className="ml-auto text-muted" aria-hidden>
@@ -209,6 +228,8 @@ function Result({ scan }: { scan: MenuScanResponse }) {
                     sourceLang={scan.source_lang}
                     cuisineHint={scan.restaurant.cuisine_hint}
                     rate={rate}
+                    resultLang={resultLang}
+                    homeCurrency={homeCurrency}
                   />
                 ))}
             </section>

@@ -8,18 +8,18 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.schemas.menu import LANG_MAX
+from app.schemas.menu import LANG_MAX, TravelerLang
 
-Direction = Literal["ko2local", "local2ko"]
+Direction = Literal["traveler2local", "local2traveler", "ko2local", "local2ko"]
 
 
 class Translation(BaseModel):
     """Gemini 가 채우는 부분."""
 
-    translated: str = Field(description="번역문. 방향에 따라 현지어 또는 한국어.")
+    translated: str = Field(description="번역문. 방향에 따라 현지어 또는 여행자 언어.")
     reading: str = Field(
-        description="ko2local 이면 번역한 현지어의 한국어 독음(소리내어 말할 때). "
-        "예: 'パクチー抜きで' → '파쿠치- 누키데'. local2ko 이면 빈 문자열."
+        description="traveler2local 이면 번역한 현지어의 여행자 언어 발음 안내. "
+        "local2traveler 이면 빈 문자열."
     )
 
 
@@ -30,7 +30,11 @@ class ChatRequest(BaseModel):
     source_lang: str = Field(
         default="ja", max_length=LANG_MAX, description="현지어 BCP-47. 스캔 응답의 source_lang"
     )
-    direction: Direction = Field(description="ko2local: 내 한국어→현지어 / local2ko: 점원 현지어→한국어")
+    traveler_lang: TravelerLang = Field(default="ko", description="여행자 UI 언어")
+    direction: Direction = Field(
+        description="traveler2local: 여행자→현지어 / local2traveler: 현지어→여행자. "
+        "기존 ko2local/local2ko 도 호환 입력으로 허용."
+    )
 
 
 class ChatResponse(Translation):
@@ -42,9 +46,9 @@ class VoiceResult(BaseModel):
     """Gemini 가 오디오에서 채우는 부분."""
 
     source_text: str = Field(description="말한 내용을 원래 언어 그대로 받아쓴 것")
-    translated: str = Field(description="번역문. 방향에 따라 현지어 또는 한국어.")
+    translated: str = Field(description="번역문. 방향에 따라 현지어 또는 여행자 언어.")
     reading: str = Field(
-        description="ko2local 이면 번역한 현지어의 한국어 독음. local2ko 이면 빈 문자열."
+        description="traveler2local 이면 현지어의 여행자 언어 발음 안내. 반대 방향이면 빈 문자열."
     )
 
 

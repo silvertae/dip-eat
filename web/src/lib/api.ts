@@ -8,6 +8,10 @@ import type {
   MenuScanResponse,
   Restaurant,
 } from '../types/api'
+import type { TravelerLang } from '../types/locale'
+
+const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN ?? '').replace(/\/+$/, '')
+const apiUrl = (path: `/api/${string}`) => `${API_ORIGIN}${path}`
 
 /** '사진에서 확인' 이 보내는 대상 항목. index 는 1부터, 응답 박스와 1:1 로 맞춘다. */
 export interface LocateTarget {
@@ -48,15 +52,20 @@ async function toApiError(resp: Response): Promise<ApiError> {
 
 export async function scanMenu(
   image: Blob,
-  { mode = 'poster', signal }: { mode?: CaptureMode; signal?: AbortSignal } = {},
+  {
+    mode = 'poster',
+    travelerLang = 'ko',
+    signal,
+  }: { mode?: CaptureMode; travelerLang?: TravelerLang; signal?: AbortSignal } = {},
 ): Promise<MenuScanResponse> {
   const form = new FormData()
   form.append('image', image, 'menu.jpg')
   form.append('mode', mode)
+  form.append('traveler_lang', travelerLang)
 
   let resp: Response
   try {
-    resp = await fetch('/api/v1/menu/scan', { method: 'POST', body: form, signal })
+    resp = await fetch(apiUrl('/api/v1/menu/scan'), { method: 'POST', body: form, signal })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') throw err
     throw new ApiError(0, GENERIC)
@@ -71,6 +80,7 @@ export interface ScanStreamHandlers {
   /** 첫 항목보다 먼저 온다 — 가게 이름·통화를 바로 그릴 수 있다. */
   onMeta: (meta: {
     scan_id: string
+    traveler_lang?: TravelerLang
     source_lang: string
     currency: string
     restaurant: Restaurant
@@ -94,18 +104,20 @@ export async function scanMenuStream(
   image: Blob,
   {
     mode = 'poster',
+    travelerLang = 'ko',
     signal,
     onMeta,
     onItem,
-  }: { mode?: CaptureMode; signal?: AbortSignal } & ScanStreamHandlers,
+  }: { mode?: CaptureMode; travelerLang?: TravelerLang; signal?: AbortSignal } & ScanStreamHandlers,
 ): Promise<{ warnings: string[]; meta: MenuScanResponse['meta'] }> {
   const form = new FormData()
   form.append('image', image, 'menu.jpg')
   form.append('mode', mode)
+  form.append('traveler_lang', travelerLang)
 
   let resp: Response
   try {
-    resp = await fetch('/api/v1/menu/scan/stream', { method: 'POST', body: form, signal })
+    resp = await fetch(apiUrl('/api/v1/menu/scan/stream'), { method: 'POST', body: form, signal })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') throw err
     throw new ApiError(0, GENERIC)
@@ -178,7 +190,7 @@ export async function explainItem(
 ): Promise<ExplainResponse> {
   let resp: Response
   try {
-    resp = await fetch('/api/v1/menu/item/explain', {
+    resp = await fetch(apiUrl('/api/v1/menu/item/explain'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -208,7 +220,7 @@ export async function locateItems(
 
   let resp: Response
   try {
-    resp = await fetch('/api/v1/menu/locate', { method: 'POST', body: form, signal })
+    resp = await fetch(apiUrl('/api/v1/menu/locate'), { method: 'POST', body: form, signal })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') throw err
     throw new ApiError(0, GENERIC)
@@ -220,12 +232,17 @@ export async function locateItems(
 
 /** 점원 대화 — 자유 발화 번역. 주문 카드는 이걸 부르지 않는다(오프라인 조립). */
 export async function chatTranslate(
-  body: { text: string; source_lang: string; direction: 'ko2local' | 'local2ko' },
+  body: {
+    text: string
+    source_lang: string
+    traveler_lang: TravelerLang
+    direction: 'traveler2local' | 'local2traveler'
+  },
   { signal }: { signal?: AbortSignal } = {},
 ): Promise<{ translated: string; reading: string }> {
   let resp: Response
   try {
-    resp = await fetch('/api/v1/chat', {
+    resp = await fetch(apiUrl('/api/v1/chat'), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -242,17 +259,22 @@ export async function chatTranslate(
 /** 점원 대화 — 음성 받아쓰기 + 번역(홀드-투-토크). */
 export async function chatVoice(
   audio: Blob,
-  body: { source_lang: string; direction: 'ko2local' | 'local2ko' },
+  body: {
+    source_lang: string
+    traveler_lang: TravelerLang
+    direction: 'traveler2local' | 'local2traveler'
+  },
   { signal }: { signal?: AbortSignal } = {},
 ): Promise<{ source_text: string; translated: string; reading: string }> {
   const form = new FormData()
   form.append('audio', audio, 'clip.webm')
   form.append('direction', body.direction)
   form.append('source_lang', body.source_lang)
+  form.append('traveler_lang', body.traveler_lang)
 
   let resp: Response
   try {
-    resp = await fetch('/api/v1/chat/voice', { method: 'POST', body: form, signal })
+    resp = await fetch(apiUrl('/api/v1/chat/voice'), { method: 'POST', body: form, signal })
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') throw err
     throw new ApiError(0, GENERIC)
@@ -264,7 +286,7 @@ export async function chatVoice(
 /** 발표 직전 Cloud Run 인스턴스를 깨워두기 위한 호출. 실패해도 무시한다. */
 export async function warmUp(): Promise<void> {
   try {
-    await fetch('/api/v1/health', { cache: 'no-store' })
+    await fetch(apiUrl('/api/v1/health'), { cache: 'no-store' })
   } catch {
     /* 워밍업 실패는 사용자에게 알릴 일이 아니다 */
   }

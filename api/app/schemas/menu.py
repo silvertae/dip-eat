@@ -35,6 +35,7 @@ _FREE_TEXT_MAX = 200  # 메뉴명·분류·가게 성격
 # 형식(정규식) 검증은 일부러 안 한다 — source_lang 은 모델이 채우는 값이라 규격을 벗어난
 # 문자열('일본어' 등)이 올 수 있고, 그걸 422 로 막으면 지금 고치는 것과 같은 조용한 실패가 난다.
 LANG_MAX = 35
+TravelerLang = Literal["ko", "ja"]
 
 # 한국 식약처 표시대상 알레르기 유발물질 + 국제적으로 흔한 항목.
 # 코드가 안정적이어야 클라이언트가 프로필과 정확히 대조할 수 있다.
@@ -66,7 +67,9 @@ class MenuItemSummary(BaseModel):
         description="메뉴판에 적힌 원문 그대로. 절대 번역·정규화하지 말 것. 장음부호(ー)나 "
         "가나 표기도 보이는 대로. 사용자가 이 글자를 점원에게 그대로 보여준다."
     )
-    name_translated: str = Field(description="한국어 번역명. 음차가 자연스러우면 음차.")
+    name_translated: str = Field(
+        description="요청에서 지정한 여행자 언어의 번역명. 음차가 자연스러우면 음차."
+    )
     price_text: str = Field(
         description="가격을 적힌 그대로. 예: '970円', '¥970', '時価'. 못 읽었으면 빈 문자열."
     )
@@ -79,7 +82,7 @@ class MenuItemSummary(BaseModel):
     )
     category: Category = Field(description="분류")
     section: str = Field(
-        description="이 항목이 메뉴판에서 어느 분류 아래 적혀 있는지, 그 분류 제목을 한국어로. "
+        description="이 항목이 메뉴판에서 어느 분류 아래 적혀 있는지, 그 분류 제목을 여행자 언어로. "
         "예: '튀김', '찬푸르', '국물', '130엔 접시'. "
         "**메뉴판에 실제로 적힌 분류만 쓸 것** — 분류 제목이 없는 메뉴판이면 빈 문자열. "
         "직접 분류를 만들어내지 말 것."
@@ -104,8 +107,8 @@ class MenuItemSummary(BaseModel):
 
 class Restaurant(BaseModel):
     name_local: str = Field(description="사진에서 읽은 가게 이름 원문. 없으면 빈 문자열.")
-    name_translated: str = Field(description="한국어 표기. 없으면 빈 문자열.")
-    cuisine_hint: str = Field(description="음식 종류 한 마디. 예: '오키나와 가정식'. 모르면 빈 문자열.")
+    name_translated: str = Field(description="여행자 언어 표기. 없으면 빈 문자열.")
+    cuisine_hint: str = Field(description="음식 종류를 여행자 언어로 한 마디. 모르면 빈 문자열.")
 
 
 class MenuExtraction(BaseModel):
@@ -124,7 +127,7 @@ class MenuExtraction(BaseModel):
         "**false 면 items 는 반드시 빈 배열이어야 한다.**"
     )
     no_menu_reason: str = Field(
-        description="menu_found 가 false 일 때만, 사진에 무엇이 보이는지 한국어 한 문장으로. "
+        description="menu_found 가 false 일 때만, 사진에 무엇이 보이는지 여행자 언어 한 문장으로. "
         "예: '아무것도 없는 흰 화면이에요', '너무 어두워 글자가 안 보여요'. "
         "menu_found 가 true 면 빈 문자열."
     )
@@ -138,7 +141,7 @@ class MenuExtraction(BaseModel):
         "단, 가격대 제목 아래 나열된 항목들에는 그 가격을 각각 채워 넣을 것."
     )
     warnings: list[str] = Field(
-        description="사용자에게 알려야 할 문제를 한국어로. 예: '메뉴판 오른쪽이 잘려 일부를 읽지 못했어요'. "
+        description="사용자에게 알려야 할 문제를 여행자 언어로. "
         "문제가 없으면 빈 배열."
     )
 
@@ -153,12 +156,12 @@ class LikelyAllergen(BaseModel):
     """
 
     code: AllergenCode = Field(description="표준 알레르기 코드")
-    label: str = Field(description="한국어 표시명. 예: '새우'")
+    label: str = Field(description="여행자 언어 표시명")
     inferred: bool = Field(
         description="메뉴판에 명시돼 있지 않고 요리 지식으로 추론했으면 true. 대부분 true 다."
     )
     basis: str = Field(
-        description="그렇게 판단한 근거를 한국어 한 문장으로. 예: \"메뉴명에 'エビ'(새우)가 있음\""
+        description="그렇게 판단한 근거를 여행자 언어 한 문장으로."
     )
     confidence: Confidence = Field(description="확신도")
 
@@ -167,15 +170,15 @@ class ItemExplanation(BaseModel):
     """상세 모달용. 항목 1개라 길게 써도 된다."""
 
     romanization: str = Field(description="현지어 발음의 로마자 표기. 모르면 빈 문자열.")
-    pronunciation_ko: str = Field(
-        description="한국어 독음. 점원에게 소리내어 말할 때 쓴다. 예: '라후테-'"
+    pronunciation_guide: str = Field(
+        description="여행자 언어 문자로 적은 현지어 발음 안내. 한국어면 한글, 일본어면 가나."
     )
     description: str = Field(
         description="어떤 음식인지 2~3문장. 맛·식감·조리법·먹는 방법 중심. "
         "호불호가 갈릴 요소(쓴맛, 강한 향신료, 높은 도수, 생식)는 반드시 언급."
     )
     tip: str = Field(
-        description="한국인 여행자에게 도움이 될 조언 한두 문장. 주문 요령, 양, 곁들임 등. "
+        description="여행자에게 도움이 될 조언 한두 문장. 주문 요령, 양, 곁들임 등. "
         "해당 사항이 없으면 빈 문자열."
     )
     allergens: list[LikelyAllergen] = Field(
@@ -262,6 +265,7 @@ class ScanMeta(BaseModel):
 
 class MenuScanResponse(MenuExtraction):
     scan_id: str
+    traveler_lang: TravelerLang = "ko"
     meta: ScanMeta
 
 
@@ -272,6 +276,7 @@ class ExplainRequest(BaseModel):
     source_lang: str = Field(
         default="ja", max_length=LANG_MAX, description="1단계 응답의 source_lang"
     )
+    traveler_lang: TravelerLang = Field(default="ko", description="여행자 UI 언어")
     cuisine_hint: str = Field(
         default="", max_length=_FREE_TEXT_MAX, description="가게 성격. 있으면 설명이 정확해진다"
     )
@@ -279,6 +284,10 @@ class ExplainRequest(BaseModel):
 
 class ExplainResponse(ItemExplanation):
     name_local: str
+    pronunciation_ko: str = Field(
+        description="구버전 클라이언트 호환 필드. pronunciation_guide 와 같은 값.",
+        deprecated=True,
+    )
     model: str
     latency_ms: int
 

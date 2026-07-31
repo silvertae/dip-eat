@@ -2,12 +2,14 @@ import { useCallback, useState } from 'react'
 import { ApiError, explainItem } from '../lib/api'
 import { allergenLabel, matchedAllergens, subjectParticle } from '../lib/allergy'
 import { useDishImage } from '../lib/dishImage'
-import { toKrw } from '../lib/fx'
+import { toHome } from '../lib/fx'
+import { apiErrorText, tr } from '../lib/i18n'
 import { TAG_BADGE, visibleTags } from '../lib/labels'
 import { DishThumb } from './DishThumb'
 import { itemKey, useApp } from '../store/app'
 import { useProfile } from '../store/profile'
-import { ALLERGEN_LABEL, type ExplainResponse, type MenuItem } from '../types/api'
+import { type ExplainResponse, type MenuItem } from '../types/api'
+import type { HomeCurrency, TravelerLang } from '../types/locale'
 
 /** 목업(찍먹 목업.dc.html)의 MenuCard 를 옮긴 것. */
 export function MenuCard({
@@ -15,15 +17,19 @@ export function MenuCard({
   sourceLang,
   cuisineHint,
   rate,
+  resultLang,
+  homeCurrency,
 }: {
   item: MenuItem
   sourceLang: string
   cuisineHint: string
   /** 1 현지통화 = ? 원. 모르면 null → ₩ 를 숨긴다. */
   rate: number | null
+  resultLang: TravelerLang
+  homeCurrency: HomeCurrency
 }) {
   const key = itemKey(item)
-  const profileAllergies = useProfile((s) => s.allergies)
+  const { allergies: profileAllergies, travelerLang } = useProfile()
   const warned = matchedAllergens(item, profileAllergies)
   const qty = useApp((s) => s.cart[key] ?? 0)
   const addToCart = useApp((s) => s.addToCart)
@@ -52,19 +58,37 @@ export function MenuCard({
           name_local: item.name_local,
           name_translated: item.name_translated,
           source_lang: sourceLang,
+          traveler_lang: resultLang,
           cuisine_hint: cuisineHint,
         }),
       )
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '설명을 불러오지 못했어요.')
+      setError(
+        err instanceof ApiError
+          ? apiErrorText(travelerLang, err.code, err.message)
+          : tr(travelerLang, {
+              ko: '설명을 불러오지 못했어요.',
+              ja: '説明を読み込めませんでした。',
+            }),
+      )
     } finally {
       setLoading(false)
     }
-  }, [open, detail, loading, item.name_local, item.name_translated, sourceLang, cuisineHint])
+  }, [
+    open,
+    detail,
+    loading,
+    item.name_local,
+    item.name_translated,
+    sourceLang,
+    cuisineHint,
+    resultLang,
+    travelerLang,
+  ])
 
-  const krw = toKrw(item.price_amount, rate)
+  const homeAmount = toHome(item.price_amount, rate, homeCurrency)
   const image = useDishImage(item)
-  const warnedText = warned.map(allergenLabel).join(' · ')
+  const warnedText = warned.map((code) => allergenLabel(code, travelerLang)).join(' · ')
 
   return (
     <article
@@ -92,7 +116,7 @@ export function MenuCard({
                   className={`inline-flex items-center gap-1 rounded-lg px-2 py-[3px] text-[10px] font-bold ${badge.className}`}
                 >
                   {badge.dot && <span className={`size-1.5 rounded-full ${badge.dot}`} />}
-                  {badge.label}
+                  {badge.label[travelerLang]}
                 </span>
               )
             })}
@@ -105,12 +129,15 @@ export function MenuCard({
                     : 'bg-brand-100 text-brand-700'
                 }`}
               >
-                {ALLERGEN_LABEL[code] ?? code}
+                {allergenLabel(code, travelerLang)}
               </span>
             ))}
             {item.ocr_confidence !== 'high' && (
               <span className="rounded-lg bg-amber-100 px-2 py-[3px] text-[10px] font-bold text-amber-700">
-                판독 {item.ocr_confidence}
+                {tr(travelerLang, {
+                  ko: `판독 ${item.ocr_confidence}`,
+                  ja: `読取 ${item.ocr_confidence}`,
+                })}
               </span>
             )}
           </div>
@@ -119,8 +146,9 @@ export function MenuCard({
             <div>
               <p className="text-[15px] font-extrabold">{item.price_text || '—'}</p>
               <p className="text-[11px] text-muted">
-                {krw ?? '환율 확인 중'}
-                {item.tax_included === false && ' · 세금 별도'}
+                {homeAmount ?? tr(travelerLang, { ko: '환율 확인 중', ja: '為替を確認中' })}
+                {item.tax_included === false &&
+                  tr(travelerLang, { ko: ' · 세금 별도', ja: ' · 税別' })}
               </p>
             </div>
 
@@ -128,7 +156,10 @@ export function MenuCard({
               <button
                 type="button"
                 onClick={() => addToCart(key)}
-                aria-label={`${item.name_translated} 담기`}
+                aria-label={tr(travelerLang, {
+                  ko: `${item.name_translated} 담기`,
+                  ja: `${item.name_translated}を追加`,
+                })}
                 className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-brand text-xl font-bold text-white"
               >
                 ＋
@@ -138,7 +169,7 @@ export function MenuCard({
                 <button
                   type="button"
                   onClick={() => removeFromCart(key)}
-                  aria-label="하나 빼기"
+                  aria-label={tr(travelerLang, { ko: '하나 빼기', ja: '1つ減らす' })}
                   className="size-7 rounded-lg bg-white text-lg font-extrabold text-brand"
                 >
                   −
@@ -149,7 +180,7 @@ export function MenuCard({
                 <button
                   type="button"
                   onClick={() => addToCart(key)}
-                  aria-label="하나 더 담기"
+                  aria-label={tr(travelerLang, { ko: '하나 더 담기', ja: '1つ増やす' })}
                   className="size-7 rounded-lg bg-brand text-lg font-extrabold text-white"
                 >
                   ＋
@@ -164,16 +195,24 @@ export function MenuCard({
         <p className="mt-2.5 flex items-start gap-1.5 text-[11.5px] font-semibold text-brand-700">
           <span aria-hidden>⚠️</span>
           <span>
-            {warnedText}
-            {subjectParticle(warnedText)} 들어 있을 수 있어요.{' '}
+            {travelerLang === 'ko'
+              ? `${warnedText}${subjectParticle(warnedText)} 들어 있을 수 있어요. `
+              : `${warnedText}が含まれる可能性があります。 `}
             <span className="font-normal opacity-80">
-              AI 추정이라 확실하지 않아요 — 점원에게 확인하세요.
+              {tr(travelerLang, {
+                ko: 'AI 추정이라 확실하지 않아요 — 점원에게 확인하세요.',
+                ja: 'AIの推定です。必ず店員に確認してください。',
+              })}
             </span>
           </span>
         </p>
       )}
 
-      {open && loading && <p className="mt-2 text-xs text-muted">설명을 불러오는 중…</p>}
+      {open && loading && (
+        <p className="mt-2 text-xs text-muted">
+          {tr(travelerLang, { ko: '설명을 불러오는 중…', ja: '説明を読み込み中…' })}
+        </p>
+      )}
       {open && error && <p className="mt-2 text-xs text-brand-700">{error}</p>}
 
       {open && detail && (
@@ -182,7 +221,10 @@ export function MenuCard({
             <figure className="mb-3">
               <img
                 src={image.url}
-                alt={`${item.name_translated} 참고 이미지`}
+                alt={tr(travelerLang, {
+                  ko: `${item.name_translated} 참고 이미지`,
+                  ja: `${item.name_translated}の参考画像`,
+                })}
                 // ⚠️ DishThumb 과 같은 이유로 필수 — opaque 응답을 캐시하면 장당 ~4.8MB 패딩이 붙는다.
                 crossOrigin="anonymous"
                 onError={() => setDetailImgBroken(true)}
@@ -191,7 +233,10 @@ export function MenuCard({
               {/* 이 식당의 실제 음식이 아니라 같은 요리의 일반 사진이다.
                   CC 라이선스라 저작자·라이선스 표기가 법적 의무다. */}
               <figcaption className="mt-1.5 text-[10.5px] leading-[1.5] text-muted">
-                이 가게의 실제 음식 사진이 아니에요 · 참고 이미지
+                {tr(travelerLang, {
+                  ko: '이 가게의 실제 음식 사진이 아니에요 · 참고 이미지',
+                  ja: 'この店の実際の料理写真ではありません · 参考画像',
+                })}
                 <br />ⓒ {image.author} ·{' '}
                 {image.licenseUrl ? (
                   <a
@@ -207,13 +252,15 @@ export function MenuCard({
                 )}{' '}
                 ·{' '}
                 <a href={image.sourceUrl} target="_blank" rel="noreferrer" className="underline">
-                  위키미디어 커먼즈
+                  Wikimedia Commons
                 </a>
               </figcaption>
             </figure>
           )}
           <p className="text-xs text-muted">
-            {[detail.romanization, detail.pronunciation_ko].filter(Boolean).join(' · ')}
+            {[detail.romanization, detail.pronunciation_guide ?? detail.pronunciation_ko]
+              .filter(Boolean)
+              .join(' · ')}
           </p>
           <p className="mt-2 text-sm leading-relaxed text-[#4d3a30]">{detail.description}</p>
           {detail.tip && <p className="mt-2 text-xs text-sage-700">💡 {detail.tip}</p>}
@@ -227,7 +274,10 @@ export function MenuCard({
               ))}
               {/* 식품 안전: 메뉴판에서 읽은 사실이 아니라 AI 추정이다. 반드시 고지한다. */}
               <p className="mt-1 text-[10px] text-brand-700/80">
-                AI 추정이에요. 알레르기가 있다면 점원에게 꼭 확인하세요.
+                {tr(travelerLang, {
+                  ko: 'AI 추정이에요. 알레르기가 있다면 점원에게 꼭 확인하세요.',
+                  ja: 'AIの推定です。アレルギーがある場合は必ず店員に確認してください。',
+                })}
               </p>
             </div>
           )}

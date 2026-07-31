@@ -4,6 +4,8 @@ import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.tsx'
 import { useApp } from './store/app'
+import { useProfile } from './store/profile'
+import { tr } from './lib/i18n'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -29,6 +31,14 @@ void window.caches?.delete('wikimedia-thumbs').catch(() => {})
 const updateSW = registerSW({
   onNeedRefresh() {
     // 업로드·녹음 중 강제 리로드는 작업을 날린다 — 반드시 물어본다.
-    if (window.confirm('찍먹 새 버전이 있어요. 지금 새로고침할까요?')) void updateSW(true)
+    if (
+      window.confirm(
+        tr(useProfile.getState().travelerLang, {
+          ko: '찍먹 새 버전이 있어요. 지금 새로고침할까요?',
+          ja: '찍먹の新しいバージョンがあります。今すぐ更新しますか？',
+        }),
+      )
+    )
+      void updateSW(true)
   },
 })

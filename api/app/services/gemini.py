@@ -75,6 +75,37 @@ _MODE_HINT = {
     "kiosk": "키오스크/전광판 화면입니다. 사진·버튼과 글자가 섞여 있습니다.",
 }
 
+_TRAVELER_LANGUAGE = {"ko": "한국어", "ja": "일본어"}
+
+_TRUNCATION_WARNING = {
+    "ko": "메뉴가 많아 일부만 읽었어요. 사진을 나눠 찍으면 더 정확해요.",
+    "ja": "メニューが多いため、一部のみ読み取りました。写真を分けて撮ると、より正確に読み取れます。",
+}
+
+
+def _traveler_instruction(traveler_lang: str) -> str:
+    language = _TRAVELER_LANGUAGE.get(traveler_lang, "한국어")
+    guide = (
+        "발음 안내는 한글로 쓰세요."
+        if traveler_lang == "ko"
+        else "발음 안내는 일본인이 읽을 수 있는 가나로 쓰세요."
+    )
+    return (
+        f"이번 여행자의 언어는 {language}({traveler_lang})입니다. "
+        f"번역명·설명·분류·경고 등 여행자가 읽는 모든 필드는 자연스러운 {language}로 쓰세요. "
+        f"{guide}"
+    )
+
+
+def _truncation_warning(traveler_lang: str) -> str:
+    """`items` 가 끊겼을 때 여행자가 읽을 언어로 경고한다."""
+    return _TRUNCATION_WARNING.get(traveler_lang, _TRUNCATION_WARNING["ko"])
+
+
+def _direction_name(direction: str) -> str:
+    return "traveler2local" if direction in {"traveler2local", "ko2local"} else "local2traveler"
+
+
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -188,7 +219,12 @@ class GeminiService:
     # --- 공개 API ------------------------------------------------------------
 
     async def extract_menu(
-        self, image: PreparedImage, *, mode: str, models: list[str] | None = None
+        self,
+        image: PreparedImage,
+        *,
+        mode: str,
+        traveler_lang: str = "ko",
+        models: list[str] | None = None,
     ) -> ScanOutcome:
         """`models` 는 벤치마크 스크립트가 특정 모델만 강제할 때 쓴다."""
 
@@ -201,7 +237,9 @@ class GeminiService:
                     types.Part.from_text(text="이 메뉴판을 읽고 스키마대로 정리해 주세요."),
                 ],
                 system_instruction=(
-                    f"{_MENU_SCAN_PROMPT}\n\n## 이번 사진에 대한 힌트\n\n{hint}".strip()
+                    f"{_MENU_SCAN_PROMPT}\n\n## 여행자 언어\n\n"
+                    f"{_traveler_instruction(traveler_lang)}\n\n"
+                    f"## 이번 사진에 대한 힌트\n\n{hint}".strip()
                 ),
                 schema=MenuExtraction,
                 with_media=True,
@@ -220,7 +258,12 @@ class GeminiService:
         return await self._with_fallback(call, models)
 
     async def stream_menu(
-        self, image: PreparedImage, *, mode: str, models: list[str] | None = None
+        self,
+        image: PreparedImage,
+        *,
+        mode: str,
+        traveler_lang: str = "ko",
+        models: list[str] | None = None,
     ) -> AsyncIterator[ScanEvent]:
         """`extract_menu` 의 스트리밍판. 항목이 완성되는 대로 하나씩 내보낸다.
 
@@ -234,7 +277,9 @@ class GeminiService:
         """
         hint = _MODE_HINT.get(mode, "")
         system_instruction = (
-            f"{_MENU_SCAN_PROMPT}\n\n## 이번 사진에 대한 힌트\n\n{hint}".strip()
+            f"{_MENU_SCAN_PROMPT}\n\n## 여행자 언어\n\n"
+            f"{_traveler_instruction(traveler_lang)}\n\n"
+            f"## 이번 사진에 대한 힌트\n\n{hint}".strip()
         )
         contents = [
             types.Part.from_bytes(data=image.data, mime_type=image.mime_type),
@@ -251,7 +296,7 @@ class GeminiService:
             started = asyncio.get_running_loop().time()
             try:
                 # 첫 항목까지는 버퍼에만 쌓는다. 여기서 예외가 나면 다음 모델로 넘어간다.
-                stream = self._stream_items(model, contents, system_instruction)
+                stream = self._stream_items(model, contents, system_instruction, traveler_lang)
                 first = await anext(stream)
             except (UpstreamConfigError, UpstreamRateLimited):
                 raise  # 재시도해도 똑같다 — 폴백 모델로도 넘기지 않는다
@@ -273,7 +318,11 @@ class GeminiService:
         raise last_error or UpstreamError()
 
     async def _stream_items(
-        self, model: str, contents: list[types.Part], system_instruction: str
+        self,
+        model: str,
+        contents: list[types.Part],
+        system_instruction: str,
+        traveler_lang: str,
     ) -> AsyncIterator[ScanEvent]:
         """한 모델로 스트리밍한다. 첫 yield 전에 실패하면 호출부가 폴백할 수 있다."""
         parser = MenuStreamParser()
@@ -384,7 +433,7 @@ class GeminiService:
         #    항목은 이미 내보냈으므로 예외가 아니라 경고가 맞다 — 버리는 게 더 나쁘다.
         if not parser.items_closed:
             log.warning("stream truncated model=%s items=%d", model, count)
-            warnings.append("메뉴가 많아 일부만 읽었어요. 사진을 나눠 찍으면 더 정확해요.")
+            warnings.append(_truncation_warning(traveler_lang))
 
         yield ScanTail(warnings=warnings, model=model, usage=usage, items=count)
 
@@ -434,14 +483,17 @@ class GeminiService:
         async def call(model: str) -> ExplainOutcome:
             context = [f"메뉴 원문: {req.name_local}", f"메뉴판 언어: {req.source_lang}"]
             if req.name_translated:
-                context.append(f"한국어 번역명: {req.name_translated}")
+                context.append(f"여행자 언어 번역명: {req.name_translated}")
             if req.cuisine_hint:
                 context.append(f"가게 성격: {req.cuisine_hint}")
 
             parsed, usage = await self._generate(
                 model=model,
                 contents=[types.Part.from_text(text="\n".join(context))],
-                system_instruction=_ITEM_EXPLAIN_PROMPT,
+                system_instruction=(
+                    f"{_ITEM_EXPLAIN_PROMPT}\n\n## 여행자 언어\n\n"
+                    f"{_traveler_instruction(req.traveler_lang)}"
+                ),
                 schema=ItemExplanation,
                 with_media=False,
             )
@@ -457,11 +509,17 @@ class GeminiService:
         """점원 대화용 자유 발화 번역. 텍스트 전용."""
 
         async def call(model: str) -> TranslateOutcome:
-            context = f"방향: {req.direction}\n현지어: {req.source_lang}\n문장: {req.text}"
+            context = (
+                f"방향: {_direction_name(req.direction)}\n"
+                f"여행자 언어: {req.traveler_lang}\n현지어: {req.source_lang}\n문장: {req.text}"
+            )
             parsed, usage = await self._generate(
                 model=model,
                 contents=[types.Part.from_text(text=context)],
-                system_instruction=_CHAT_TRANSLATE_PROMPT,
+                system_instruction=(
+                    f"{_CHAT_TRANSLATE_PROMPT}\n\n"
+                    f"{_traveler_instruction(req.traveler_lang)}"
+                ),
                 schema=Translation,
                 with_media=False,
             )
@@ -473,19 +531,25 @@ class GeminiService:
 
     async def transcribe_and_translate(
         self, audio: bytes, mime_type: str, *, direction: str, source_lang: str,
+        traveler_lang: str = "ko",
         models: list[str] | None = None,
     ) -> VoiceOutcome:
         """점원/여행자의 짧은 음성 → 받아쓰기 + 번역. Gemini 오디오 이해로 한 번에."""
 
         async def call(model: str) -> VoiceOutcome:
-            context = f"방향: {direction}\n현지어: {source_lang}"
+            context = (
+                f"방향: {_direction_name(direction)}\n"
+                f"여행자 언어: {traveler_lang}\n현지어: {source_lang}"
+            )
             parsed, usage = await self._generate(
                 model=model,
                 contents=[
                     types.Part.from_bytes(data=audio, mime_type=mime_type),
                     types.Part.from_text(text=context),
                 ],
-                system_instruction=_CHAT_VOICE_PROMPT,
+                system_instruction=(
+                    f"{_CHAT_VOICE_PROMPT}\n\n{_traveler_instruction(traveler_lang)}"
+                ),
                 schema=VoiceResult,
                 with_media=False,  # 오디오엔 media_resolution 을 붙이지 않는다(이미지 전용)
             )

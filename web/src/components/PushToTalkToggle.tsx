@@ -9,6 +9,8 @@ import {
 } from '../features/voice/recorder'
 import { ApiError } from '../lib/api'
 import { useApp } from '../store/app'
+import { useProfile } from '../store/profile'
+import { apiErrorText, tr } from '../lib/i18n'
 
 type Dir = 'me' | 'them'
 
@@ -16,11 +18,12 @@ type Dir = 'me' | 'them'
  *  탭 = 언어 포커스 전환(썸 슬라이드), 홀드(>170ms) = 녹음 → 떼면 전송.
  *  녹음 중엔 소나 링 + 이퀄라이저, 반대 반쪽은 딤 처리.
  *
- *  홀드 방향 → 번역 방향: '나' = ko2local(내 한국어→일본어), '점원' = local2ko. */
+ *  홀드 방향 → 번역 방향: '나' = traveler2local, '점원' = local2traveler. */
 const HOLD_MS = 170
 
 export function PushToTalkToggle({ sourceLang }: { sourceLang: string }) {
   const sendVoice = useApp((s) => s.sendVoice)
+  const travelerLang = useProfile((s) => s.travelerLang)
   const [voiceDir, setVoiceDir] = useState<Dir>('me')
   const [recording, setRecording] = useState<Dir | null>(null)
   const [busy, setBusy] = useState(false)
@@ -65,12 +68,20 @@ export function PushToTalkToggle({ sourceLang }: { sourceLang: string }) {
       if (err instanceof VoiceAbortedError) return
       setRecording(null)
       setError(
-        err instanceof VoicePermissionError || err instanceof VoiceUnsupportedError
-          ? err.message
-          : '녹음을 시작하지 못했어요.',
+        err instanceof VoicePermissionError
+          ? tr(travelerLang, {
+              ko: err.message,
+              ja: 'マイクの使用が許可されていません。ブラウザの設定を確認してください。',
+            })
+          : err instanceof VoiceUnsupportedError
+            ? tr(travelerLang, {
+                ko: err.message,
+                ja: 'このブラウザでは音声録音を利用できません。',
+              })
+          : tr(travelerLang, { ko: '녹음을 시작하지 못했어요.', ja: '録音を開始できませんでした。' }),
       )
     }
-  }, [])
+  }, [travelerLang])
 
   const pressStart = (dir: Dir) => {
     setVoiceDir(dir)
@@ -89,9 +100,18 @@ export function PushToTalkToggle({ sourceLang }: { sourceLang: string }) {
     try {
       const blob = await rec.stop()
       if (blob.size < 900) return // 너무 짧음 — 조용히 무시
-      await sendVoice(blob, dir === 'me' ? 'ko2local' : 'local2ko', sourceLang)
+      await sendVoice(
+        blob,
+        dir === 'me' ? 'traveler2local' : 'local2traveler',
+        sourceLang,
+        travelerLang,
+      )
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '전송하지 못했어요.')
+      setError(
+        err instanceof ApiError
+          ? apiErrorText(travelerLang, err.code, err.message)
+          : tr(travelerLang, { ko: '전송하지 못했어요.', ja: '送信できませんでした。' }),
+      )
     } finally {
       setBusy(false)
     }
@@ -141,10 +161,11 @@ export function PushToTalkToggle({ sourceLang }: { sourceLang: string }) {
           recording={recording === 'me'}
           dimmed={recording === 'them'}
           disabled={busy}
-          chip="한"
-          chipFont=""
-          label="나 · 한국어"
-          idleHint="🎙 꾹 눌러 말하기"
+          chip={travelerLang === 'ja' ? '日' : '한'}
+          chipFont={travelerLang === 'ja' ? 'font-local' : ''}
+          label={tr(travelerLang, { ko: '나 · 한국어', ja: '自分 · 日本語' })}
+          idleHint={tr(travelerLang, { ko: '🎙 꾹 눌러 말하기', ja: '🎙 長押しして話す' })}
+          recordingHint={tr(travelerLang, { ko: '듣는 중…', ja: '録音中…' })}
           barColor="var(--color-brand)"
           hintColor={voiceDir === 'me' ? 'text-brand-700' : 'text-[#b0a094]'}
           onStart={pressStart}
@@ -157,10 +178,14 @@ export function PushToTalkToggle({ sourceLang }: { sourceLang: string }) {
           recording={recording === 'them'}
           dimmed={recording === 'me'}
           disabled={busy}
-          chip="日"
+          chip={sourceLang.startsWith('ko') ? '한' : sourceLang.startsWith('ja') ? '日' : '↔'}
           chipFont="font-local"
-          label="점원 · 日本語"
-          idleHint="🎙 꾹 눌러 듣기"
+          label={tr(travelerLang, {
+            ko: `점원 · ${sourceLang.startsWith('ja') ? '日本語' : sourceLang}`,
+            ja: `店員 · ${sourceLang.startsWith('ko') ? '韓国語' : sourceLang}`,
+          })}
+          idleHint={tr(travelerLang, { ko: '🎙 꾹 눌러 듣기', ja: '🎙 長押しして聞く' })}
+          recordingHint={tr(travelerLang, { ko: '듣는 중…', ja: '録音中…' })}
           barColor="var(--color-ink)"
           hintColor={voiceDir === 'them' ? 'text-ink' : 'text-[#b0a094]'}
           onStart={pressStart}
@@ -169,7 +194,11 @@ export function PushToTalkToggle({ sourceLang }: { sourceLang: string }) {
         />
       </div>
 
-      {busy && <p className="mt-2 text-center text-[11px] text-muted">번역하는 중…</p>}
+      {busy && (
+        <p className="mt-2 text-center text-[11px] text-muted">
+          {tr(travelerLang, { ko: '번역하는 중…', ja: '翻訳中…' })}
+        </p>
+      )}
     </div>
   )
 }
@@ -184,6 +213,7 @@ function Half({
   chipFont,
   label,
   idleHint,
+  recordingHint,
   barColor,
   hintColor,
   onStart,
@@ -199,6 +229,7 @@ function Half({
   chipFont: string
   label: string
   idleHint: string
+  recordingHint: string
   barColor: string
   hintColor: string
   onStart: (dir: Dir) => void
@@ -259,7 +290,7 @@ function Half({
             className="text-[10px] font-extrabold"
             style={{ color: barColor }}
           >
-            {dir === 'me' ? '듣는 중…' : '듣는 中…'}
+            {recordingHint}
           </span>
         </div>
       ) : (

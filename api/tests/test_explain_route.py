@@ -25,7 +25,9 @@ async def test_explain_returns_long_form_content(client_factory):
     body = resp.json()
     assert body["name_local"] == "ラフテー"  # 요청한 항목이 그대로 되돌아온다
     assert body["romanization"] == "Rafutē"
+    assert body["pronunciation_guide"]
     assert body["pronunciation_ko"]
+    assert body["pronunciation_guide"] == body["pronunciation_ko"]
     assert len(body["description"]) > 20
     assert body["tip"]
     assert body["latency_ms"] >= 0
@@ -81,5 +83,8 @@ async def test_scan_list_stays_lean(client_factory):
     # 알레르기는 '코드만'. 차단 판정에는 코드로 충분하고, 근거 문장은 상세에서 받는다.
     assert item["allergens"] == ["pork", "soy"]
 
-    for heavy in ("description", "romanization", "pronunciation_ko", "tip", "likely_allergens"):
+    for heavy in (
+        "description", "romanization", "pronunciation_guide",
+        "pronunciation_ko", "tip", "likely_allergens",
+    ):
         assert heavy not in item, f"목록에 무거운 필드 {heavy} 가 다시 들어왔다"

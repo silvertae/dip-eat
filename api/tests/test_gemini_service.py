@@ -123,6 +123,13 @@ async def test_capture_mode_hint_reaches_the_model():
     assert "벽보형" in CONFIGS[0].system_instruction
 
 
+async def test_japanese_traveler_instruction_reaches_the_model():
+    service, _ = build_service([ok_response(sample_extraction())])
+    await service.extract_menu(IMAGE, mode="poster", traveler_lang="ja")
+    assert "일본어(ja)" in CONFIGS[0].system_instruction
+    assert "가나" in CONFIGS[0].system_instruction
+
+
 async def test_explain_sends_no_image_and_no_media_resolution():
     """상세 조회가 사진을 다시 보내면 2단계로 나눈 의미가 없다."""
     from app.schemas.menu import ExplainRequest
