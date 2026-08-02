@@ -16,6 +16,32 @@
 
 앱을 설치하면 한 번 스캔한 식당은 최근 목록에서 다시 볼 수 있습니다. 새 메뉴를 읽거나 음성 대화를 이용할 때는 인터넷 연결이 필요합니다.
 
+## 화면 흐름
+
+현재 배포된 [찍먹](https://dip-eat.vercel.app)을 실제로 탐색해 캡처한 화면입니다. 결과·메뉴 상세·주문서·대화 화면은 저장소의 합성 테스트 메뉴판(`api/tests/fixtures/smoke_menu.jpg`)으로 확인했습니다.
+
+### 온보딩·스캔
+
+| 단계 | 캡처 |
+| --- | --- |
+| 1. 언어 선택 | <img src="docs/screenshots/01-onboarding.jpg" alt="언어 선택 온보딩 화면" width="420"> |
+| 2. 알레르기·비선호 설정 | <img src="docs/screenshots/02-preferences.jpg" alt="알레르기와 비선호 설정 화면" width="420"> |
+| 3. 예산 설정 | <img src="docs/screenshots/03-budget.jpg" alt="예산 설정 화면" width="420"> |
+| 4. 홈 | <img src="docs/screenshots/04-home.jpg" alt="홈 화면" width="420"> |
+| 5. 촬영 | <img src="docs/screenshots/05-camera.jpg" alt="메뉴판 촬영 화면" width="420"> |
+| 6. 스캔 중 | <img src="docs/screenshots/06-loading.jpg" alt="메뉴판 스캔 로딩 화면" width="420"> |
+| 7. 메뉴 결과 | <img src="docs/screenshots/07-result.jpg" alt="메뉴 인식 결과 화면" width="420"> |
+| 8. 메뉴 상세 | <img src="docs/screenshots/08-item-detail.jpg" alt="메뉴 상세 설명 화면" width="420"> |
+
+### 주문·대화·설정
+
+| 단계 | 캡처 |
+| --- | --- |
+| 9. 주문서 | <img src="docs/screenshots/09-order.jpg" alt="주문서 화면" width="420"> |
+| 10. 점원과 대화 | <img src="docs/screenshots/10-chat.jpg" alt="점원과 대화 화면" width="420"> |
+| 11. 설정 | <img src="docs/screenshots/11-settings.jpg" alt="설정 화면" width="420"> |
+| 12. 완료 | <img src="docs/screenshots/12-done.jpg" alt="주문 완료 화면" width="420"> |
+
 ## 직접 실행하기
 
 로컬에서 실행하려면 Python 3.13, [uv](https://docs.astral.sh/uv/), Node.js 22가 필요합니다. 메뉴 스캔과 대화 기능에는 Google AI Studio에서 발급한 Gemini API 키도 필요합니다.
