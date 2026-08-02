@@ -40,7 +40,12 @@
 | 9. 주문서 | <img src="docs/screenshots/09-order.jpg" alt="주문서 화면" width="420"> |
 | 10. 점원과 대화 | <img src="docs/screenshots/10-chat.jpg" alt="점원과 대화 화면" width="420"> |
 | 11. 설정 | <img src="docs/screenshots/11-settings.jpg" alt="설정 화면" width="420"> |
-| 12. 완료 | <img src="docs/screenshots/12-done.jpg" alt="주문 완료 화면" width="420"> |
+
+### 연결되지 않은 화면
+
+현재 `/done` 완료 화면은 앱의 다른 화면에서 연결되지 않은 라우트입니다. 실제 배포 UI를 따라가는 번호 매긴 흐름에서는 제외하고, 참고용 독립 화면으로만 남겨 둡니다.
+
+<img src="docs/screenshots/12-done.jpg" alt="현재 흐름에 연결되지 않은 완료 화면" width="420">
 
 ## 직접 실행하기
 
