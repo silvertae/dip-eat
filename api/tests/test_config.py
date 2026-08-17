@@ -24,7 +24,8 @@ def config_of(settings: Settings, *, with_media: bool = True):
 def test_defaults_are_flash_lite_first_then_stronger_fallback():
     settings = Settings(gemini_api_key="k")
     assert settings.gemini_model == "gemini-3.1-flash-lite"
-    assert settings.gemini_model_fallback == "gemini-3.6-flash"
+    assert settings.gemini_model_fallback == "gemini-3.5-flash"
+    assert settings.gemini_locate_model == "gemini-3.5-flash"
     assert settings.gemini_model != settings.gemini_model_fallback
 
 
@@ -32,6 +33,12 @@ def test_defaults_are_flash_lite_first_then_stronger_fallback():
 def test_valid_thinking_levels_reach_the_sdk_config(level):
     config = config_of(Settings(gemini_api_key="k", gemini_thinking_level=level))
     assert config.thinking_config.thinking_level.value == level.upper()
+
+
+def test_deprecated_sampling_parameters_are_omitted():
+    """Gemini 3.6+가 더는 받지 않는 sampling parameter를 보내지 않는다."""
+    config = config_of(Settings(gemini_api_key="k"))
+    assert config.temperature is None
 
 
 def test_typo_in_thinking_level_fails_at_startup_not_at_request_time():
