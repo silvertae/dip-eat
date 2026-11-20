@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """'사진에서 확인'(3단계 /menu/locate)의 정확도 게이트 스크립트.
 
     uv run python scripts/bench_locate.py ../samples
@@ -23,11 +22,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core.config import Settings  # noqa: E402
-from app.core.errors import DipeatError  # noqa: E402
-from app.schemas.menu import LocateTarget  # noqa: E402
-from app.services.gemini import GeminiService  # noqa: E402
-from app.services.image import prepare_image  # noqa: E402
+from app.core.config import Settings
+from app.core.errors import DipeatError
+from app.schemas.menu import LocateTarget
+from app.services.gemini import GeminiService
+from app.services.image import prepare_image
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 

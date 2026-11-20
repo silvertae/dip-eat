@@ -108,3 +108,23 @@ async def test_image_is_downscaled_before_reaching_gemini(client_factory):
     assert resp.status_code == 200
     assert fake.calls[0]["px"] == "2048x1536"
     assert fake.calls[0]["bytes"] < len(big)
+
+
+def test_multipart_part_limit_covers_the_larger_of_photo_and_audio(monkeypatch):
+    """파트 상한은 전역이라 사진·녹음 중 큰 쪽에 맞춰야 한다. 운영은 사진 2MiB·녹음 4MiB 라,
+    사진 값으로 걸면 2~4MiB 녹음이 미들웨어는 통과하고 Starlette 파서에서 400 으로 죽는다.
+    (`_patched` 가 프로세스당 한 번만 패치하므로 실제 요청이 아니라 넘기는 값을 본다.)"""
+    from app import main
+    from app.core.config import get_settings
+
+    seen: list[int] = []
+    monkeypatch.setattr(main, "patch_multipart_part_limit", seen.append)
+    get_settings.cache_clear()
+    monkeypatch.setenv("DIPEAT_MAX_UPLOAD_BYTES", str(2 * 1024 * 1024))
+    monkeypatch.setenv("DIPEAT_MAX_AUDIO_BYTES", str(4 * 1024 * 1024))
+    get_settings.cache_clear()
+    try:
+        main.create_app()
+    finally:
+        get_settings.cache_clear()
+    assert seen == [4 * 1024 * 1024]

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """실사진으로 모델·설정을 A/B 하는 Phase 1 게이트 스크립트.
 
     uv run python scripts/bench_menu.py ../samples
@@ -23,10 +22,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core.config import Settings  # noqa: E402
-from app.core.errors import DipeatError  # noqa: E402
-from app.services.gemini import GeminiService  # noqa: E402
-from app.services.image import prepare_image  # noqa: E402
+from app.core.config import Settings
+from app.core.errors import DipeatError
+from app.services.gemini import GeminiService
+from app.services.image import prepare_image
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 

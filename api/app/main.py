@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import chat, health, menu, probe
+from app.api.routes import chat, health, menu
 from app.core.config import get_settings
 from app.core.errors import AudioTooLarge, DipeatError
 from app.core.limits import BodySizeLimitMiddleware, patch_multipart_part_limit
@@ -34,7 +34,10 @@ def create_app() -> FastAPI:
     settings = get_settings()
 
     # 멀티파트 파트 상한(기본 1MB)을 총량 상한과 맞춰 올린다. app 생성 전에 해야 한다.
-    patch_multipart_part_limit(settings.max_upload_bytes)
+    # 파트 상한은 전역(라우트 구분 불가)이라 사진·녹음 중 **큰 쪽**에 맞춘다. 경로별 상한은
+    # BodySizeLimitMiddleware 가 책임진다. 사진 쪽에만 맞추면 운영(사진 2MiB·녹음 4MiB)에서
+    # 2~4MiB 녹음이 미들웨어는 통과하고 Starlette 파서에서 400 으로 죽는다.
+    patch_multipart_part_limit(max(settings.max_upload_bytes, settings.max_audio_bytes))
 
     app = FastAPI(
         title="dipeat API",
@@ -62,8 +65,6 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api/v1")
     app.include_router(menu.router, prefix="/api/v1")
     app.include_router(chat.router, prefix="/api/v1")
-    # 스트리밍 통과 진단용. 결론이 나면 이 줄과 routes/probe.py 를 함께 지운다.
-    app.include_router(probe.router, prefix="/api/v1")
 
     @app.exception_handler(DipeatError)
     async def dipeat_error_handler(_: Request, exc: DipeatError) -> JSONResponse:

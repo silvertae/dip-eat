@@ -63,7 +63,7 @@ jobs:
           # 기본 docker 드라이버는 registry 캐시를 못 내보낸다 → container 드라이버.
           docker buildx create --use --driver docker-container --name dipeat || true
           # ⚠️ 여기서 :latest 를 붙이지 않는다. 아직 스모크를 안 거친 이미지다.
-          #    수동 복구 절차(docs/deploy.md 8장·부록 A)가 :latest 를 쓰기 때문에,
+          #    수동 복구 절차(docs/deploy.md 8장)가 :latest 를 쓰기 때문에,
           #    검증 전에 붙이면 "스모크에 떨어진 이미지를 손으로 운영에 올리는" 길이 열린다.
           #    스모크 통과 뒤 마지막 스텝에서 붙인다.
           docker buildx build \
@@ -149,7 +149,7 @@ jobs:
         env:
           IMG: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.SERVICE }}
           SHA: ${{ github.sha }}
-        # 수동 복구 절차(deploy.md 8장·부록 A)가 :latest 를 가리키므로, 여기까지 온 이미지만 붙인다.
+        # 수동 복구 절차(deploy.md 8장)가 :latest 를 가리키므로, 여기까지 온 이미지만 붙인다.
         #
         # ⚠️⚠️ `gcloud artifacts docker tags add` 를 쓰지 말 것. 그건 Artifact Registry **API** 라,
         #    이미 있는 :latest 를 다른 digest 로 옮기려면 옛 digest 에서 먼저 떼어내야 해서
