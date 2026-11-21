@@ -36,7 +36,7 @@ export function LoadingScreen() {
         {resumable === 'restart' && (
           <button
             type="button"
-            onClick={() => void resumeScan().then((ok) => ok || navigate('/camera', { replace: true }))}
+            onClick={() => void resumeScan().then((r) => r === 'missing' && navigate('/camera', { replace: true }))}
             className="mt-2 w-full rounded-2xl bg-ink p-4 text-[15px] font-extrabold text-white"
           >
             {tr(travelerLang, { ko: '다시 읽기', ja: 'もう一度読み取る' })}

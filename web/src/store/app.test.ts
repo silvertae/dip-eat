@@ -537,8 +537,7 @@ describe('interruption & resume (#33)', () => {
 
   it('resumes into the same list without duplicating items already received', async () => {
     await interruptedWithTwo()
-    const started = await state().resumeScan()
-    expect(started).toBe(true)
+    expect(await state().resumeScan()).toBe('started')
     await awaitCall(2)
     expect(state().phase).toBe('streaming')
     expect(state().scan?.warnings).toEqual([]) // 끊김 경고는 걷어낸다
@@ -611,7 +610,7 @@ describe('interruption & resume (#33)', () => {
   it('returns false when the saved photo is gone', async () => {
     await interruptedWithTwo()
     pending = undefined
-    expect(await state().resumeScan()).toBe(false)
+    expect(await state().resumeScan()).toBe('missing')
     expect(state().resumable).toBeNull()
     expect(calls).toHaveLength(1)
   })
@@ -633,5 +632,50 @@ describe('interruption & resume (#33)', () => {
     state().discardPending()
     await vi.waitFor(() => expect(pending).toBeUndefined())
     expect(state().resumable).toBeNull()
+  })
+
+  // Codex 리뷰(PR #38): 세대 가드를 IndexedDB 조회 뒤에 잡으면 두 번째 탭이 'restart' 로 오판해
+  // 받아 둔 항목·장바구니를 날렸다.
+  it('ignores a second tap while the first resume is still looking up the photo', async () => {
+    await interruptedWithTwo()
+    useApp.setState({ cart: { x: 1 } })
+    const first = state().resumeScan()
+    const second = state().resumeScan()
+    expect(await second).toBe('ignored')
+    expect(await first).toBe('started')
+    await awaitCall(2)
+    expect(calls).toHaveLength(2)
+    expect(calls[1].signal?.aborted).toBe(false)
+    expect(state().scan?.items).toHaveLength(2)
+    expect(state().cart).toEqual({ x: 1 })
+  })
+
+  it('does not override a new scan started while the resume was looking up the photo', async () => {
+    await interruptedWithTwo()
+    let release!: () => void
+    vi.mocked(db.getPending).mockImplementationOnce(
+      () => new Promise((res) => (release = () => res(pending))),
+    )
+    const resumed = state().resumeScan()
+    void startScan('b.jpg')
+    await awaitCall(2)
+    release()
+    expect(await resumed).toBe('ignored')
+    expect(calls).toHaveLength(2) // 재스캔 요청이 나가지 않았다
+    expect(calls[1].signal?.aborted).toBe(false)
+  })
+
+  it('does not resurrect a session that was reset during the lookup', async () => {
+    await interruptedWithTwo()
+    let release!: () => void
+    vi.mocked(db.getPending).mockImplementationOnce(
+      () => new Promise((res) => (release = () => res(pending))),
+    )
+    const resumed = state().resumeScan()
+    state().reset()
+    release()
+    expect(await resumed).toBe('ignored')
+    expect(state().phase).toBe('idle')
+    expect(calls).toHaveLength(1)
   })
 })

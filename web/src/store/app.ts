@@ -29,6 +29,8 @@ export const itemKey = (item: MenuItem) => `${item.section} ${item.name_local}`
  */
 let scanRun = 0
 let scanAbort: AbortController | null = null
+/** resumeScan 이 IndexedDB 를 조회하는 중인가(중복 탭 차단). */
+let resumeLookup = false
 
 /** 활성 스캔을 끊고 진행 중이던 콜백을 전부 무효화한다. */
 function cancelActiveScan() {
@@ -107,9 +109,10 @@ interface AppState {
   /** 끊긴 스캔을 같은 사진(IndexedDB 의 업로드 축소본)으로 다시 읽을 수 있는가. 이슈 #33. */
   resumable: Resumable
   /** 'merge' 면 이미 받은 항목은 두고 빠진 것만 붙인다. 'restart' 면 새로 읽는다.
-   *  **스캔이 시작되면** 바로 true 로 끝난다(완료를 기다리지 않는다). 보관된 사진이 없으면 false
-   *  (호출부는 촬영으로 보낸다). 자동으로 부르지 않는다 — 과금·데이터. */
-  resumeScan: () => Promise<boolean>
+   *  **스캔이 시작되면** 바로 'started' 로 끝난다(완료를 기다리지 않는다). 보관된 사진이 없으면
+   *  'missing'(호출부는 촬영으로 보낸다). 중복 탭이거나 조회 중 다른 동작이 끼어들었으면 'ignored'
+   *  (아무것도 안 바꾼다). 자동으로 부르지 않는다 — 과금·데이터. */
+  resumeScan: () => Promise<'started' | 'missing' | 'ignored'>
   /** 다시 읽기를 포기한다(홈 배너 닫기). */
   discardPending: () => void
 
@@ -351,13 +354,28 @@ export const useApp = create<AppState>()(
   },
 
   async resumeScan() {
-    const pending = await getPending().catch(() => undefined)
+    // ⚠️ 세대를 IndexedDB 를 기다리기 **전에** 잡는다. 안 그러면 (1) 두 번 탭했을 때 두 번째 호출이
+    //    첫 호출이 이미 지운 resumable 을 보고 'restart' 로 오판해 받아 둔 항목·장바구니를 날리고
+    //    (2) 조회 중에 시작된 새 스캔·reset 을 덮어쓴다.
+    if (resumeLookup) return 'ignored'
+    const offered = get().resumable
+    if (!offered) return 'ignored'
+    const generation = scanRun
+    resumeLookup = true
+    let pending
+    try {
+      pending = await getPending().catch(() => undefined)
+    } finally {
+      resumeLookup = false
+    }
+    // 기다리는 사이 새 스캔·reset·최근 식당 열기·배너 닫기가 있었다 — 그쪽이 이긴다.
+    if (generation !== scanRun || get().resumable !== offered) return 'ignored'
     if (!pending) {
       set({ resumable: null })
-      return false
+      return 'missing'
     }
     const current = get().scan
-    const merge = get().resumable === 'merge' && current !== null
+    const merge = offered === 'merge' && current !== null
     const { controller, isStale } = beginScan()
 
     if (merge) {
@@ -386,7 +404,7 @@ export const useApp = create<AppState>()(
       mode: pending.mode,
       travelerLang: pending.travelerLang,
     }).catch((err) => failScan(err, controller, isStale))
-    return true
+    return 'started'
   },
 
   discardPending() {

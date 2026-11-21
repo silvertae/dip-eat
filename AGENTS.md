@@ -16,7 +16,7 @@ cd api && uv run uvicorn app.main:app --reload --reload-include '*.md' --port 80
 cd web && npm run dev                        # /api 는 127.0.0.1:8000 으로 프록시
 cd web && npm run build                      # tsc -b + vite build
 cd web && npm run lint
-cd web && npm test                           # vitest 89개 (watch 는 npm run test:watch)
+cd web && npm test                           # vitest 92개 (watch 는 npm run test:watch)
 
 # 스키마를 바꿨으면 OpenAPI → TS 타입 재생성 (손으로 타입 쓰지 말 것)
 cd api && uv run python -c "import json;from app.main import create_app;open('openapi.json','w').write(json.dumps(create_app().openapi(),ensure_ascii=False,indent=2))"
@@ -98,7 +98,7 @@ iOS 홈 화면 PWA 를 스캔 도중 백그라운드로 보내면 WebKit 이 연
   `recents` 와 섞지 말 것 — 반쪽 스캔이 '최근 식당' 에 뜬다. 재시도해도 같은 실패(`no_menu_found` 등)면 즉시 지운다.
 - `resumable`: `'merge'`(항목 일부 받음 → 결과 화면 '이어서 읽기', 이미 받은 항목은 `itemKey` **개수**로 건너뜀)
   / `'restart'`(0개 또는 앱이 도중에 죽음 → 로딩 오류·홈 배너 '다시 읽기'). **자동 재시도는 하지 않는다**(과금·데이터).
-  재스캔도 `beginScan()` 세대 가드를 그대로 탄다.
+  재스캔도 `beginScan()` 세대 가드를 그대로 탄다. ⚠️ `resumeScan` 은 세대를 IndexedDB 조회 **전에** 잡는다(중복 탭·조회 중 새 스캔/reset 이 이긴다 — 'ignored').
 
 ### 빈 사진 환각 방지 (`menu_found`)
 

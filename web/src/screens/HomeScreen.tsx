@@ -73,7 +73,12 @@ export function HomeScreen() {
           </p>
           <button
             type="button"
-            onClick={() => void resumeScan().then((ok) => navigate(ok ? '/loading' : '/camera'))}
+            onClick={() =>
+              void resumeScan().then((r) => {
+                if (r === 'started') navigate('/loading')
+                else if (r === 'missing') navigate('/camera')
+              })
+            }
             className="rounded-xl bg-ink px-3 py-2 text-xs font-extrabold text-white"
           >
             {tr(travelerLang, { ko: '다시 읽기', ja: 'もう一度読み取る' })}
