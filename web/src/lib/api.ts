@@ -40,6 +40,17 @@ const GENERIC: ApiErrorBody = {
   message: '연결에 실패했어요. 네트워크를 확인하고 다시 시도해주세요.',
 }
 
+/** 스트림을 받다가 끊겼다. 이미 받은 항목은 유효하다 — 호출부가 '이어서 읽기' 를 제안한다. */
+const INTERRUPTED: ApiErrorBody = {
+  code: 'stream_interrupted',
+  message: '메뉴판을 읽는 중에 연결이 끊겼어요.',
+}
+
+/** 첫 줄 이후 조각 사이 최대 공백. 서버 청크 간 예산(20초)보다 넉넉히. */
+export const STREAM_IDLE_MS = 30_000
+
+const isAbort = (err: unknown) => err instanceof DOMException && err.name === 'AbortError'
+
 async function toApiError(resp: Response): Promise<ApiError> {
   try {
     const body = (await resp.json()) as ApiErrorBody
@@ -158,25 +169,60 @@ export async function scanMenuStream(
     }
   }
 
+  // ⚠️ 받다가 끊긴 경우(iOS 홈 화면 PWA 를 백그라운드로 보냈다 돌아오면 WebKit 이 연결을 정리해
+  //    `TypeError: Load failed` 가 reader.read() 에서 터진다 — 이슈 #33). fetch() 실패만 ApiError 로
+  //    바꾸면 이 원문이 그대로 화면에 나간다. 의도적 abort 를 뺀 **모든** 읽기 실패를 여기서 바꾼다.
+  //    'network_error'(아예 못 보냄)와 구분하는 이유: 이쪽은 이미 받은 항목이 있어 '이어서 읽기' 가 된다.
+  //
+  // ⚠️ 첫 줄(meta)이 온 뒤로 STREAM_IDLE_MS 동안 아무 조각도 안 오면 끊긴 것으로 본다. 소켓이
+  //    조용히 죽으면 read() 가 영원히 안 끝나 '계속 읽고 있어요…' 에 갇힌다. 서버의 청크 간 예산이
+  //    20초(gemini_stream_idle_s)라 그보다 넉넉히 둔다. 첫 줄 전에는 걸지 않는다 — 그 구간은 서버가
+  //    폴백 모델까지 시도하는 시간이고 서버가 직접 error 줄로 끝낸다.
+  let sawLine = false
+  let idleTimer: ReturnType<typeof setTimeout> | undefined
+  let idleFired = false
+  const armIdle = () => {
+    clearTimeout(idleTimer)
+    if (!sawLine) return
+    idleTimer = setTimeout(() => {
+      idleFired = true
+      void reader.cancel().catch(() => {})
+    }, STREAM_IDLE_MS)
+  }
+
   // ⚠️ finally 가 없으면 중간에 throw 될 때(서버가 error 줄을 보낸 경우 등) reader 가 잠긴 채
   //    연결이 살아 있어, Gemini 가 남은 항목의 출력 토큰을 계속 만든다. 취소하는 게 요점이다.
   try {
     for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
+      let chunk: ReadableStreamReadResult<Uint8Array>
+      try {
+        chunk = await reader.read()
+      } catch (err) {
+        if (isAbort(err)) throw err
+        throw new ApiError(0, INTERRUPTED)
+      }
+      if (chunk.done) break
+      buffer += decoder.decode(chunk.value, { stream: true })
       // NDJSON: 마지막 조각은 아직 줄이 안 끝났을 수 있으니 버퍼에 남긴다.
       const lines = buffer.split('\n')
       buffer = lines.pop() ?? ''
-      for (const line of lines) handle(line)
+      for (const line of lines) {
+        if (line.trim()) sawLine = true
+        handle(line)
+      }
+      armIdle()
     }
     handle(buffer)
   } finally {
+    clearTimeout(idleTimer)
     void reader.cancel().catch(() => {}) // 락도 함께 풀린다
   }
 
-  // done 없이 스트림이 끊겼다 — 네트워크가 중간에 죽은 경우.
-  if (!tail) throw new ApiError(0, GENERIC)
+  // done 없이 스트림이 끊겼다 — 네트워크가 중간에 죽었거나 위 워치독이 끊었다.
+  if (!tail) {
+    if (signal?.aborted && !idleFired) throw new DOMException('Aborted', 'AbortError')
+    throw new ApiError(0, INTERRUPTED)
+  }
   return tail
 }
 

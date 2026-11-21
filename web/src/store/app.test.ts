@@ -9,7 +9,7 @@
  *  이 셋은 전부 DOM 도 네트워크도 없는 **순수 상태 전이**다 — 리뷰어 눈이 아니라 여기서 잡는다.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ScanStreamHandlers } from '../lib/api'
+import { ApiError, type ScanStreamHandlers } from '../lib/api'
 import type { MenuItem, MenuScanResponse, Restaurant } from '../types/api'
 
 // ApiError 는 진짜를 쓴다(store 가 instanceof 로 분기한다). 함수만 갈아끼운다.
@@ -19,7 +19,13 @@ vi.mock('../lib/api', async (importOriginal) => ({
   chatTranslate: vi.fn(),
   chatVoice: vi.fn(),
 }))
-vi.mock('../lib/db', () => ({ putRecent: vi.fn(), getRecent: vi.fn() }))
+vi.mock('../lib/db', () => ({
+  putRecent: vi.fn(),
+  getRecent: vi.fn(),
+  putPending: vi.fn(),
+  getPending: vi.fn(),
+  clearPending: vi.fn(),
+}))
 // factory 로 목하면 실제 모듈이 로드되지 않는다 —
 // `new Worker(new URL('./resize.worker.ts', import.meta.url))` 를 node 에서 해석할 일이 없다.
 vi.mock('../features/capture/resizeImage', () => ({ resizeForUpload: vi.fn() }))
@@ -82,6 +88,7 @@ let calls: FakeScan[]
 let useApp: typeof import('./app').useApp
 let db: typeof import('../lib/db')
 let resize: typeof import('../features/capture/resizeImage')
+let pending: import('../lib/db').PendingScan | undefined
 
 /** ⚠️ scanRun/scanAbort 는 모듈 레벨이고 store 는 싱글턴이라 **케이스 사이에 리셋되지 않는다**
  *  (파일 사이는 vitest 의 isolate 가 공짜로 해결해준다). resetModules 로 모듈 그래프를 새로
@@ -118,6 +125,15 @@ beforeEach(async () => {
   db = await import('../lib/db')
   vi.mocked(db.putRecent).mockImplementation(async () => {})
   vi.mocked(db.getRecent).mockImplementation(async () => undefined)
+  // 업로드 축소본 슬롯(이슈 #33). 실제처럼 하나만 들고 있는다.
+  pending = undefined
+  vi.mocked(db.putPending).mockImplementation(async (entry) => {
+    pending = entry
+  })
+  vi.mocked(db.getPending).mockImplementation(async () => pending)
+  vi.mocked(db.clearPending).mockImplementation(async () => {
+    pending = undefined
+  })
 
   resize = await import('../features/capture/resizeImage')
   vi.mocked(resize.resizeForUpload).mockImplementation(async (file) => ({
@@ -138,6 +154,8 @@ afterEach(() => {
 })
 
 const state = () => useApp.getState()
+const interrupted = () =>
+  new ApiError(0, { code: 'stream_interrupted', message: '메뉴판을 읽는 중에 연결이 끊겼어요.' })
 const startScan = (name: string) =>
   state().startScan(new File(['photo'], name, { type: 'image/jpeg' }))
 /** resizeForUpload 의 마이크로태스크를 세는 대신, 스트림 호출이 도착했는지로 동기화한다. */
@@ -320,21 +338,21 @@ describe('failure handling', () => {
     calls[0].handlers.onItem(item('かわ'))
     calls[0].handlers.onItem(item('レバー'))
 
-    calls[0].d.reject(new Error('스트림이 끊겼어요.'))
+    calls[0].d.reject(interrupted())
     await p
     expect(state().phase).toBe('done')
     expect(state().scan?.items).toHaveLength(2)
-    expect(state().scan?.warnings.at(-1)).toBe('스트림이 끊겼어요. 일부만 표시해요.')
+    expect(state().scan?.warnings.at(-1)).toBe('메뉴판을 읽는 중에 연결이 끊겼어요. 일부만 표시해요.')
   })
 
   it('goes to the error screen only when nothing arrived', async () => {
     const p = startScan('a.jpg')
     await awaitCall(1)
     calls[0].handlers.onMeta(metaOf('scan-a', '엔야'))
-    calls[0].d.reject(new Error('메뉴판을 읽지 못했어요.'))
+    calls[0].d.reject(new ApiError(200, { code: 'unreadable_menu', message: 'x' }))
     await p
     expect(state().phase).toBe('error')
-    expect(state().error).toBe('메뉴판을 읽지 못했어요.')
+    expect(state().error).toBe('메뉴판을 읽지 못했어요. 글자가 잘 보이게 다시 찍어주세요.')
   })
 
   // 브라우저가 못 디코드하는 형식(HEIC 변환 실패 등). 원문 영문 메시지를 그대로 보여주면 안 된다.
@@ -462,6 +480,158 @@ describe('persist', () => {
     calls[0].d.resolve(TAIL)
     await vi.waitFor(() => expect(state().phase).toBe('done'))
 
-    expect(Object.keys(session()).sort()).toEqual(['captureMode', 'cart', 'convo', 'scan'])
+    expect(Object.keys(session()).sort()).toEqual(['captureMode', 'cart', 'convo', 'resumable', 'scan'])
+  })
+})
+
+describe('interruption & resume (#33)', () => {
+  /** 항목 2개를 받고 끊긴 상태를 만든다. */
+  async function interruptedWithTwo() {
+    const p = startScan('a.jpg')
+    await awaitCall(1)
+    calls[0].handlers.onMeta(metaOf('scan-a', '엔야'))
+    calls[0].handlers.onItem(item('かわ'))
+    calls[0].handlers.onItem(item('レバー'))
+    calls[0].d.reject(interrupted())
+    await p
+  }
+
+  // WebKit 원문이 경고 문구에 섞여 나가던 버그 그 자체.
+  it('never shows a raw browser error message', async () => {
+    const p = startScan('a.jpg')
+    await awaitCall(1)
+    calls[0].handlers.onMeta(metaOf('scan-a', '엔야'))
+    calls[0].handlers.onItem(item('かわ'))
+    calls[0].d.reject(new TypeError('Load failed'))
+    await p
+    expect(state().scan?.warnings.join(' ')).not.toContain('Load failed')
+    expect(state().scan?.warnings.at(-1)).toBe('알 수 없는 오류가 발생했어요. 일부만 표시해요.')
+  })
+
+  it('keeps the upload blob from the moment the stream opens, and drops it when done', async () => {
+    const p = startScan('a.jpg')
+    await awaitCall(1)
+    await vi.waitFor(() => expect(pending).toBeDefined())
+    expect(pending?.mode).toBe('poster')
+    calls[0].handlers.onMeta(metaOf('scan-a', '엔야'))
+    calls[0].d.resolve(TAIL)
+    await p
+    await vi.waitFor(() => expect(pending).toBeUndefined())
+  })
+
+  it('offers merge-resume for a partial interrupted scan and persists that offer', async () => {
+    await interruptedWithTwo()
+    expect(state().resumable).toBe('merge')
+    expect(pending).toBeDefined()
+    expect(session().resumable).toBe('merge')
+  })
+
+  it('does not offer a retry for a failure the same photo would repeat', async () => {
+    const p = startScan('a.jpg')
+    await awaitCall(1)
+    calls[0].d.reject(new ApiError(200, { code: 'no_menu_found', message: 'x' }))
+    await p
+    expect(state().resumable).toBeNull()
+    await vi.waitFor(() => expect(pending).toBeUndefined())
+  })
+
+  it('resumes into the same list without duplicating items already received', async () => {
+    await interruptedWithTwo()
+    const started = await state().resumeScan()
+    expect(started).toBe(true)
+    await awaitCall(2)
+    expect(state().phase).toBe('streaming')
+    expect(state().scan?.warnings).toEqual([]) // 끊김 경고는 걷어낸다
+
+    // 다시 읽은 스트림은 새 scan_id 로 처음부터 다시 온다.
+    calls[1].handlers.onMeta(metaOf('scan-b', '다른 이름'))
+    calls[1].handlers.onItem(item('かわ'))
+    calls[1].handlers.onItem(item('レバー'))
+    calls[1].handlers.onItem(item('ハツ'))
+    calls[1].d.resolve(TAIL)
+    await vi.waitFor(() => expect(state().phase).toBe('done'))
+
+    expect(state().scan?.scan_id).toBe('scan-a')
+    expect(state().scan?.restaurant.name_local).toBe('엔야')
+    expect(state().scan?.items.map((i) => i.name_local)).toEqual(['かわ', 'レバー', 'ハツ'])
+    expect(state().scan?.warnings).toEqual(TAIL.warnings)
+    expect(state().resumable).toBeNull()
+    expect(db.putRecent).toHaveBeenCalledTimes(1)
+  })
+
+  // 같은 이름이 같은 분류에 두 번 있는 메뉴판 — 집합으로 거르면 두 번째를 잃는다.
+  it('counts duplicates instead of collapsing them when merging', async () => {
+    const p = startScan('a.jpg')
+    await awaitCall(1)
+    calls[0].handlers.onMeta(metaOf('scan-a', '엔야'))
+    calls[0].handlers.onItem(item('かわ'))
+    calls[0].d.reject(interrupted())
+    await p
+
+    await state().resumeScan()
+    await awaitCall(2)
+    calls[1].handlers.onMeta(metaOf('scan-b', '엔야'))
+    calls[1].handlers.onItem(item('かわ'))
+    calls[1].handlers.onItem(item('かわ'))
+    expect(state().scan?.items.map((i) => i.name_local)).toEqual(['かわ', 'かわ'])
+  })
+
+  it('restarts from the saved photo when nothing had arrived', async () => {
+    const p = startScan('a.jpg')
+    await awaitCall(1)
+    calls[0].d.reject(interrupted())
+    await p
+    expect(state().phase).toBe('error')
+    expect(state().resumable).toBe('restart')
+
+    await state().resumeScan()
+    await awaitCall(2)
+    expect(state().phase).toBe('scanning')
+    expect(state().scan).toBeNull()
+    expect(calls[1].mode).toBe('poster')
+  })
+
+  it('keeps a resumed stream out of a newer scan', async () => {
+    await interruptedWithTwo()
+    await state().resumeScan()
+    await awaitCall(2)
+    void startScan('b.jpg')
+    await awaitCall(3)
+    expect(calls[1].signal?.aborted).toBe(true)
+
+    calls[1].handlers.onItem(item('ハツ'))
+    calls[1].d.reject(interrupted())
+    calls[2].handlers.onMeta(metaOf('scan-c', '새 식당'))
+    await Promise.resolve()
+    expect(state().scan?.scan_id).toBe('scan-c')
+    expect(state().scan?.items).toEqual([])
+    expect(state().phase).toBe('streaming')
+  })
+
+  it('returns false when the saved photo is gone', async () => {
+    await interruptedWithTwo()
+    pending = undefined
+    expect(await state().resumeScan()).toBe(false)
+    expect(state().resumable).toBeNull()
+    expect(calls).toHaveLength(1)
+  })
+
+  it('offers a restart on boot when the app died mid-scan', async () => {
+    pending = { image: new Blob(['x']), mode: 'poster', travelerLang: 'ko', startedAt: 1 }
+    await state().hydrate()
+    await vi.waitFor(() => expect(state().resumable).toBe('restart'))
+  })
+
+  it('reset and discardPending drop the saved photo', async () => {
+    await interruptedWithTwo()
+    state().reset()
+    await vi.waitFor(() => expect(pending).toBeUndefined())
+    expect(state().resumable).toBeNull()
+
+    pending = { image: new Blob(['x']), mode: 'poster', travelerLang: 'ko', startedAt: 1 }
+    useApp.setState({ resumable: 'restart' })
+    state().discardPending()
+    await vi.waitFor(() => expect(pending).toBeUndefined())
+    expect(state().resumable).toBeNull()
   })
 })

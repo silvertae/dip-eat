@@ -16,7 +16,7 @@ cd api && uv run uvicorn app.main:app --reload --reload-include '*.md' --port 80
 cd web && npm run dev                        # /api 는 127.0.0.1:8000 으로 프록시
 cd web && npm run build                      # tsc -b + vite build
 cd web && npm run lint
-cd web && npm test                           # vitest 74개 (watch 는 npm run test:watch)
+cd web && npm test                           # vitest 89개 (watch 는 npm run test:watch)
 
 # 스키마를 바꿨으면 OpenAPI → TS 타입 재생성 (손으로 타입 쓰지 말 것)
 cd api && uv run python -c "import json;from app.main import create_app;open('openapi.json','w').write(json.dumps(create_app().openapi(),ensure_ascii=False,indent=2))"
@@ -81,6 +81,24 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
   `isStale()` 검사 다섯 군데를 하나라도 지우면 낡은 항목이 새 목록에 섞이거나, 낡은 실패가 멀쩡한
   새 스캔을 에러 화면으로 보낸다. `src/store/app.test.ts` 가 이걸 지킨다(클라이언트 NDJSON 파싱은
   `src/lib/api.test.ts` — `test_jsonstream.py` 의 청크 스윕을 바이트 단위로 옮긴 것).
+
+### 끊긴 스캔 복구 (이슈 #33, 1단계 — 클라이언트만)
+
+iOS 홈 화면 PWA 를 스캔 도중 백그라운드로 보내면 WebKit 이 연결을 정리해 `reader.read()` 가
+`TypeError: Load failed` 로 터진다. 서버 작업은 요청과 생명주기가 같아서 **이어받을 서버 상태는 없다**
+(그건 2단계 — `docs/plans/2026-11-21-issues-32-33.md`). 지금은 같은 사진으로 다시 읽는다.
+
+- ⚠️ `scanMenuStream` 은 의도적 abort 를 뺀 **모든 읽기 실패**를 `ApiError(0, stream_interrupted)` 로 바꾼다.
+  `fetch()` 실패(`network_error`)와 구분한다 — 이쪽은 이미 받은 항목이 있다.
+- ⚠️ 첫 줄 이후 `STREAM_IDLE_MS`(30초) 동안 조각이 없으면 끊긴 것으로 본다(소켓이 조용히 죽으면 read() 가
+  영원히 안 끝나 '계속 읽고 있어요…' 에 갇힌다). **첫 줄 전에는 걸지 않는다** — 서버가 폴백 모델까지 시도하는 구간이다.
+- ⚠️ store 는 `ApiError`·`UserFacingError` 의 문구만 화면에 낸다. 그 밖의 `Error.message` 는 브라우저 원문이라
+  일반 문구로 바꾼다. 우리가 쓴 현지화 문구를 던질 땐 반드시 `UserFacingError`.
+- 업로드 축소본은 **스트림을 열기 전에** IndexedDB(`dipeat-pending`, 슬롯 1개)에 남기고 `done` 에서 지운다.
+  `recents` 와 섞지 말 것 — 반쪽 스캔이 '최근 식당' 에 뜬다. 재시도해도 같은 실패(`no_menu_found` 등)면 즉시 지운다.
+- `resumable`: `'merge'`(항목 일부 받음 → 결과 화면 '이어서 읽기', 이미 받은 항목은 `itemKey` **개수**로 건너뜀)
+  / `'restart'`(0개 또는 앱이 도중에 죽음 → 로딩 오류·홈 배너 '다시 읽기'). **자동 재시도는 하지 않는다**(과금·데이터).
+  재스캔도 `beginScan()` 세대 가드를 그대로 탄다.
 
 ### 빈 사진 환각 방지 (`menu_found`)
 

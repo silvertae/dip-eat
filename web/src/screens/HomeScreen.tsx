@@ -19,7 +19,7 @@ const MODES: { key: CaptureMode; label: LocalizedText }[] = [
 
 export function HomeScreen() {
   const navigate = useNavigate()
-  const { captureMode, setCaptureMode, scan, cart } = useApp()
+  const { captureMode, setCaptureMode, scan, cart, resumable, resumeScan, discardPending } = useApp()
   const { allergies, dislikes, vegetarian, travelerLang, budgets } = useProfile()
   const homeCurrency = homeCurrencyFor(travelerLang)
   const { trip: tripBudget, restaurant: restaurantBudget } = budgets[homeCurrency]
@@ -63,6 +63,31 @@ export function HomeScreen() {
         <CameraIcon size={21} />
         {tr(travelerLang, { ko: '메뉴판 찍기', ja: 'メニューを撮る' })}
       </button>
+
+      {/* 스캔 도중 앱이 닫혔다(iOS 가 백그라운드 PWA 를 정리 등 — 이슈 #33). 사진은 보관돼 있다.
+          자동으로 다시 읽지 않는다 — 사용자 모르게 과금·데이터를 쓰면 안 된다. */}
+      {resumable === 'restart' && (
+        <div className="flex items-center gap-3 rounded-2xl border border-line bg-white p-3.5">
+          <p className="flex-1 text-[13px] font-bold">
+            {tr(travelerLang, { ko: '읽다 만 메뉴판이 있어요.', ja: '読み取り途中のメニューがあります。' })}
+          </p>
+          <button
+            type="button"
+            onClick={() => void resumeScan().then((ok) => navigate(ok ? '/loading' : '/camera'))}
+            className="rounded-xl bg-ink px-3 py-2 text-xs font-extrabold text-white"
+          >
+            {tr(travelerLang, { ko: '다시 읽기', ja: 'もう一度読み取る' })}
+          </button>
+          <button
+            type="button"
+            onClick={discardPending}
+            aria-label={tr(travelerLang, { ko: '닫기', ja: '閉じる' })}
+            className="px-1 text-muted"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* 선택한 모드는 스캔 요청의 `mode` 로 그대로 전달돼 프롬프트 힌트가 된다. */}
       <div className="flex gap-2">

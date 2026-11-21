@@ -12,7 +12,7 @@
  *      남은 항목의 출력 토큰을 계속 만든다.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, scanMenuStream } from './api'
+import { ApiError, STREAM_IDLE_MS, scanMenuStream } from './api'
 import type { MenuItem } from '../types/api'
 
 const fetchMock = vi.fn()
@@ -158,7 +158,7 @@ describe('scanMenuStream', () => {
     bodyOf([LINES[0], LINES[1]].join('\n') + '\n', 13)
     const err = await scanMenuStream(blob(), collector().handlers).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(ApiError)
-    expect(err).toMatchObject({ status: 0, code: 'network_error' })
+    expect(err).toMatchObject({ status: 0, code: 'stream_interrupted' })
   })
 
   // 한 줄이 깨졌다고 스캔 전체를 버리지 않는다 — 나머지 줄은 멀쩡하다.
@@ -248,5 +248,81 @@ describe('scanMenuStream', () => {
     const form = init.body as FormData
     expect(form.get('mode')).toBe('booklet')
     expect((form.get('image') as File).name).toBe('menu.jpg')
+  })
+
+  // --- 이슈 #33: iOS PWA 백그라운드 전환 ---------------------------------------------
+
+  /** 앞의 `lines` 를 흘린 뒤 then 대로 끝나는 본문. 'error' 면 WebKit 처럼 read() 가 터진다,
+   *  'hang' 이면 소켓이 조용히 죽은 것처럼 영원히 안 끝난다. */
+  function bodyThen(lines: string[], then: { error: unknown } | 'hang') {
+    const bytes = new TextEncoder().encode(lines.join('\n') + '\n')
+    let sent = false
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (!sent) {
+          sent = true
+          controller.enqueue(bytes)
+          return
+        }
+        if (then === 'hang') return new Promise<void>(() => {})
+        controller.error(then.error)
+      },
+    })
+    const reader = stream.getReader()
+    const cancel = vi.spyOn(reader, 'cancel')
+    fetchMock.mockResolvedValue({ ok: true, status: 200, body: { getReader: () => reader } })
+    return { cancel }
+  }
+
+  it("maps WebKit's mid-stream 'Load failed' to ApiError(stream_interrupted), keeping earlier events", async () => {
+    const { cancel } = bodyThen([LINES[0], LINES[1]], { error: new TypeError('Load failed') })
+    const { events, handlers } = collector()
+    const err = await scanMenuStream(blob(), handlers).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect(err).toMatchObject({ status: 0, code: 'stream_interrupted' })
+    expect((err as Error).message).not.toContain('Load failed')
+    expect(events).toEqual(['meta:scan-1', 'item:かわ'])
+    expect(cancel).toHaveBeenCalled()
+  })
+
+  it('still rethrows an AbortError raised by read() mid-stream', async () => {
+    bodyThen([LINES[0]], { error: new DOMException('aborted', 'AbortError') })
+    const err = await scanMenuStream(blob(), collector().handlers).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(DOMException)
+    expect((err as DOMException).name).toBe('AbortError')
+  })
+
+  it('gives up with stream_interrupted when a started stream goes silent', async () => {
+    vi.useFakeTimers()
+    try {
+      const { cancel } = bodyThen([LINES[0], LINES[1]], 'hang')
+      const { events, handlers } = collector()
+      const pending = scanMenuStream(blob(), handlers).catch((e: unknown) => e)
+      await vi.advanceTimersByTimeAsync(STREAM_IDLE_MS + 10)
+      const err = await pending
+      expect(err).toMatchObject({ code: 'stream_interrupted' })
+      expect(events).toEqual(['meta:scan-1', 'item:かわ'])
+      expect(cancel).toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // 첫 줄 전에는 서버가 폴백 모델까지 시도하는 중일 수 있다 — 클라이언트가 먼저 끊으면 안 된다.
+  it('does not arm the idle watchdog before the first line arrives', async () => {
+    vi.useFakeTimers()
+    try {
+      bodyThen([], 'hang')
+      let settled = false
+      void scanMenuStream(blob(), collector().handlers)
+        .catch(() => {})
+        .finally(() => {
+          settled = true
+        })
+      await vi.advanceTimersByTimeAsync(STREAM_IDLE_MS * 3)
+      expect(settled).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
