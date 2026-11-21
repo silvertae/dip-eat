@@ -447,7 +447,7 @@ export interface components {
             summary: string;
             /**
              * Image Query
-             * @description 이 요리의 참고 사진을 위키미디어 커먼즈에서 찾기 위한 영문/로마자 검색어 한 개. 가장 널리 통용되는 요리명으로. 예: 'tamagoyaki', 'goya champuru', 'okinawa soba', 'gurukun fried fish'. 재료+조리법 조합이면 그렇게(예: 'fried island scallion'). 커먼즈 파일 제목이 대부분 영문이라 원문보다 영문이 잘 맞는다. 모르면 빈 문자열.
+             * @description 이 요리의 참고 사진을 위키미디어 커먼즈에서 찾기 위한 영문/로마자 검색어 한 개. 가장 널리 통용되는 요리명으로. 예: 'tamagoyaki', 'goya champuru', 'okinawa soba', 'gurukun fried fish'. 재료+조리법 조합이면 그렇게(예: 'fried island scallion'). 재료 이름 로마자 한 단어('kamo', 'tori') 금지 — 인명·지명과 겹친다. 영어 재료+조리법으로(예: 'duck yakitori'). 커먼즈 파일 제목이 대부분 영문이라 원문보다 영문이 잘 맞는다. 모르면 빈 문자열.
              */
             image_query: string;
             /**

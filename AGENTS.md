@@ -16,7 +16,7 @@ cd api && uv run uvicorn app.main:app --reload --reload-include '*.md' --port 80
 cd web && npm run dev                        # /api 는 127.0.0.1:8000 으로 프록시
 cd web && npm run build                      # tsc -b + vite build
 cd web && npm run lint
-cd web && npm test                           # vitest 58개 (watch 는 npm run test:watch)
+cd web && npm test                           # vitest 74개 (watch 는 npm run test:watch)
 
 # 스키마를 바꿨으면 OpenAPI → TS 타입 재생성 (손으로 타입 쓰지 말 것)
 cd api && uv run python -c "import json;from app.main import create_app;open('openapi.json','w').write(json.dumps(create_app().openapi(),ensure_ascii=False,indent=2))"
@@ -151,7 +151,7 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
   프로덕션 빌드 설정이 dev 전용 `vitest/config` 를 import 하게 된다. 테스트는 소스 옆에 두는데(`src/lib/api.test.ts`),
   `__tests__/` 로 옮기면 `vi.mock` 상대경로가 어긋나고 **매치 안 되는 `vi.mock` 은 조용히 no-op** 이라 통과하는 가짜 테스트가 된다.
 - ⚠️ 핵심은 **경합·스트리밍 두 지점**이다: `store/app.test.ts`(낡은 스캔 가드 — 아래 스트리밍 절 참고),
-  `lib/api.test.ts`(NDJSON 청크 경계·in-band error 줄). 그 밖에 `fx`·`orderPhrases`·`apiOrigin`·`store/profile` 이 있다.
+  `lib/api.test.ts`(NDJSON 청크 경계·in-band error 줄). 그 밖에 `fx`·`orderPhrases`·`apiOrigin`·`store/profile`·`dishImage` 가 있다.
   **`allergy`·`cart`·`photoOverlay` 는 아직 미커버** — 특히 `allergy` 는 식품 안전 로직이다.
 - ⚠️ `app.test.ts` 의 `beforeEach` 는 `vi.resetModules()` 로 모듈 그래프를 새로 만든다 — `scanRun`/`scanAbort` 가
   모듈 레벨이라 안 그러면 케이스가 서로 오염된다. 단 **`vi.mock` 팩토리는 resetModules 로 다시 실행되지 않으므로**
@@ -229,9 +229,10 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 - **목업의 "현지 리뷰"를 LLM 으로 생성하지 않는다**(조작된 후기). "AI 한 줄 설명"으로 재라벨링.
 - **음식 사진은 '참고 이미지'지 그 가게의 음식이 아니다**(`web/src/lib/dishImage.ts`). 위키미디어 커먼즈를 브라우저에서 직접 검색한다(키 없음, `origin=*`). 위키백과 pageimages(문서 대표 이미지)는 문서 없는 흔한 요리를 놓쳐서 커먼즈 미디어 검색으로 바꿨다.
   - 검색어는 스캔 스키마의 `image_query`(Gemini 가 주는 영문/로마자, 예: `tamagoyaki`). 커먼즈 파일 제목이 대부분 영문이라 원문보다 잘 맞는다. 실패 시 `name_local` 로 재시도.
-  - **정밀도 가드(`titleMatches`)**: 커먼즈는 전문 검색이라 오답이 섞인다(`ramen`→하늘을 나는 스파게티 괴물). 그래서 **파일 제목에 쿼리 토큰이 들어있는 것만** 채택. 못 맞히면 아이콘 — 남의 음식을 붙이는 것보다 낫다.
+  - **정밀도 가드(`isSafeCandidate`)**: 커먼즈는 전문 검색이라 오답이 섞인다(`ramen`→하늘을 나는 스파게티 괴물, `Kamo`→볼셰비키 혁명가 — 이슈 #32). 쿼리의 고유 단어가 **단어 단위로 전부** 제목에 있어야 하고, 단어 하나만 맞으면 제목·카테고리에 **요리 어휘(`FOOD_WORDS`) 증거**까지 요구한다. 인물 사진은 카테고리에도 '사람' 신호가 없어서 비음식 필터만으로는 못 막는다. 못 맞히면 아이콘 — 남의 음식을 붙이는 것보다 낫다. `FOOD_WORDS` 에 다른 뜻과 겹치는 말(`goya`·`soki`)을 넣지 말 것.
+  - ⚠️ 커먼즈 `pages` 는 page ID 키 객체라 **`index` 로 다시 정렬해야** 관련도 순위가 산다. 가드 규칙을 바꾸면 `CACHE_PREFIX` 버전을 올릴 것 — 옛 오답 hit 가 30일 박제된다(옛 키는 `purgeStaleDishImageCache` 가 부팅 시 지운다).
   - **저작권 표기는 법적 의무**: 커먼즈 사진은 대부분 CC-BY/BY-SA. `extmetadata` 에서 저작자·라이선스를 받아 상세에 표시한다(`Artist` 는 HTML 이라 태그·상용구 제거). 썸네일엔 '참고' 배지.
-  - 우리 가드는 파일 **제목**만 본다. 파일 **내용**이 제목과 맞는지는 커먼즈를 신뢰한다.
+  - 우리 가드는 파일 **제목·카테고리**만 본다. 파일 **내용**이 그와 맞는지는 커먼즈를 신뢰한다.
   - **규칙을 손대면 실제 메뉴명으로 적중률·오답을 다시 재라**(커먼즈 API 는 브라우저에서 열림).
 
 ## 범위·진행

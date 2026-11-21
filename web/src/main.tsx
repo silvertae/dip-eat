@@ -6,6 +6,7 @@ import App from './App.tsx'
 import { useApp } from './store/app'
 import { useProfile } from './store/profile'
 import { tr } from './lib/i18n'
+import { purgeStaleDishImageCache } from './lib/dishImage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -26,6 +27,8 @@ if (navigator.storage?.persist) void navigator.storage.persist().catch(() => {})
 // 배포 후 충분히 지나면(구버전 SW 가 다 갈리면) 이 줄은 지워도 된다.
 // (`caches` 를 맨이름으로 쓰면 비보안 컨텍스트에서 ReferenceError — window 경유 + 옵셔널 체이닝.)
 void window.caches?.delete('wikimedia-thumbs').catch(() => {})
+// 가드 강화(이슈 #32) 전의 참고 이미지 캐시. prefix 가 바뀌어 읽히진 않지만 localStorage 를 차지한다.
+purgeStaleDishImageCache()
 
 // registerType 'prompt': 새 버전은 대기시켰다가 사용자가 수락할 때만 활성화한다.
 const updateSW = registerSW({
