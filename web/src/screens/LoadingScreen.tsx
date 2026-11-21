@@ -14,7 +14,7 @@ const STEPS: { key: 'resizing' | 'scanning'; label: LocalizedText }[] = [
 
 export function LoadingScreen() {
   const navigate = useNavigate()
-  const { phase, preview, error } = useApp()
+  const { phase, preview, error, resumable, resumeScan } = useApp()
   const travelerLang = useProfile((s) => s.travelerLang)
 
   useEffect(() => {
@@ -32,10 +32,24 @@ export function LoadingScreen() {
           {tr(travelerLang, { ko: '메뉴판을 읽지 못했어요', ja: 'メニューを読み取れませんでした' })}
         </p>
         <p className="text-sm text-muted">{error}</p>
+        {/* 연결이 끊긴 경우엔 사진이 보관돼 있다 — 다시 찍을 필요 없이 같은 사진으로 다시 읽는다. */}
+        {resumable === 'restart' && (
+          <button
+            type="button"
+            onClick={() => void resumeScan().then((r) => r === 'missing' && navigate('/camera', { replace: true }))}
+            className="mt-2 w-full rounded-2xl bg-ink p-4 text-[15px] font-extrabold text-white"
+          >
+            {tr(travelerLang, { ko: '다시 읽기', ja: 'もう一度読み取る' })}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => navigate('/camera', { replace: true })}
-          className="mt-2 w-full rounded-2xl bg-ink p-4 text-[15px] font-extrabold text-white"
+          className={
+            resumable === 'restart'
+              ? 'w-full rounded-2xl border border-line bg-white p-4 text-[15px] font-extrabold'
+              : 'mt-2 w-full rounded-2xl bg-ink p-4 text-[15px] font-extrabold text-white'
+          }
         >
           {tr(travelerLang, { ko: '다시 찍기', ja: '撮り直す' })}
         </button>

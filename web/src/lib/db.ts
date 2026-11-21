@@ -10,7 +10,8 @@
  */
 
 import { createStore, del, get, set, values } from 'idb-keyval'
-import type { ItemBox, MenuScanResponse } from '../types/api'
+import type { CaptureMode, ItemBox, MenuScanResponse } from '../types/api'
+import type { TravelerLang } from '../types/locale'
 
 /** 프로필(localStorage 'dipeat:profile')·세션(localStorage 'dipeat:session')과 별개의 DB. */
 const recentsStore = createStore('dipeat', 'recents')
@@ -69,4 +70,32 @@ async function prune(): Promise<void> {
   for (const entry of all.slice(MAX_RECENTS)) {
     await del(entry.scanId, recentsStore)
   }
+}
+
+// --- 진행 중 스캔의 업로드 축소본 (이슈 #33) ------------------------------------
+//
+// 스캔이 **시작될 때** 축소본을 남겨 둔다. 끊기면(iOS PWA 백그라운드 전환 등) 이걸로 다시 읽는다.
+// 예전엔 done 뒤에만 putRecent 로 저장해서, 끊기면 재시도할 사진이 없었다(objectURL 은 리로드에 죽는다).
+// ⚠️ recents 와 섞지 않는다 — 반쪽 스캔이 '최근 식당' 에 뜨면 안 된다. 슬롯은 하나뿐이다
+//    (새 스캔이 덮어쓴다). 위 locatesStore 주석과 같은 이유로 별도 DB.
+const pendingStore = createStore('dipeat-pending', 'pending')
+const PENDING_KEY = 'current'
+
+export interface PendingScan {
+  image: Blob
+  mode: CaptureMode
+  travelerLang: TravelerLang
+  startedAt: number
+}
+
+export async function putPending(entry: PendingScan): Promise<void> {
+  await set(PENDING_KEY, entry, pendingStore)
+}
+
+export async function getPending(): Promise<PendingScan | undefined> {
+  return (await get(PENDING_KEY, pendingStore)) as PendingScan | undefined
+}
+
+export async function clearPending(): Promise<void> {
+  await del(PENDING_KEY, pendingStore)
 }

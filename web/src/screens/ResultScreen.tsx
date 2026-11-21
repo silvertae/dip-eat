@@ -37,6 +37,9 @@ function Result({ scan }: { scan: MenuScanResponse }) {
   const cart = useApp((s) => s.cart)
   // 아직 항목이 들어오는 중인가. 스트리밍 덕에 이 화면은 첫 항목(~2초)에 이미 떠 있다.
   const streaming = useApp((s) => s.phase === 'streaming')
+  // 받다가 끊긴 스캔(이슈 #33). 같은 사진으로 다시 읽어 빠진 항목만 붙인다.
+  const canResume = useApp((s) => s.resumable === 'merge')
+  const resumeScan = useApp((s) => s.resumeScan)
   const { allergies, vegetarian, travelerLang } = useProfile()
   const homeCurrency = homeCurrencyFor(travelerLang)
   const resultLang = scan.traveler_lang ?? 'ko'
@@ -131,6 +134,16 @@ function Result({ scan }: { scan: MenuScanResponse }) {
             {warning}
           </p>
         ))}
+
+        {canResume && !streaming && (
+          <button
+            type="button"
+            onClick={() => void resumeScan()}
+            className="w-full rounded-xl bg-ink p-3 text-[13.5px] font-extrabold text-white"
+          >
+            {tr(travelerLang, { ko: '이어서 읽기', ja: '続きを読み取る' })}
+          </button>
+        )}
 
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
           <FilterChip
