@@ -607,7 +607,6 @@ class GeminiService:
             "thinking_config": types.ThinkingConfig(
                 thinking_level=(thinking_level or self._settings.gemini_thinking_level).upper()
             ),
-            "temperature": 0.2,
         }
         # 사진이 없는 호출에 media_resolution 을 붙일 이유가 없다. 지원하지 않는 모델에
         # 보내면 400 이므로 빈 값이면 아예 넣지 않는다.

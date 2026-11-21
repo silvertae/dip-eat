@@ -27,9 +27,10 @@ class Settings(BaseSettings):
     # extract_menu 는 1차로 max_attempts 만큼 시도한 뒤 폴백으로 넘어가므로,
     # 이 조합이 곧 "싸게 먼저, 안 되면 좋은 걸로" 에스컬레이션이 된다.
     gemini_model: str = "gemini-3.1-flash-lite"
-    # gemini-3.5-flash 였으나 2026-07 기준 지속적으로 503(model overloaded)을 반환해
-    # 폴백 역할을 못 했다. 3.6-flash 는 같은 키에서 정상 응답. scripts/probe_models.py 참고.
-    gemini_model_fallback: str = "gemini-3.6-flash"
+    # gemini-3.6-flash 가 2026-08-17부터 503(UNAVAILABLE)을 반환해 폴백 역할을 못 했다.
+    # 같은 probe에서 응답한 gemini-3.5-flash를 임시 폴백으로 쓴다. 장기 선택은 실사진
+    # 벤치마크 뒤에 한다. scripts/probe_models.py 참고.
+    gemini_model_fallback: str = "gemini-3.5-flash"
 
     # 손글씨 벽보는 'medium' 에서 포화되지 않는다. 다만 media_resolution 은 Gemini 3 계열
     # 전체에서 지원되는지 문서로 확정되지 않아, 빈 문자열이면 아예 보내지 않는다.
@@ -53,7 +54,7 @@ class Settings(BaseSettings):
     # 바운딩 박스는 OCR 과 달리 '공간 그라운딩' 과제라 lite 모델이 약하다(상단 항목의 상자가
     # 텍스트 위 여백에 얹히는 실기기 사례). locate 는 on-demand·소수 항목이라 스캔 지연에
     # 영향을 안 주므로, 여기서는 정확도를 위해 상위 모델과 약간의 사고 예산을 쓴다.
-    gemini_locate_model: str = "gemini-3.6-flash"
+    gemini_locate_model: str = "gemini-3.5-flash"
     gemini_locate_thinking_level: ThinkingLevel = "low"
 
     # --- 업로드 -------------------------------------------------------------
