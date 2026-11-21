@@ -63,8 +63,8 @@ class Settings(BaseSettings):
     # ⚠️ 홀드-투-토크 녹음 상한. BodySizeLimitMiddleware 는 **모든** 라우트에 걸리므로
     #    이 값이 max_upload_bytes 보다 크면 그 구간에서 미들웨어가 먼저 발동해 음성 화면에
     #    "사진 용량이 너무 커요" 가 뜬다(AudioTooLarge 가 도달 불가). 운영은 업로드 상한을
-    #    2MiB 로 내려 쓰고 있어서 실제로 그렇게 됐다 — main.py 가 둘 중 큰 값으로 미들웨어를
-    #    마운트하고, 라우트별 검사가 각자의 메시지를 책임진다.
+    #    2MiB 로 내려 쓰고 있어서 실제로 그렇게 됐다 — 그래서 미들웨어는 경로별 override 로
+    #    녹음 경로에 이 값을 따로 걸고, 멀티파트 파트 상한은 main.py 가 둘 중 큰 값으로 올린다.
     max_audio_bytes: int = 4 * 1024 * 1024
     # 서버 재리사이즈 목표 긴 변(px)
     target_long_edge: int = 2048

@@ -29,7 +29,7 @@ Image.MAX_IMAGE_PIXELS = 16_000_000
 
 
 class PreparedImage:
-    __slots__ = ("data", "mime_type", "width", "height")
+    __slots__ = ("data", "height", "mime_type", "width")
 
     def __init__(self, data: bytes, mime_type: str, width: int, height: int):
         self.data = data

@@ -29,7 +29,5 @@ jobs:
           cache-dependency-glob: api/uv.lock
       - run: uv sync --locked
       # ruff 는 uv.lock 에 없다 → uv run 이 아니라 uvx.
-      # ⚠️ 현재 19건이 남아 있어 비차단. `uvx ruff check --fix .` 로 정리한 뒤 이 continue-on-error 를 지운다.
       - run: uvx ruff check .
-        continue-on-error: true
       - run: uv run pytest -q

@@ -16,7 +16,6 @@
     "gen:api": "npx -y openapi-typescript@7 ../api/openapi.json -o src/types/api.gen.ts"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.101.4",
     "idb-keyval": "^6.3.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

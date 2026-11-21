@@ -10,13 +10,13 @@
 ## 명령어
 
 ```bash
-cd api && uv run pytest                      # 127개 (+ 실 API 12개는 아래 LIVE 로만)
+cd api && uv run pytest                      # 125개 (+ 실 API 12개는 아래 LIVE 로만)
 cd api && DIPEAT_LIVE_TESTS=1 uv run pytest tests/test_no_menu_live.py   # 실 Gemini 호출(과금). 프롬프트를 고쳤으면 돌릴 것
 cd api && uv run uvicorn app.main:app --reload --reload-include '*.md' --port 8000
 cd web && npm run dev                        # /api 는 127.0.0.1:8000 으로 프록시
 cd web && npm run build                      # tsc -b + vite build
 cd web && npm run lint
-cd web && npm test                           # vitest 43개 (watch 는 npm run test:watch)
+cd web && npm test                           # vitest 58개 (watch 는 npm run test:watch)
 
 # 스키마를 바꿨으면 OpenAPI → TS 타입 재생성 (손으로 타입 쓰지 말 것)
 cd api && uv run python -c "import json;from app.main import create_app;open('openapi.json','w').write(json.dumps(create_app().openapi(),ensure_ascii=False,indent=2))"
@@ -150,8 +150,9 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
   `src/test/setup.ts` 가 메모리 localStorage 만 심는다(jsdom 없음). **`vite.config.ts` 에 `test:` 블록을 넣지 말 것**:
   프로덕션 빌드 설정이 dev 전용 `vitest/config` 를 import 하게 된다. 테스트는 소스 옆에 두는데(`src/lib/api.test.ts`),
   `__tests__/` 로 옮기면 `vi.mock` 상대경로가 어긋나고 **매치 안 되는 `vi.mock` 은 조용히 no-op** 이라 통과하는 가짜 테스트가 된다.
-- ⚠️ 지금 덮고 있는 건 **경합·스트리밍 두 지점뿐**이다: `store/app.test.ts`(낡은 스캔 가드 — 아래 스트리밍 절 참고),
-  `lib/api.test.ts`(NDJSON 청크 경계·in-band error 줄). 나머지 순수 lib(cart·fx·orderPhrases…)는 아직 미커버.
+- ⚠️ 핵심은 **경합·스트리밍 두 지점**이다: `store/app.test.ts`(낡은 스캔 가드 — 아래 스트리밍 절 참고),
+  `lib/api.test.ts`(NDJSON 청크 경계·in-band error 줄). 그 밖에 `fx`·`orderPhrases`·`apiOrigin`·`store/profile` 이 있다.
+  **`allergy`·`cart`·`photoOverlay` 는 아직 미커버** — 특히 `allergy` 는 식품 안전 로직이다.
 - ⚠️ `app.test.ts` 의 `beforeEach` 는 `vi.resetModules()` 로 모듈 그래프를 새로 만든다 — `scanRun`/`scanAbort` 가
   모듈 레벨이라 안 그러면 케이스가 서로 오염된다. 단 **`vi.mock` 팩토리는 resetModules 로 다시 실행되지 않으므로**
   목 기본 구현은 팩토리가 아니라 `beforeEach` 에 심는다(안 그러면 `mockResolvedValue` 가 다음 케이스로 샌다).
@@ -210,7 +211,7 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
   - Vercel 프로젝트에서 **Automatically expose System Environment Variables**가 켜져 있어야 한다.
 - 액션 버전: `astral-sh/setup-uv` 는 이동 태그가 `v7` 에서 멈춰 있어 **전체 버전(`@v9.0.0`) 고정**이 필요하다.
   `openapi-typescript` 도 정확히 핀한다(떠다니면 코드를 안 고쳐도 어느 날 무관한 PR 이 막힌다).
-- ruff 는 `uv.lock` 에 없다 → `uv run` 이 아니라 `uvx`. 현재 18건이 남아 **비차단**(`continue-on-error`)이다.
+- ruff 는 `uv.lock` 에 없다 → `uv run` 이 아니라 `uvx`. 0건으로 정리했고 **차단**이다.
 - `web-ci` 는 `npm ci` → `oxlint` → **`vitest`** → `tsc -b && vite build` 순이다. 셋 다 차단이다.
 
 ## 제품 불변식 (기능 아님)
@@ -241,6 +242,4 @@ cd api && uv run python scripts/bench_menu.py ../samples   # 실사진 정확도
 - **미결:**
   - 완료 화면(`/done`)은 라우트·코드만 있고 어느 흐름에서도 진입하지 않는다(디자인 재구성 때 주문 CTA 가 `/chat` 으로 바뀌며 빠짐). 어디에 다시 붙일지는 결정 안 됨.
   - **실기기(iOS Safari) 검증이 남아 있다** — PWA 설치·마이크 권한·폰 촬영본(3024×4032) 스캔. 헤드리스로는 불가.
-  - `/api/v1/_probe/stream` 은 임시 진단 장치다. 스트리밍이 Vercel 을 통과함을 확인했으므로 지울 수 있다(deploy.md 부록 A).
-  - ruff 18건 정리 → `api-ci.yml` 의 `continue-on-error` 제거.
-  - 프론트 유닛테스트는 경합·스트리밍 두 지점만 덮는다. 순수 lib(cart·fx·orderPhrases·photoOverlay·allergy) 미커버.
+  - 프론트 유닛테스트: `allergy`·`cart`·`photoOverlay` 미커버.

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """이 API 키로 실제로 쓸 수 있는 모델이 뭔지 확인한다.
 
     uv run python scripts/probe_models.py
@@ -15,10 +14,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from google import genai  # noqa: E402
-from google.genai import types  # noqa: E402
+from google import genai
+from google.genai import types
 
-from app.core.config import Settings  # noqa: E402
+from app.core.config import Settings
 
 CANDIDATES = [
     "gemini-3.1-flash-lite",

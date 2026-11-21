@@ -33,8 +33,8 @@ def patch_multipart_part_limit(max_part_size: int) -> None:
     def form(  # type: ignore[misc]
         self: starlette.requests.Request,
         *,
-        max_files: int | float = 1000,
-        max_fields: int | float = 1000,
+        max_files: float = 1000,
+        max_fields: float = 1000,
         max_part_size: int = max_part_size,
     ):
         return original_form(
